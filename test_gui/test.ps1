@@ -12,7 +12,7 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-# áº¨N CONSOLE
+# HIDE CONSOLE
 try {
     Add-Type -Name Window -Namespace Console -MemberDefinition '
     [DllImport("Kernel32.dll")]
@@ -29,17 +29,17 @@ try {
 catch {
 }
 
-# áº¨n menu chÃ­nh
+# HIDE MAIN MENU
 function Hide-MainMenu {
     $script:form.Hide()
 }
 
-# Hiá»‡n menu chÃ­nh
+# SHOW MAIN MENU
 function Show-MainMenu {
     $script:form.Show()
 }
 
-# Táº¡o nÃºt Ä‘á»™ng
+# 
 function New-DynamicButton {
     param (
         [string]$text,
@@ -74,7 +74,7 @@ function New-DynamicButton {
     return $button
 }
 
-# Lá»‡nh kiá»ƒm tra vÃ  táº£i thÆ° viá»‡n Windows Forms
+# Load Windows Forms Funtions
 Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
 Add-Type -AssemblyName System.Drawing -ErrorAction Stop
 
@@ -298,16 +298,16 @@ function Invoke-RunAllOperations {
 
     try {
         # STEP 0: WiFi AUTO-CONNECTION FUNCTION (DONE)
-        Add-Status "STEP 0: Connecting to WiFi network..." $statusTextBox
+        # Add-Status "STEP 0: Connecting to WiFi network..." $statusTextBox
 
-        $progressBar.Value = 5
+        # $progressBar.Value = 5
 
-        $wifiResult = Invoke-WiFiAutoConnection $statusTextBox
-        if ($wifiResult) {
-            Add-Status "WiFi connection completed!" $statusTextBox
-        } else {
-            Add-Status "WiFi connection failed, but continuing..." $statusTextBox
-        }
+        # $wifiResult = Invoke-WiFiAutoConnection $statusTextBox
+        # if ($wifiResult) {
+        #     Add-Status "WiFi connection completed!" $statusTextBox
+        # } else {
+        #     Add-Status "WiFi connection failed, but continuing..." $statusTextBox
+        # }
 
         # STEP 1: Device Selection and Software Installation (DONE)
         Add-Status "STEP 1: Selecting Device Type and Installing Software..." $statusTextBox
@@ -373,61 +373,61 @@ function Invoke-RunAllOperations {
             return
         }
 
-        Copy software files
-        Add-Status "Copying software files..." $statusTextBox
-        $copyResult = Copy-SoftwareFiles -deviceType $deviceType $statusTextBox
-        if (-not $copyResult) {
-            Add-Status "Error copying software files. Exiting..." $statusTextBox
-            return
-        }
+        # Copy software files
+        # Add-Status "Copying software files..." $statusTextBox
+        # $copyResult = Copy-SoftwareFiles -deviceType $deviceType $statusTextBox
+        # if (-not $copyResult) {
+        #     Add-Status "Error copying software files. Exiting..." $statusTextBox
+        #     return
+        # }
 
-        Install software
-        Add-Status "Installing software..." $statusTextBox
-        Install-Software -deviceType $deviceType $statusTextBox
-        Add-Status "All installation completed successfully for $deviceType !!!" $statusTextBox
+        # Install software
+        # Add-Status "Installing software..." $statusTextBox
+        # Install-Software -deviceType $deviceType $statusTextBox
+        # Add-Status "All installation completed successfully for $deviceType !!!" $statusTextBox
 
         # STEP 2: System Configuration and Shortcut Creation
-        Add-Status "STEP 2: Configuring System and Creating Shortcuts..." $statusTextBox
-        $progressBar.Value = 28 # TÄƒng giÃ¡ trá»‹ progress bar
+        # Add-Status "STEP 2: Configuring System..." $statusTextBox
+        # $progressBar.Value = 28
 
-        $configResult = Invoke-SystemConfiguration -deviceType $deviceType -statusTextBox $statusTextBox
-        if ($configResult) {
-            Add-Status "STEP 2 completed successfully !!!" $statusTextBox
-        } else {
-            Add-Status "STEP 2 encountered errors. Check logs."
-        }
+        # $configResult = Invoke-RenamebyDevice -deviceType $deviceType $statusTextBox
+        # if ($configResult) {
+        #     Add-Status "STEP 2 completed successfully !!!" $statusTextBox
+        # } else {
+        #     Add-Status "STEP 2 encountered errors. Check logs."
+        # }
 
-        STEP 3: System Cleanup and Optimization
-        Add-Status "STEP 3: Cleaning up system and optimizing performance..."
-        $progressBar.Value = 42 # TÄƒng giÃ¡ trá»‹ progress bar
+        # STEP 3: System Cleanup and Optimization
+        Add-Status "STEP 3: Cleaning up system and optimizing performance..." $statusTextBox
+        $progressBar.Value = 42
 
         $cleanupResult = Invoke-SystemCleanup -deviceType $deviceType -statusTextBox $statusTextBox
         if ($cleanupResult) {
-            Add-Status "STEP 3 completed successfully!"
+            Add-Status "STEP 3 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
         } else {
-            Add-Status "STEP 3 encountered errors. Check logs."
+            Add-Status "STEP 3 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         STEP 4: Windows and Office Activation
-        Add-Status "STEP 4: Activating Windows 10 Pro and Office 2019 Pro Plus..."
-        $progressBar.Value = 56 # TÄƒng giÃ¡ trá»‹ progress bar
+        Add-Status "STEP 4: Activating Windows 10 Pro and Office 2019 Pro Plus..." $statusTextBox
+        $progressBar.Value = 56
 
         $activationResult = Invoke-ActivateConfiguration -deviceType $deviceType -statusTextBox $statusTextBox
         if ($activationResult) {
-            Add-Status "STEP 4 completed successfully!"
+            Add-Status "STEP 4 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
         } else {
-            Add-Status "STEP 4 encountered errors. Check logs."
+            Add-Status "STEP 4 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         STEP 5: Windows Features Configuration
-        Add-Status "STEP 5: Configuring Windows Features..."
-        $progressBar.Value = 70 # TÄƒng giÃ¡ trá»‹ progress bar
+        Add-Status "STEP 5: Configuring Windows Features..." $statusTextBox
+        $progressBar.Value = 70
 
         $featuresResult = Invoke-WindowsFeaturesConfiguration -deviceType $deviceType -statusTextBox $statusTextBox
         if ($featuresResult) {
-            Add-Status "STEP 5 completed successfully!"
+            Add-Status "STEP 5 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
         } else {
-            Add-Status "STEP 5 encountered errors. Check logs."
+            Add-Status "STEP 5 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         # STEP 6: User Password Management
@@ -436,10 +436,10 @@ function Invoke-RunAllOperations {
 
         $passwordResult = Invoke-UserPasswordManagement -deviceType $deviceType -statusTextBox $statusTextBox
         if ($passwordResult) {
-            Add-Status "STEP 6 completed successfully!" $statusTextBox
+            Add-Status "STEP 6 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
         }
         else {
-            Add-Status "STEP 6 encountered errors. Check logs." $statusTextBox
+            Add-Status "STEP 6 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         # STEP 7: Domain Join
@@ -448,10 +448,10 @@ function Invoke-RunAllOperations {
 
         $domainResult = Show-DomainManagementForm -deviceType $deviceType -statusTextBox $statusTextBox
         if ($domainResult) {
-            Add-Status "STEP 7 completed successfully!" $statusTextBox
+            Add-Status "STEP 7 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
         }
         else {
-            Add-Status "STEP 7 encountered errors. Check logs." $statusTextBox
+            Add-Status "STEP 7 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         Add-Status "Computer will restart if domain join was successful." $statusTextBox
@@ -699,8 +699,8 @@ function Invoke-WiFiAutoConnection {
     }
 }
 
-# STEP 3: POWER OPTIONS FUNCTIONS
-function Invoke-SystemConfiguration {
+# STEP 2:
+function Invoke-RenamebyDevice {
     param (
         [string]$deviceType,
         [System.Windows.Forms.RichTextBox]$statusTextBox
@@ -708,7 +708,7 @@ function Invoke-SystemConfiguration {
     try {
         # --- Hiá»ƒn thá»‹ tÃªn mÃ¡y tÃ­nh hiá»‡n táº¡i vÃ  Ä‘á»•i tÃªn ---
         $currentName = $env:COMPUTERNAME
-        Add-Status "Current computer name: $currentName"
+        Add-Status "Current computer name: $currentName" $statusTextBox
 
         # Táº¡o form hiá»ƒn thá»‹ thÃ´ng tin vÃ  nháº­p tÃªn má»›i
         $renameForm = New-Object System.Windows.Forms.Form
@@ -839,7 +839,7 @@ function Invoke-SystemConfiguration {
                 $newName = $prefix + $inputName
 
                 if ($newName -ne $currentName) {
-                    Add-Status "Renaming computer from '$currentName' to '$newName'..."
+                    Add-Status "Renaming computer from '$currentName' to '$newName'..." $statusTextBox
                     try {
                         Rename-Computer -NewName $newName -Force -ErrorAction Stop
                         Add-Status "Computer will be renamed to '$newName' after restart."
@@ -859,33 +859,6 @@ function Invoke-SystemConfiguration {
         else {
             Add-Status "Computer rename cancelled by user."
         }
-
-        # --- Táº¡o lá»‘i táº¯t trÃªn Desktop ---
-        $publicDesktop = "$env:PUBLIC\Desktop"
-        Add-Status "Creating shortcuts on Public Desktop..."
-
-        # Táº¡o lá»‘i táº¯t cho Google Chrome
-        $chromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-        if (Test-Path $chromePath) {
-            $shortcutPath = Join-Path $publicDesktop "Google Chrome.lnk"
-            $WshShell = New-Object -ComObject WScript.Shell
-            $Shortcut = $WshShell.CreateShortcut($shortcutPath)
-            $Shortcut.TargetPath = $chromePath
-            $Shortcut.Save()
-            Add-Status "Created shortcut for Google Chrome."
-        }
-
-        # Táº¡o lá»‘i táº¯t cho Unikey
-        $unikeyPath = "C:\unikey46RC2-230919-win64\UniKeyNT.exe"
-        if (Test-Path $unikeyPath) {
-            $shortcutPath = Join-Path $publicDesktop "Unikey.lnk"
-            $WshShell = New-Object -ComObject WScript.Shell
-            $Shortcut = $WshShell.CreateShortcut($shortcutPath)
-            $Shortcut.TargetPath = $unikeyPath
-            $Shortcut.Save()
-            Add-Status "Created shortcut for Unikey."
-        }
-
         return $true
     }
     catch {
@@ -894,6 +867,7 @@ function Invoke-SystemConfiguration {
     }
 }
 
+# STEP 3: POWER OPTIONS FUNCTIONS
 function Invoke-SystemCleanup {
     param (
         [string]$deviceType,
@@ -901,7 +875,7 @@ function Invoke-SystemCleanup {
     )
 
     try {
-        Add-Status "Starting system cleanup and optimization..."
+        Add-Status "Starting set timezone, power options..." $statusTextBox
 
         # --- 1. System File Cleanup ---
         Invoke-FileCleanup $statusTextBox
@@ -912,21 +886,18 @@ function Invoke-SystemCleanup {
         # --- 4. Startup Program Management ---
         Invoke-StartupOptimization $statusTextBox
 
-        # --- 5.
-        Invoke-DiskOptimization $statusTextBox
-
         # --- 6. Timezone Configuration ---
         Invoke-TimezoneConfiguration $statusTextBox
 
         # --- 7. Power Options Configuration ---
         Invoke-PowerOptionsConfiguration $statusTextBox
 
-        Add-Status "System cleanup and optimization completed successfully!"
+        Add-Status "System cleanup and optimization completed successfully!" $statusTextBox
         return $true
 
     }
     catch {
-        Add-Status "ERROR during System Cleanup: $_"
+        Add-Status "ERROR during System Cleanup: $_" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 }
@@ -934,7 +905,7 @@ function Invoke-SystemCleanup {
 function Invoke-FileCleanup {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
-    Add-Status "Cleaning temporary files..."
+    Add-Status "Cleaning temporary files..." $statusTextBox
 
     # Äá»‹nh nghÄ©a cÃ¡c Ä‘Æ°á»ng dáº«n cáº§n dá»n dáº¹p
     $tempPaths = @(
@@ -947,27 +918,173 @@ function Invoke-FileCleanup {
     $tempPaths | ForEach-Object {
         try {
             Remove-Item -Path $_ -Recurse -Force -ErrorAction SilentlyContinue
-            Add-Status "Cleaned: $_"
         }
         catch {
-            Add-Status "Warning: Could not clean $_"
+            Add-Status "Warning: Could not clean $_" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
+        Add-Status "Temporary files cleaned." $statusTextBox
     }
 
     # Dá»n dáº¹p Recycle Bin vÃ  Windows Update cache
     try {
         Clear-RecycleBin -Force -ErrorAction SilentlyContinue
-        Add-Status "Recycle Bin cleaned successfully!"
+        Add-Status "Recycle Bin cleaned." $statusTextBox
 
         Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
         Remove-Item -Path "$env:WINDIR\SoftwareDistribution\Download\*" -Recurse -Force -ErrorAction SilentlyContinue
         Start-Service -Name wuauserv -ErrorAction SilentlyContinue
-        Add-Status "Windows Update cache cleaned!"
+        Add-Status "Windows Update cache cleaned." $statusTextBox
     }
     catch {
-        Add-Status "Warning: Could not complete advanced cleanup"
+        Add-Status "Warning: Could not complete advanced cleanup" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
+
+# Function to customize taskbar - Windows 10 & 11 compatible
+function Invoke-TaskbarCustomization {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+
+    Add-Status "Customizing taskbar settings..." $statusTextBox
+
+    try {
+        # Detect Windows version
+        $osVersion = (Get-CimInstance Win32_OperatingSystem).Caption
+        $isWindows11 = $osVersion -like "*Windows 11*"
+
+        if ($isWindows11) {
+            Add-Status "Detected Windows 11 - applying specific customizations..." $statusTextBox
+        }
+        else {
+            Add-Status "Detected Windows 10 - applying specific customizations..." $statusTextBox
+        }
+
+        # 1. DISABLE/UNPIN MS COPILOT (Windows 11 specific)
+        if ($isWindows11) {
+            try {
+                # Disable Copilot via registry
+                $copilotRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+                if (-not (Test-Path $copilotRegPath)) {
+                    New-Item -Path $copilotRegPath -Force | Out-Null
+                }
+
+                # Disable Copilot button on taskbar
+                Set-ItemProperty -Path $copilotRegPath -Name "ShowCopilotButton" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+
+                # Disable Copilot via Group Policy equivalent
+                $copilotPolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"
+                if (-not (Test-Path $copilotPolicyPath)) {
+                    New-Item -Path $copilotPolicyPath -Force -ErrorAction SilentlyContinue | Out-Null
+                }
+                Set-ItemProperty -Path $copilotPolicyPath -Name "TurnOffWindowsCopilot" -Value 1 -Type DWord -ErrorAction SilentlyContinue
+
+                Add-Status "MS Copilot was disabled." $statusTextBox
+            }
+            catch {
+                Add-Status "Could not disable MS Copilot: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            }
+        }
+        else {
+            Add-Status "MS Copilot not applicable for Windows 10" $statusTextBox
+        }
+
+        # 3. DISABLE WIDGETS (Windows 11) / NEWS AND INTERESTS (Windows 10)
+        Add-Status "Disabling Widgets/News and Interests..." $statusTextBox
+        try {
+            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+
+            if ($isWindows11) {
+                # Windows 11 - Disable Widgets
+                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarDa" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarWidgets" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+                Add-Status "Widgets disabled for Windows 11" $statusTextBox
+            }
+            else {
+                # Windows 10 - Disable News and Interests
+                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarDa" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+
+                # Additional registry for News and Interests
+                $feedsRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Feeds"
+                if (-not (Test-Path $feedsRegPath)) {
+                    New-Item -Path $feedsRegPath -Force | Out-Null
+                }
+                Set-ItemProperty -Path $feedsRegPath -Name "ShellFeedsTaskbarViewMode" -Value 2 -Type DWord -ErrorAction SilentlyContinue
+
+                Add-Status "News and Interests disabled for Windows 10" $statusTextBox
+            }
+        }
+        catch {
+            Add-Status "Could not disable Widgets/News and Interests: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        }
+
+        # 4. HIDE TASK VIEW BUTTON
+        try {
+            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+
+            # Hide Task View button (works for both Windows 10 and 11)
+            Set-ItemProperty -Path $explorerRegPath -Name "ShowTaskViewButton" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+
+            Add-Status "Task View button was hidden." $statusTextBox
+        }
+        catch {
+            Add-Status "Could not hide Task View button: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        }
+
+        # 5. ADDITIONAL TASKBAR CUSTOMIZATIONS
+        try {
+            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+
+            # Hide People button (Windows 10)
+            if (-not $isWindows11) {
+                Set-ItemProperty -Path $explorerRegPath -Name "PeopleBand" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+                Add-Status "People button was hidden. (Windows 10)" $statusTextBox
+            }
+
+            # Hide Meet Now button (Windows 10)
+            if (-not $isWindows11) {
+                $meetNowRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"
+                if (-not (Test-Path $meetNowRegPath)) {
+                    New-Item -Path $meetNowRegPath -Force | Out-Null
+                }
+                Set-ItemProperty -Path $meetNowRegPath -Name "HideSCAMeetNow" -Value 1 -Type DWord -ErrorAction SilentlyContinue
+                Add-Status "Meet Now was hidden. (Windows 10)" $statusTextBox
+            }
+
+            # Windows 11 specific - Hide Chat button
+            if ($isWindows11) {
+                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarMn" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+                Add-Status "Chat button was hidden. (Windows 11)" $statusTextBox
+            }
+
+        }
+        catch {
+            Add-Status "Could not apply additional customizations: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        }
+
+        # 6. RESTART EXPLORER TO APPLY CHANGES
+        try {
+            # Kill explorer process
+            Stop-Process -Name "explorer" -Force -ErrorAction SilentlyContinue
+
+            # Wait a moment
+            Start-Sleep -Seconds 2
+
+            # Start explorer again
+            Start-Process "explorer.exe"
+
+            Add-Status "Windows Explorer was restarted." $statusTextBox
+        }
+        catch {
+            Add-Status "Could not restart Explorer: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        }
+
+        Add-Status "Taskbar customization completed successfully !!!" $statusTextBox
+
+    }
+    catch {
+        Add-Status "ERROR during taskbar customization: $_" $statusTextBox ([System.Drawing.Color]::Red)
+    }
+}
+
 
 function Invoke-StartupOptimization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
@@ -986,26 +1103,8 @@ function Invoke-StartupOptimization {
             }
         }
         catch {
-            Add-Status "Warning: Could not disable startup program $_" $statusTextBox
+            Add-Status "Warning: Could not disable startup program $_" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-    }
-}
-
-function Invoke-DiskOptimization {
-    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-    try {
-        # Drive Optimization
-        Add-Status "Checking drive type and optimizing..." $statusTextBox
-        $drives = Get-WmiObject -Class Win32_LogicalDisk | Where-Object { $_.DriveType -eq 3 }
-        $drives | ForEach-Object {
-            $driveLetter = $_.DeviceID
-            Add-Status "Optimizing drive $driveLetter..." $statusTextBox
-            Start-Process -FilePath "defrag.exe" -ArgumentList "$driveLetter /O" -Wait -WindowStyle Hidden
-        }
-        Add-Status "Drive optimization completed!" $statusTextBox
-    }
-    catch {
-        Add-Status "Warning: Could not complete disk optimization" $statusTextBox
     }
 }
 
@@ -1073,196 +1172,6 @@ function Invoke-PowerOptionsConfiguration {
     }
 }
 
-# Function to customize taskbar - Windows 10 & 11 compatible
-function Invoke-TaskbarCustomization {
-    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-
-    Add-Status "Customizing taskbar settings..."
-
-    try {
-        # Detect Windows version
-        $osVersion = (Get-CimInstance Win32_OperatingSystem).Caption
-        $isWindows11 = $osVersion -like "*Windows 11*"
-
-        if ($isWindows11) {
-            Add-Status "Detected Windows 11 - applying specific customizations..."
-        }
-        else {
-            Add-Status "Detected Windows 10 - applying specific customizations..."
-        }
-
-        # 1. UNPIN MICROSOFT STORE
-        Add-Status "Unpinning Microsoft Store from taskbar..."
-        try {
-            # Method 1: PowerShell App Package removal from taskbar
-            $storeAppId = "Microsoft.WindowsStore_8wekyb3d8bbwe!App"
-
-            # Windows 11 method
-            if ($isWindows11) {
-                # Remove from taskbar via registry
-                $taskbarRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband"
-                if (Test-Path $taskbarRegPath) {
-                    Remove-ItemProperty -Path $taskbarRegPath -Name "Favorites" -ErrorAction SilentlyContinue
-                }
-
-                # Use PowerShell to unpin
-                $shell = New-Object -ComObject Shell.Application
-                $folder = $shell.Namespace('shell:::{4234d49b-0245-4df3-b780-3893943456e1}')
-                if ($folder) {
-                    $item = $folder.ParseName("Microsoft Store")
-                    if ($item) {
-                        $item.InvokeVerb("Unpin from tas&kbar")
-                        Add-Status "Microsoft Store unpinned from taskbar"
-                    }
-                }
-            }
-            else {
-                # Windows 10 method
-                $shell = New-Object -ComObject Shell.Application
-                $folder = $shell.Namespace('shell:::{4234d49b-0245-4df3-b780-3893943456e1}')
-                if ($folder) {
-                    $item = $folder.ParseName("Microsoft Store")
-                    if ($item) {
-                        $item.InvokeVerb("Unpin from tas&kbar")
-                        Add-Status "Microsoft Store unpinned from taskbar"
-                    }
-                }
-            }
-        }
-        catch {
-            Add-Status "Could not unpin Microsoft Store: $_"
-        }
-
-        # 2. DISABLE/UNPIN MS COPILOT (Windows 11 specific)
-        if ($isWindows11) {
-            Add-Status "Disabling MS Copilot..."
-            try {
-                # Disable Copilot via registry
-                $copilotRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-                if (-not (Test-Path $copilotRegPath)) {
-                    New-Item -Path $copilotRegPath -Force | Out-Null
-                }
-
-                # Disable Copilot button on taskbar
-                Set-ItemProperty -Path $copilotRegPath -Name "ShowCopilotButton" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-
-                # Disable Copilot via Group Policy equivalent
-                $copilotPolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"
-                if (-not (Test-Path $copilotPolicyPath)) {
-                    New-Item -Path $copilotPolicyPath -Force -ErrorAction SilentlyContinue | Out-Null
-                }
-                Set-ItemProperty -Path $copilotPolicyPath -Name "TurnOffWindowsCopilot" -Value 1 -Type DWord -ErrorAction SilentlyContinue
-
-                Add-Status "MS Copilot disabled successfully"
-            }
-            catch {
-                Add-Status "Could not disable MS Copilot: $_"
-            }
-        }
-        else {
-            Add-Status "MS Copilot not applicable for Windows 10"
-        }
-
-        # 3. DISABLE WIDGETS (Windows 11) / NEWS AND INTERESTS (Windows 10)
-        Add-Status "Disabling Widgets/News and Interests..."
-        try {
-            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-
-            if ($isWindows11) {
-                # Windows 11 - Disable Widgets
-                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarDa" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarWidgets" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-                Add-Status "Widgets disabled for Windows 11"
-            }
-            else {
-                # Windows 10 - Disable News and Interests
-                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarDa" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-
-                # Additional registry for News and Interests
-                $feedsRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Feeds"
-                if (-not (Test-Path $feedsRegPath)) {
-                    New-Item -Path $feedsRegPath -Force | Out-Null
-                }
-                Set-ItemProperty -Path $feedsRegPath -Name "ShellFeedsTaskbarViewMode" -Value 2 -Type DWord -ErrorAction SilentlyContinue
-
-                Add-Status "News and Interests disabled for Windows 10"
-            }
-        }
-        catch {
-            Add-Status "Could not disable Widgets/News and Interests: $_"
-        }
-
-        # 4. HIDE TASK VIEW BUTTON
-        Add-Status "Hiding Task View button..."
-        try {
-            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-
-            # Hide Task View button (works for both Windows 10 and 11)
-            Set-ItemProperty -Path $explorerRegPath -Name "ShowTaskViewButton" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-
-            Add-Status "Task View button hidden successfully"
-        }
-        catch {
-            Add-Status "Could not hide Task View button: $_"
-        }
-
-        # 5. ADDITIONAL TASKBAR CUSTOMIZATIONS
-        Add-Status "Applying additional taskbar customizations..."
-        try {
-            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-
-            # Hide People button (Windows 10)
-            if (-not $isWindows11) {
-                Set-ItemProperty -Path $explorerRegPath -Name "PeopleBand" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-                Add-Status "People button hidden (Windows 10)"
-            }
-
-            # Hide Meet Now button (Windows 10)
-            if (-not $isWindows11) {
-                $meetNowRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-                if (-not (Test-Path $meetNowRegPath)) {
-                    New-Item -Path $meetNowRegPath -Force | Out-Null
-                }
-                Set-ItemProperty -Path $meetNowRegPath -Name "HideSCAMeetNow" -Value 1 -Type DWord -ErrorAction SilentlyContinue
-                Add-Status "Meet Now button hidden (Windows 10)"
-            }
-
-            # Windows 11 specific - Hide Chat button
-            if ($isWindows11) {
-                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarMn" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-                Add-Status "Chat button hidden (Windows 11)"
-            }
-
-        }
-        catch {
-            Add-Status "Could not apply additional customizations: $_"
-        }
-
-        # 6. RESTART EXPLORER TO APPLY CHANGES
-        Add-Status "Restarting Windows Explorer to apply changes..."
-        try {
-            # Kill explorer process
-            Stop-Process -Name "explorer" -Force -ErrorAction SilentlyContinue
-
-            # Wait a moment
-            Start-Sleep -Seconds 2
-
-            # Start explorer again
-            Start-Process "explorer.exe"
-
-            Add-Status "Windows Explorer restarted successfully"
-        }
-        catch {
-            Add-Status "Could not restart Explorer: $_"
-        }
-
-        Add-Status "Taskbar customization completed successfully!"
-
-    }
-    catch {
-        Add-Status "ERROR during taskbar customization: $_"
-    }
-}
 
 # Alternative method using PowerShell 7+ and Windows Terminal commands
 function Invoke-AdvancedTaskbarCustomization {
@@ -1385,6 +1294,7 @@ function Invoke-ActivateConfiguration {
 # STEP 7: User Password Management Functions
 function Invoke-UserPasswordManagement {
     param (
+        [string]$deviceType,
         [System.Windows.Forms.RichTextBox]$statusTextBox
     )
 
@@ -5041,7 +4951,7 @@ function Invoke-SetPasswordDialog {
     )
 
     Hide-MainMenu
-    $result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox
+    $result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox 
 
     if ($result.Action -eq "set") {
         $success = Set-UserPassword -user $currentUser -password $result.Password
@@ -5571,7 +5481,7 @@ $menuButtons = @(
     @{text = '[2] Software'; action = { Show-InstallSoftwareDialog } },
     @{text = '[7] Rename'; action = { Invoke-RenameDialog } },
     @{text = '[3] Power'; action = { Invoke-PowerOptionsDialog } },
-    @{text = '[8] Password'; action = { Invoke-SetPasswordDialog } },
+    @{text = '[8] Password'; action = { Show-SetPasswordForm } },
     @{text = '[4] Volume'; action = { Invoke-VolumeManagementDialog } },
     @{text = '[9] Domain'; action = { Show-DomainManagementForm } },
     @{text = '[5] Activate'; action = { Invoke-ActivationDialog } },
