@@ -213,7 +213,7 @@ function Add-TitleAnimation {
 # Add animation using global function
 Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
 
-# HÃ m thÃªm status vá»›i mÃ u tuá»³ chá»n
+# Add status with optional color parameter
 function Add-Status {
     param(
         [string]$message,
@@ -224,15 +224,12 @@ function Add-Status {
         $rtb.Clear()
     }
     $timestamp = Get-Date -Format "HH:mm:ss"
-    # ThÃªm timestamp vá»›i mÃ u máº·c Ä‘á»‹nh
     $rtb.SelectionStart = $rtb.TextLength
     $rtb.SelectionLength = 0
     $rtb.SelectionColor = $rtb.ForeColor
     $rtb.AppendText("[$timestamp] ")
-    # ThÃªm message vá»›i mÃ u tÃ¹y chá»n
     $rtb.SelectionColor = $color
     $rtb.AppendText("$message`r`n")
-    # Äáº·t láº¡i mÃ u vá» máº·c Ä‘á»‹nh
     $rtb.SelectionColor = $rtb.ForeColor
     $rtb.ScrollToCaret()
     [System.Windows.Forms.Application]::DoEvents()
@@ -404,7 +401,8 @@ function Invoke-RunAllOperations {
         $cleanupResult = Invoke-SystemCleanup -deviceType $deviceType -statusTextBox $statusTextBox
         if ($cleanupResult) {
             Add-Status "STEP 3 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
-        } else {
+        }
+        else {
             Add-Status "STEP 3 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
@@ -415,7 +413,8 @@ function Invoke-RunAllOperations {
         $activationResult = Invoke-ActivateConfiguration -deviceType $deviceType -statusTextBox $statusTextBox
         if ($activationResult) {
             Add-Status "STEP 4 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
-        } else {
+        }
+        else {
             Add-Status "STEP 4 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
@@ -426,7 +425,8 @@ function Invoke-RunAllOperations {
         $featuresResult = Invoke-WindowsFeaturesConfiguration -deviceType $deviceType -statusTextBox $statusTextBox
         if ($featuresResult) {
             Add-Status "STEP 5 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
-        } else {
+        }
+        else {
             Add-Status "STEP 5 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
@@ -1114,13 +1114,11 @@ function Invoke-TimezoneConfiguration {
     Add-Status "Setting time zone and automatically updating time..." $statusTextBox
 
     try {
-        # Cáº¥u hÃ¬nh mÃºi giá»
         $tzResult = Start-Process -FilePath "tzutil" -ArgumentList "/s `"SE Asia Standard Time`"" -Wait -PassThru -WindowStyle Hidden
         if ($tzResult.ExitCode -eq 0) {
             Add-Status "Time zone set to SE Asia Standard Time successfully!" $statusTextBox
         }
 
-        # Cáº¥u hÃ¬nh NTP vÃ  Ä‘á»“ng bá»™ thá»i gian
         $regCommands = @(
             @{Path = "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\w32time\Parameters"; Name = "Type"; Value = "NTP" },
             @{Path = "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\tzautoupdate"; Name = "Start"; Value = 2 }
@@ -1144,28 +1142,24 @@ function Invoke-PowerOptionsConfiguration {
     Add-Status "Configuring power options to 'Do Nothing'..." $statusTextBox
 
     try {
-        # Äá»‹nh nghÄ©a cÃ¡c cáº¥u hÃ¬nh power
         $powerConfigs = @(
             @{Setting = "LIDACTION"; Description = "Lid close action" },
             @{Setting = "SBUTTONACTION"; Description = "Sleep button action" },
             @{Setting = "PBUTTONACTION"; Description = "Power button action" }
         )
 
-        # Ãp dá»¥ng cáº¥u hÃ¬nh cho cÃ¡c nÃºt
         $powerConfigs | ForEach-Object {
             powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS $_.Setting 0 | Out-Null
             powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS $_.Setting 0 | Out-Null
         }
 
-        # Táº¯t timeout cho mÃ n hÃ¬nh vÃ  sleep
         powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 0 | Out-Null
         powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 0 | Out-Null
         powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 0 | Out-Null
         powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 0 | Out-Null
 
-        # Ãp dá»¥ng thay Ä‘á»•i
         powercfg /SETACTIVE SCHEME_CURRENT | Out-Null
-        Add-Status "Power options configured to  'Do Nothing' completed successfully!"
+        Add-Status "Power options configured to  'Do Nothing' completed successfully!" $statusTextBox
     }
     catch {
         Add-Status "Warning: Could not configure power options: $_"
@@ -1442,9 +1436,9 @@ function Copy-SoftwareFiles {
         }
 
         # Copy ForceScout
-        $forceScoutDest = "$env:USERPROFILE\Downloads\ForceScout.exe"
+        $forceScoutDest = "$env:USERPROFILE\Downloads\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
         if (-not (Test-Path $forceScoutDest)) {
-            $forceScoutSource = "D:\SOFTWARE\PAYOO\ForceScout.exe"
+            $forceScoutSource = "D:\SOFTWARE\PAYOO\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
             if (Test-Path $forceScoutSource) {
                 Add-Status "Copying ForceScout file..." $statusTextBox
                 try {
@@ -2381,7 +2375,6 @@ function Invoke-VolumeManagementDialog {
     $volumeForm.Controls.Add($statusTextBox)
 
     $driveCount = Update-DriveList
-    Add-Status "Drive list updated. Found $driveCount drives." $statusTextBox
 
     # Add a common event handler for driveListBox to update all input fields in all buttons
     $driveListBox.Add_SelectedIndexChanged({
@@ -2389,61 +2382,94 @@ function Invoke-VolumeManagementDialog {
                 $selectedDrive = $driveListBox.SelectedItem.ToString()
                 if ($selectedDrive.Length -gt 0) {
                     $driveLetter = $selectedDrive.Substring(0, 1)
-                # Update for Change Letter button
-                if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Change Drive Letter") {
-                    # Find the GroupBox in the change letter panel
-                    $changeGroupBox = $contentPanel.Controls | Where-Object { $_ -is [System.Windows.Forms.GroupBox] }
-                    if ($changeGroupBox) {
-                        # Find the old drive letter textbox (first textbox)
-                        $oldLetterTextBox = $changeGroupBox.Controls | Where-Object { $_ -is [System.Windows.Forms.TextBox] } | Select-Object -First 1
-                        if ($oldLetterTextBox) {
-                            $oldLetterTextBox.Text = $driveLetter
-                        }
-                    }
-                }
-
-                # Update for Shrink Volume button
-                if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Shrink Volume and Create New Partition") {
-                    # Use script scope variable for shrink volume
-                    if ($script:selectedDriveTextBox) {
-                        $script:selectedDriveTextBox.Text = $driveLetter
-                    }
-                }
-
-                # Update for Extend Volume button
-                if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Extend Volume by Merging") {
-                    # Find the textboxes in the extend volume panel
-                    $extendGroupBox = $contentPanel.Controls | Where-Object { $_ -is [System.Windows.Forms.GroupBox] }
-                    if ($extendGroupBox) {
-                        $textBoxes = $extendGroupBox.Controls | Where-Object { $_ -is [System.Windows.Forms.TextBox] }
-                        if ($textBoxes.Count -ge 2) {
-                            $sourceTextBox = $textBoxes[0]
-                            $targetTextBox = $textBoxes[1]
-
-                            # If source drive is empty, fill it
-                            if ($sourceTextBox.Text -eq "") {
-                                $sourceTextBox.Text = $driveLetter
-                            }
-                            # Otherwise, if target drive is empty and different from source, fill it
-                            elseif ($targetTextBox.Text -eq "" -and $driveLetter -ne $sourceTextBox.Text) {
-                                $targetTextBox.Text = $driveLetter
+                    # Update for Change Letter button
+                    if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Change Drive Letter") {
+                        # Find the GroupBox in the change letter panel
+                        $changeGroupBox = $contentPanel.Controls | Where-Object { $_ -is [System.Windows.Forms.GroupBox] }
+                        if ($changeGroupBox) {
+                            # Find the old drive letter textbox (first textbox)
+                            $oldLetterTextBox = $changeGroupBox.Controls | Where-Object { $_ -is [System.Windows.Forms.TextBox] } | Select-Object -First 1
+                            if ($oldLetterTextBox) {
+                                $oldLetterTextBox.Text = $driveLetter
                             }
                         }
                     }
-                }
 
-                # Update for Rename Volume button
-                if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Rename Volume") {
-                    # Find the GroupBox in the rename panel
-                    $renameGroupBox = $contentPanel.Controls | Where-Object { $_ -is [System.Windows.Forms.GroupBox] }
-                    if ($renameGroupBox) {
-                        # Find the drive letter textbox (first textbox)
-                        $driveLetterTextBox = $renameGroupBox.Controls | Where-Object { $_ -is [System.Windows.Forms.TextBox] } | Select-Object -First 1
-                        if ($driveLetterTextBox) {
-                            $driveLetterTextBox.Text = $driveLetter
+                    #Update for Shrink Volume button
+                    if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Shrink Volume") {
+                        # Use script scope variable for shrink volume
+                        if ($script:selectedDriveTextBox) {
+                            $script:selectedDriveTextBox.Text = $driveLetter
                         }
                     }
-                }
+
+                    # # Update for Extend Volume button
+                    # if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Extend Volume") {
+                    #     # Find the textboxes in the extend volume panel
+                    #     $extendGroupBox = $contentPanel.Controls | Where-Object { $_ -is [System.Windows.Forms.GroupBox] }
+                    #     if ($extendGroupBox) {
+                    #         $textBoxes = $extendGroupBox.Controls | Where-Object { $_ -is [System.Windows.Forms.TextBox] }
+                    #         if ($textBoxes.Count -ge 2) {
+                    #             $sourceTextBox = $textBoxes[0]
+                    #             $targetTextBox = $textBoxes[1]
+
+                    #             # If source drive is empty, fill it
+                    #             if ($sourceTextBox.Text -eq "") {
+                    #                 $sourceTextBox.Text = $driveLetter
+                    #             }
+                    #             # Otherwise, if target drive is empty and different from source, fill it
+                    #             elseif ($targetTextBox.Text -eq "" -and $driveLetter -ne $sourceTextBox.Text) {
+                    #                 $targetTextBox.Text = $driveLetter
+                    #             }
+                    #         }
+                    #     }
+                    # }
+
+                    # Advanced logic: Allow swapping source and target drives by clicking on the drive list box
+                    if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Extend Volume") {
+                        if ($script:extendSourceDriveTextBox -and $script:extendTargetDriveTextBox) {
+                            # Check if selected drive is C
+                            if ($driveLetter -eq "C") {
+                                Add-Status "CẢNH BÁO: Không thể chọn ổ C làm Source Drive! Ổ C là ổ hệ thống." $statusTextBox ([System.Drawing.Color]::Red)
+                                return
+                            }
+                            # Get current values
+                            $sourceDrive = $script:extendSourceDriveTextBox.Text.Trim()
+                            $targetDrive = $script:extendTargetDriveTextBox.Text.Trim()
+                            
+                            # If both textboxes are empty, fill source first
+                            if ([string]::IsNullOrEmpty($sourceDrive) -and [string]::IsNullOrEmpty($targetDrive)) {
+                                $script:extendSourceDriveTextBox.Text = $driveLetter
+                            }
+                            # If only source is filled and different drive selected, fill target
+                            elseif (![string]::IsNullOrEmpty($sourceDrive) -and [string]::IsNullOrEmpty($targetDrive) -and $driveLetter -ne $sourceDrive) {
+                                $script:extendTargetDriveTextBox.Text = $driveLetter
+                            }
+                            # If both are filled, replace the one that doesn't match current selection
+                            elseif (![string]::IsNullOrEmpty($sourceDrive) -and ![string]::IsNullOrEmpty($targetDrive)) {
+                                if ($driveLetter -ne $sourceDrive -and $driveLetter -ne $targetDrive) {
+                                    $script:extendTargetDriveTextBox.Text = $driveLetter
+                                }
+                            }
+                            # If same as source, clear target
+                            elseif ($driveLetter -eq $sourceDrive) {
+                                $script:extendTargetDriveTextBox.Text = ""
+                            }
+                        }
+                    }
+
+                    # Update for Rename Volume button
+                    if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Rename Volume") {
+                        # Find the GroupBox in the rename panel
+                        $renameGroupBox = $contentPanel.Controls | Where-Object { $_ -is [System.Windows.Forms.GroupBox] }
+                        if ($renameGroupBox) {
+                            # Find the drive letter textbox (first textbox)
+                            $driveLetterTextBox = $renameGroupBox.Controls | Where-Object { $_ -is [System.Windows.Forms.TextBox] } | Select-Object -First 1
+                            if ($driveLetterTextBox) {
+                                $driveLetterTextBox.Text = $driveLetter
+                            }
+                        }
+                    }
                 }
             }
         })
@@ -2451,6 +2477,7 @@ function Invoke-VolumeManagementDialog {
     # [4.1] Change Drive Letter button
     $btnChangeDriveLetter = New-DynamicButton -text "Change Letter" -x 10 -y 150 -width 150 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         # Clear the content panel
+        $statusTextBox.Clear()
         $contentPanel.Controls.Clear()
 
         # Title label
@@ -2535,28 +2562,28 @@ function Invoke-VolumeManagementDialog {
 
             # Validate input
             if ($oldLetter -eq "") {
-                Add-Status "Error: Please select a drive letter to change."
+                Add-Status "Error: Please select a drive letter to change." $statusTextBox ([System.Drawing.Color]::Red)
                 return
             }
 
             if ($newLetter -eq "") {
-                Add-Status "Error: Please enter a new drive letter."
+                Add-Status "Error: Please enter a new drive letter." $statusTextBox ([System.Drawing.Color]::Red)
                 return
             }
 
             # Validate drive letter format
             if (-not ($oldLetter -match '^[A-Z]$')) {
-                Add-Status "Error: Old drive letter must be a single letter (A-Z)."
+                Add-Status "Error: Old drive letter must be a single letter (A-Z)." $statusTextBox ([System.Drawing.Color]::Red)
                 return
             }
 
             if (-not ($newLetter -match '^[A-Z]$')) {
-                Add-Status "Error: New drive letter must be a single letter (A-Z)."
+                Add-Status "Error: New drive letter must be a single letter (A-Z)." $statusTextBox ([System.Drawing.Color]::Red)
                 return
             }
 
             if ($oldLetter -eq $newLetter) {
-                Add-Status "Error: New drive letter must be different from the current one."
+                Add-Status "Error: New drive letter must be different from the current one." $statusTextBox ([System.Drawing.Color]::Red)
                 return
             }
 
@@ -2564,13 +2591,13 @@ function Invoke-VolumeManagementDialog {
             try {
                 $existingDrives = Get-WmiObject Win32_LogicalDisk | Select-Object -ExpandProperty DeviceID
                 if ($existingDrives -contains "$($newLetter):") {
-                    Add-Status "Error: Drive letter $newLetter is already in use."
+                    Add-Status "Error: Drive letter $newLetter is already in use." $statusTextBox
                     return
                 }
-                Add-Status "Drive letter $newLetter is available."
+                Add-Status "Drive letter $newLetter is available." $statusTextBox
             }
             catch {
-                Add-Status "Warning: Could not verify drive letter availability. Error: $($_.Exception.Message)"
+                Add-Status "Warning: Could not verify drive letter availability. Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
                 Add-Status "Proceeding with change operation..."
             }
 
@@ -2582,7 +2609,8 @@ assign letter=$newLetter
 "@
             Set-Content -Path $tempFile -Value $diskpartScript
 
-            Add-Status "Changing drive $oldLetter to $newLetter..."
+            $statusTextBox.Clear()
+            Add-Status "Changing drive $oldLetter to $newLetter..." $statusTextBox
 
             try {
                 # Run diskpart with elevated privileges
@@ -2647,7 +2675,8 @@ assign letter=$newLetter
                 }
             }
         }
-        Add-Status "Ready to change letter. Select a drive, enter a new letter, then click Change."
+
+        Add-Status "Ready to change letter. Select a drive, enter a new letter, then click Change." $statusTextBox
         Update-DriveList $driveListBox
     }
     $volumeForm.Controls.Add($btnChangeDriveLetter)
@@ -2655,6 +2684,7 @@ assign letter=$newLetter
     # [4.2] Shrink Volume button
     $btnShrinkVolume = New-DynamicButton -text "Shrink Volume" -x 170 -y 150 -width 150 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         # Clear the content panel
+        $statusTextBox.Clear()
         $contentPanel.Controls.Clear()
 
         # Create title using function
@@ -2663,7 +2693,6 @@ assign letter=$newLetter
         # Create drive selector using function
         New-ShrinkVolumeDriveSelector -contentPanel $contentPanel
 
-        # Láº¥y láº¡i biáº¿n textbox sau khi táº¡o
         $selectedDriveTextBox = $script:selectedDriveTextBox
 
         # Create partition size options using function
@@ -2686,7 +2715,7 @@ assign letter=$newLetter
             }
         }
 
-        Add-Status "Ready to shrink volume. Select a drive, choose partition size, then click Shrink."
+        Add-Status "Ready to shrink volume. Select a drive, choose partition size, then click Shrink." $statusTextBox
         Update-DriveList $driveListBox
     }
     $volumeForm.Controls.Add($btnShrinkVolume)
@@ -2694,10 +2723,11 @@ assign letter=$newLetter
     # [4.3] Rename Volume button
     $btnRenameVolume = New-DynamicButton -text "Rename Volume" -x 330 -y 150 -width 150 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         # Clear the content panel
+        $statusTextBox.Clear()
         $contentPanel.Controls.Clear()
 
         # Create title
-        New-RenameVolumeTitle -parentPanel $contentPanel
+        New-RenameVolumeTitle -parentPanel $contentPanel 
 
         # Create GroupBox with all controls inside
         $renameControls = New-RenameVolumeGroupBox -parentPanel $contentPanel -driveListBox $driveListBox
@@ -2705,7 +2735,7 @@ assign letter=$newLetter
         # Create rename button inside GroupBox
         New-RenameActionButton -groupBox $renameControls.GroupBox -driveListBox $driveListBox
 
-        # âœ… Ensure drive letter is updated immediately when button is clicked
+        # Ensure drive letter is updated immediately when button is clicked
         if ($driveListBox.SelectedItem -and $renameControls.DriveLetterTextBox) {
             $selectedDrive = $driveListBox.SelectedItem.ToString()
             if ($selectedDrive.Length -gt 0) {
@@ -2714,7 +2744,7 @@ assign letter=$newLetter
             }
         }
 
-        Add-Status "Ready to rename volume. Select a drive, enter a new label, then click Rename Volume."
+        Add-Status "Ready to rename volume. Select a drive, enter a new label, then click Rename Volume." $statusTextBox
         Update-DriveList $driveListBox
     }
     $volumeForm.Controls.Add($btnRenameVolume)
@@ -2722,6 +2752,7 @@ assign letter=$newLetter
     # [4.4] Extend Volume button
     $btnExtendVolume = New-DynamicButton -text "Extend Volume" -x 490 -y 150 -width 150 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         # Clear the content panel
+        $statusTextBox.Clear()
         $contentPanel.Controls.Clear()
 
         # Create title
@@ -2733,7 +2764,7 @@ assign letter=$newLetter
         # Create merge button inside GroupBox
         New-ExtendActionButton -extendControls $extendControls
 
-        # âœ… Ensure drives are updated immediately when button is clicked
+        # Ensure drives are updated immediately when button is clicked
         if ($driveListBox.SelectedItem -and $script:extendSourceDriveTextBox) {
             $selectedDrive = $driveListBox.SelectedItem.ToString()
             if ($selectedDrive.Length -gt 0) {
@@ -2773,7 +2804,7 @@ function New-ShrinkVolumeTitle {
 
     # Title label
     $titleLabel = New-Object System.Windows.Forms.Label
-    $titleLabel.Text = "Shrink Volume and Create New Partition"
+    $titleLabel.Text = "Shrink Volume"
     $titleLabel.Location = New-Object System.Drawing.Point(0, 10)
     $titleLabel.Size = New-Object System.Drawing.Size(760, 30)
     $titleLabel.ForeColor = [System.Drawing.Color]::Lime
@@ -2951,27 +2982,27 @@ function Get-ShrinkVolumePartitionSize {
             try {
                 $sizeMB = [int]$customSize
                 if ($sizeMB -lt 1024) {
-                    Add-Status "Error: Custom size must be at least 1024 MB (1 GB)."
+                    Add-Status "Error: Custom size must be at least 1024 MB (1 GB)." $statusTextBox ([System.Drawing.Color]::Red)
                     return -1
                 }
                 if ($sizeMB -gt 2097152) {
                     # 2TB limit
-                    Add-Status "Error: Custom size cannot exceed 2,097,152 MB (2 TB)."
+                    Add-Status "Error: Custom size cannot exceed 2,097,152 MB (2 TB)." $statusTextBox ([System.Drawing.Color]::Red)
                     return -1
                 }
             }
             catch {
-                Add-Status "Error processing custom size: $_"
+                Add-Status "Error processing custom size: $_" $statusTextBox ([System.Drawing.Color]::Red)
                 return -1
             }
         }
         else {
-            Add-Status "Error: Custom size must be a valid number (digits only)."
+            Add-Status "Error: Custom size must be a valid number (digits only)." $statusTextBox ([System.Drawing.Color]::Red)
             return -1
         }
     }
     else {
-        Add-Status "Error: Please select a partition size option."
+        Add-Status "Error: Please select a partition size option." $statusTextBox ([System.Drawing.Color]::Red)
         return -1
     }
 
@@ -2985,7 +3016,7 @@ function Test-ShrinkVolumeSpace {
     try {
         $driveInfo = Get-WmiObject Win32_LogicalDisk | Where-Object { $_.DeviceID -eq "$($driveLetter):" }
         if (-not $driveInfo) {
-            Add-Status "Error: Drive $driveLetter does not exist."
+            Add-Status "Error: Drive $driveLetter does not exist." $statusTextBox ([System.Drawing.Color]::Red)
             return $false
         }
 
@@ -3000,26 +3031,26 @@ function Test-ShrinkVolumeSpace {
             $maxShrinkMB = [math]::Floor($maxShrinkBytes / 1MB)
 
             if ($sizeMB -gt $maxShrinkMB) {
-                Add-Status "Error: Requested size ($sizeMB MB) exceeds maximum shrinkable space ($maxShrinkMB MB)."
+                Add-Status "Error: Requested size ($sizeMB MB) exceeds maximum shrinkable space ($maxShrinkMB MB)." $statusTextBox ([System.Drawing.Color]::Red)
                 Add-Status "Try running disk defragmentation first or choose a smaller size."
                 return $false
             }
         }
         catch {
-            Add-Status "Warning: Could not get exact shrinkable space. Error: $($_.Exception.Message)"
+            Add-Status "Warning: Could not get exact shrinkable space. Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
             # Fallback: Use 100% of free space as safe shrink limit
             $maxShrinkMB = [math]::Floor($freeSpaceMB * 1)
-            Add-Status "Using fallback calculation: 100% of free space = $maxShrinkMB MB"
+            Add-Status "Using fallback calculation: 100% of free space = $maxShrinkMB MB" $statusTextBox
 
             if ($sizeMB -gt $maxShrinkMB) {
-                Add-Status "Error: Requested size ($sizeMB MB) exceeds estimated safe shrink limit ($maxShrinkMB MB)."
+                Add-Status "Error: Requested size ($sizeMB MB) exceeds estimated safe shrink limit ($maxShrinkMB MB)." $statusTextBox ([System.Drawing.Color]::Red)
                 Add-Status "Try a smaller size or free up more space on the drive."
                 return $false
             }
         }
     }
     catch {
-        Add-Status "Error getting drive information: $_"
+        Add-Status "Error getting drive information: $_" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 
@@ -3110,7 +3141,7 @@ echo Operation completed successfully. >> shrink_status.txt
 
         # Check if operation was successful (using exact install.ps1 logic)
         if ($batchProcess.ExitCode -eq 0) {
-            Add-Status "Operation completed successfully !!!" $statusTextBox
+            Add-Status "Operation completed." $statusTextBox
             Add-Status "Creating new partition..." $statusTextBox
 
             # Wait for system to update drive information
@@ -3160,7 +3191,8 @@ echo Operation completed successfully. >> shrink_status.txt
                             Add-Status "Failed to set drive $newDriveLetter label. Please rename manually to '$actualNewLabel'." $statusTextBox
                         }
                     }
-                } else {
+                }
+                else {
                     Add-Status "Drive $newDriveLetter already has the correct label '$actualNewLabel'." $statusTextBox
                 }
             }
@@ -3321,14 +3353,14 @@ function New-RenameActionButton {
             if ($dl -and $nl) {
                 try {
                     Set-Volume -DriveLetter $dl -NewFileSystemLabel $nl -ErrorAction Stop
-                    Add-Status "Renamed drive $dl to $nl successfully."
+                    Add-Status "Renamed drive $dl to $nl successfully." $statusTextBox
                 }
                 catch {
-                    Add-Status "Error renaming drive: $_"
+                    Add-Status "Error renaming drive: $_" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             }
             else {
-                Add-Status "Please enter both drive letter and new label."
+                Add-Status "Please enter both drive letter and new label." $statusTextBox
             }
         }
     }
@@ -3340,7 +3372,7 @@ function New-ExtendVolumeTitle {
     param([System.Windows.Forms.Panel]$parentPanel)
 
     $titleLabel = New-Object System.Windows.Forms.Label
-    $titleLabel.Text = "Extend Volume by Merging"
+    $titleLabel.Text = "Extend Volume"
     $titleLabel.Location = New-Object System.Drawing.Point(0, 10)
     $titleLabel.Size = New-Object System.Drawing.Size(760, 30)
     $titleLabel.ForeColor = [System.Drawing.Color]::Lime
@@ -3355,7 +3387,7 @@ function New-ExtendVolumeGroupBox {
 
     # Create GroupBox for centered content
     $extendGroupBox = New-Object System.Windows.Forms.GroupBox
-    $extendGroupBox.Text = "Volume Merge Configuration"  # âœ… ThÃªm Text Ä‘á»ƒ event handler cÃ³ thá»ƒ tÃ¬m tháº¥y
+    $extendGroupBox.Text = "Volume Merge Configuration"
     $extendGroupBox.Location = New-Object System.Drawing.Point(180, 60)
     $extendGroupBox.Size = New-Object System.Drawing.Size(400, 180)
     $extendGroupBox.ForeColor = [System.Drawing.Color]::Lime
@@ -3384,7 +3416,10 @@ function New-ExtendVolumeGroupBox {
     $script:extendSourceDriveTextBox.TextAlign = [System.Windows.Forms.HorizontalAlignment]::Center
     # Add focus events for better user experience
     $script:extendSourceDriveTextBox.Add_GotFocus({ $this.SelectAll() })
-    $script:extendSourceDriveTextBox.Add_TextChanged({ $this.Text = $this.Text.ToUpper() })
+    $script:extendSourceDriveTextBox.Add_TextChanged({ $currentText = $this.Text.ToUpper()
+        if ($currentText -eq "C") {
+            $this.Text = ""
+        } })
     $extendGroupBox.Controls.Add($script:extendSourceDriveTextBox)
 
     # Target drive label
@@ -3408,7 +3443,13 @@ function New-ExtendVolumeGroupBox {
     $script:extendTargetDriveTextBox.TextAlign = [System.Windows.Forms.HorizontalAlignment]::Center
     # Add focus events for better user experience
     $script:extendTargetDriveTextBox.Add_GotFocus({ $this.SelectAll() })
-    $script:extendTargetDriveTextBox.Add_TextChanged({ $this.Text = $this.Text.ToUpper() })
+    $script:extendTargetDriveTextBox.Add_TextChanged({ 
+        $currentText = $this.Text.ToUpper()
+        # Kiểm tra nếu trùng với source drive
+        if ($script:extendSourceDriveTextBox -and 
+            $currentText -eq $script:extendSourceDriveTextBox.Text.Trim()) {
+            Add-Status "Cảnh báo: Target drive không thể trùng với Source drive!" $statusTextBox ([System.Drawing.Color]::Yellow)
+    } })
     $extendGroupBox.Controls.Add($script:extendTargetDriveTextBox)
 
     # Warning label
@@ -3454,7 +3495,7 @@ function New-ExtendActionButton {
             $targetDrive = $script:extendTargetDriveTextBox.Text.Trim().ToUpper()
         }
 
-        Add-Status "Source Drive: '$sourceDrive' | Target Drive: '$targetDrive'" ([System.Drawing.Color]::Green)
+        Add-Status "Source Drive: '$sourceDrive' | Target Drive: '$targetDrive'" ([System.Drawing.Color]::Green) $statusTextBox
 
         # Validate input
         if (-not (Test-ExtendVolumeInput -sourceDrive $sourceDrive -targetDrive $targetDrive)) {
@@ -3470,12 +3511,12 @@ function New-ExtendActionButton {
         )
 
         if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
-            Add-Status "Operation cancelled by user."
+            Add-Status "Operation cancelled by user." $statusTextBox
             return
         }
 
         # Perform merge operation using script scope textboxes
-        Add-Status "Merging volumes: deleting drive $sourceDrive and extending drive $targetDrive..."
+        Add-Status "Merging volumes: deleting drive $sourceDrive and extending drive $targetDrive..." $statusTextBox
         Invoke-ExtendVolumeOperation -sourceDrive $sourceDrive -targetDrive $targetDrive -sourceDriveTextBox $script:extendSourceDriveTextBox -targetDriveTextBox $script:extendTargetDriveTextBox
     }
     $groupBox.Controls.Add($mergeButton)
@@ -3492,33 +3533,38 @@ function New-ExtendActionButton {
 
 function Test-ExtendVolumeInput {
     param([string]$sourceDrive, [string]$targetDrive)
-
+    # Check if source drive is C
+    if ($sourceDrive -eq "C") {
+        Add-Status "LỖI: Không thể sử dụng ổ C làm Source Drive! Ổ C là ổ hệ thống Windows." $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Hãy chọn ổ đĩa khác làm Source Drive." $statusTextBox ([System.Drawing.Color]::Red)
+        return $false
+    }
     # Basic validation
     if ([string]::IsNullOrEmpty($sourceDrive)) {
-        Add-Status "Error: Please enter a source drive letter."
+        Add-Status "Error: Please enter a source drive letter." $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
     if ([string]::IsNullOrEmpty($targetDrive)) {
-        Add-Status "Error: Please enter a target drive letter."
+        Add-Status "Error: Please enter a target drive letter." $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
     if (-not ($sourceDrive -match '^[A-Z]$') -or -not ($targetDrive -match '^[A-Z]$')) {
-        Add-Status "Error: Drive letters must be single letters (A-Z)."
+        Add-Status "Error: Drive letters must be single letters (A-Z)." $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
     if ($sourceDrive -eq $targetDrive) {
-        Add-Status "Error: Source and target drives cannot be the same."
+        Add-Status "Error: Source and target drives cannot be the same." $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 
     # Check if drives exist
     $existingDrives = Get-CimInstance -ClassName Win32_LogicalDisk | Select-Object -ExpandProperty DeviceID | ForEach-Object { $_.Substring(0, 1) }
     if ($existingDrives -notcontains $sourceDrive) {
-        Add-Status "Error: Source drive $sourceDrive does not exist."
+        Add-Status "Error: Source drive $sourceDrive does not exist." $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
     if ($existingDrives -notcontains $targetDrive) {
-        Add-Status "Error: Target drive $targetDrive does not exist."
+        Add-Status "Error: Target drive $targetDrive does not exist." $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 
@@ -3528,14 +3574,14 @@ function Test-ExtendVolumeInput {
         $targetPartition = Get-Partition -DriveLetter $targetDrive -ErrorAction Stop
 
         if ($sourcePartition.DiskNumber -ne $targetPartition.DiskNumber) {
-            Add-Status "Error: Drives are not on the same physical disk. Operation aborted for safety."
+            Add-Status "Error: Drives are not on the same physical disk. Operation aborted for safety." $statusTextBox ([System.Drawing.Color]::Red)
             Add-Status "Source drive is on disk $($sourcePartition.DiskNumber), target drive is on disk $($targetPartition.DiskNumber)."
             return $false
         }
         Add-Status "Verified: Both drives are on the same physical disk (Disk $($sourcePartition.DiskNumber))."
     }
     catch {
-        Add-Status "Warning: Could not verify disk compatibility. Error: $($_.Exception.Message)"
+        Add-Status "Warning: Could not verify disk compatibility. Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
         Add-Status "Proceeding anyway, but operation may fail if drives are on different disks."
     }
 
@@ -3544,8 +3590,6 @@ function Test-ExtendVolumeInput {
 
 function Invoke-ExtendVolumeOperation {
     param([string]$sourceDrive, [string]$targetDrive, $sourceDriveTextBox, $targetDriveTextBox)
-
-    Add-Status "Starting volume merge operation..."
 
     # Kiá»ƒm tra xem hai á»• Ä‘Ä©a cÃ³ náº±m trÃªn cÃ¹ng má»™t Ä‘Ä©a váº­t lÃ½ khÃ´ng
     try {
@@ -3556,11 +3600,11 @@ function Invoke-ExtendVolumeOperation {
         $targetDiskNumber = $targetPartition.DiskNumber
 
         if ($sourceDiskNumber -ne $targetDiskNumber) {
-            Add-Status "Error: Drives are not on the same physical disk. Operation aborted for safety."
-            Add-Status "Source drive $sourceDrive is on disk $sourceDiskNumber, target drive $targetDrive is on disk $targetDiskNumber."
+            Add-Status "Error: Drives are not on the same physical disk. Operation aborted for safety." $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "Source drive $sourceDrive is on disk $sourceDiskNumber, target drive $targetDrive is on disk $targetDiskNumber." $statusTextBox ([System.Drawing.Color]::Red)
             return
         }
-        Add-Status "Verified: Both drives are on the same physical disk (Disk $sourceDiskNumber)."
+        Add-Status "Verified: Both drives are on the same physical disk (Disk $sourceDiskNumber)." $statusTextBox
     }
     catch {
         Add-Status "Warning: Could not verify disk compatibility. Error: $($_.Exception.Message)"
@@ -3646,8 +3690,7 @@ exit /b 0
 
     Set-Content -Path $batchFilePath -Value $batchContent -Force -Encoding ASCII
 
-    Add-Status "Merging volumes: deleting drive $sourceDrive and extending drive $targetDrive..."
-    Add-Status "Processing... Please wait while the operation completes."
+    Add-Status "Processing... Please wait while the operation completes." $statusTextBox
 
     try {
         # Create a process to run batch file with admin privileges and hide cmd window
@@ -3657,55 +3700,6 @@ exit /b 0
         $psi.UseShellExecute = $true
         $psi.Verb = "runas"
         $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-        # Run process
-        $batchProcess = [System.Diagnostics.Process]::Start($psi)
-
-        # Show progress while waiting
-        $progressCounter = 0
-        $progressChars = @('|', '/', '-', '\')
-        $progressSteps = @(
-            "Deleting source drive...",
-            "Waiting for system update...",
-            "Extending target drive...",
-            "Finalizing operation..."
-        )
-        $currentStep = 0
-        $stepDuration = 0
-        $maxStepDuration = 8
-
-        while (!$batchProcess.HasExited) {
-            $progressChar = $progressChars[$progressCounter % 4]
-            $stepDuration++
-            if ($stepDuration -ge $maxStepDuration) {
-                $currentStep = ($currentStep + 1) % $progressSteps.Count
-                $stepDuration = 0
-            }
-
-            $currentMessage = $progressSteps[$currentStep]
-            Add-Status "$currentMessage $progressChar"
-            $progressCounter++
-            [System.Windows.Forms.Application]::DoEvents()
-            Start-Sleep -Milliseconds 250
-        }
-
-        # Check if operation was successful
-        if ($batchProcess.ExitCode -eq 0) {
-            Add-Status "Operation completed successfully !!!"
-            Add-Status "Merged volumes: deleted drive $sourceDrive and extended drive $targetDrive."
-
-            # Update drive list
-            $driveCount = Update-DriveList
-            Add-Status "Drive list updated. Found $driveCount drives."
-
-            # Clear textboxes
-            $sourceDriveTextBox.Text = ""
-            $targetDriveTextBox.Text = ""
-        }
-        else {
-            Add-Status "Operation completed with warnings or errors."
-            Add-Status "Exit code: $($batchProcess.ExitCode)"
-        }
 
         # Clean up all temporary files
         $tempFiles = @(
@@ -3722,13 +3716,11 @@ exit /b 0
         foreach ($file in $tempFiles) {
             if (Test-Path $file) {
                 Remove-Item $file -Force -ErrorAction SilentlyContinue
-                Add-Status "Cleaned up temporary file: $file"
             }
         }
     }
     catch {
-        Add-Status "Error: $($_.Exception.Message)"
-        Add-Status "Make sure you have administrator privileges."
+        Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
 
         # Clean up all temporary files in case of error
         $tempFiles = @(
@@ -3746,6 +3738,7 @@ exit /b 0
             Remove-Item $file -Force -ErrorAction SilentlyContinue
         }
     }
+    Add-Status "Merge operation initiated. Please check the log file for details." $statusTextBox([System.Drawing.Color]::Red)
 }
 
 # [5] Activate Functions
@@ -3803,18 +3796,18 @@ function Invoke-ActivateWindows10Pro {
     try {
         # Display current Windows version
         $currentWindowsVersion = Get-WindowsVersionShort
-        Add-Status "Checking Activation Status of Windows..."
-        Add-Status "OS: $currentWindowsVersion"
+        Add-Status "Checking Activation Status of Windows..." $statusTextBox
+        Add-Status "OS: $currentWindowsVersion" $statusTextBox
 
         $windowsStatus = & cscript //nologo "$env:windir\system32\slmgr.vbs" /dli
         $isWindowsActivated = $windowsStatus -match "License Status: Licensed"
 
         if ($isWindowsActivated) {
-            Add-Status "Windows activated."
+            Add-Status "Windows activated." $statusTextBox
             return
         }
 
-        Add-Status "Windows not activated. Activating Windows 10 Pro..."
+        Add-Status "Windows not activated. Activating Windows 10 Pro..." $statusTextBox
         $command = "slmgr /ipk R84N4-RPC7Q-W8TKM-VM7Y4-7H66Y && slmgr /ato"
 
         # Create a process to run the command with elevated privileges
@@ -3827,11 +3820,9 @@ function Invoke-ActivateWindows10Pro {
 
         # Start the process
         [System.Diagnostics.Process]::Start($psi)
-
-        Add-Status "Starting activation process for Windows 10 Pro."
     }
     catch {
-        Add-Status "Lá»—i khi kÃ­ch hoáº¡t Windows: $_"
+        Add-Status "Error activating Windows: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
 
@@ -3839,7 +3830,7 @@ function Invoke-ActivateOffice2019 {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
 
     try {
-        Add-Status "Checking Activation Status of Office..."
+        Add-Status "Checking Activation Status of Office..." $statusTextBox
 
         # Check multiple possible Office paths
         $officePaths = @(
@@ -3858,7 +3849,7 @@ function Invoke-ActivateOffice2019 {
         }
 
         if (-not $officePath) {
-            Add-Status "Office not found. Please install."
+            Add-Status "Office not found. Please install." $statusTextBox
             return
         }
 
@@ -3872,47 +3863,45 @@ function Invoke-ActivateOffice2019 {
             ($officeStatus -match "LICENSED")
 
             if ($isActivated) {
-                Add-Status "Office activated."
+                Add-Status "Office activated." $statusTextBox
                 return
             }
         }
         catch {
-            Add-Status "Could not check activation status: $_"
+            Add-Status "Could not check activation status: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
-        Add-Status "Office not activated. Starting activate..."
+        Add-Status "Office not activated. Starting activate..." $statusTextBox
 
         # Install the product key
-        Add-Status "Installing Office 2019 Pro Plus key..."
         try {
             $keyResult = & cscript //nologo "$officePath" /inpkey:Q2NKY-J42YJ-X2KVK-9Q9PT-MKP63 2>&1
-            Add-Status "Product key installation result: $($keyResult -join ' ')"
         }
         catch {
-            Add-Status "Error installing product key: $_"
+            Add-Status "Error installing product key: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         # Wait a moment for key installation to complete
         Start-Sleep -Seconds 2
 
         # Activate Office with license key
-        Add-Status "Activating Office 2019 Pro Plus with license key..."
+        Add-Status "Activating Office 2019 Pro Plus with license key..." $statusTextBox
         try {
             $activateResult = & cscript //nologo "$officePath" /act 2>&1
 
             if ($activateResult -match "successful" -or $activateResult -match "activated") {
-                Add-Status "Office 2019 Pro Plus activated successfully!"
+                Add-Status "Office 2019 Pro Plus activated successfully!" $statusTextBox
             }
             else {
-                Add-Status "Office activation completed. Result: $($activateResult -join ' ')"
+                Add-Status "Office activation completed. Result: $($activateResult -join ' ')" $statusTextBox
             }
         }
         catch {
-            Add-Status "Error during activation: $_"
+            Add-Status "Error during activation: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         # Check final status
-        Add-Status "Checking final activation status..."
+        Add-Status "Checking final activation status..." $statusTextBox
         try {
             Start-Sleep -Seconds 3
             $finalStatus = & cscript //nologo "$officePath" /dstatus 2>&1
@@ -3921,19 +3910,19 @@ function Invoke-ActivateOffice2019 {
             ($finalStatus -match "LICENSED")
 
             if ($isFinallyActivated) {
-                Add-Status "SUCCESS: Office 2019 Pro Plus has been activated!"
+                Add-Status "SUCCESS: Office 2019 Pro Plus has been activated!" $statusTextBox
             }
             else {
-                Add-Status "Activation may not have completed successfully. Please check manually."
+                Add-Status "Activation may not have completed successfully. Please check manually." $statusTextBox
             }
         }
         catch {
-            Add-Status "Could not verify final activation status: $_"
+            Add-Status "Could not verify final activation status: $_" $statusTextBox
         }
     }
     catch {
-        Add-Status "CRITICAL ERROR in Office activation: $_"
-        Add-Status "Error details: $($_.Exception.Message)"
+        Add-Status "CRITICAL ERROR in Office activation: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Error details: $($_.Exception.Message)" $statusTextBox
     }
 }
 
@@ -3941,25 +3930,25 @@ function Invoke-UpgradeWindowsHomeToPro {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
 
     try {
-        Add-Status "Checking Windows version..."
+        Add-Status "Checking Windows version..." $statusTextBox
 
         # Get current Windows version using helper function
         $currentWindowsVersion = Get-WindowsVersionShort
-        Add-Status "Current OS: $currentWindowsVersion"
+        Add-Status "Current OS: $currentWindowsVersion" $statusTextBox
 
         # Check if already Pro
         if ($currentWindowsVersion -match "Pro") {
-            Add-Status "Device is already running $currentWindowsVersion."
+            Add-Status "Device is already running $currentWindowsVersion." $statusTextBox
             return
         }
 
         # Check if it's Home edition that can be upgraded
         if (-not ($currentWindowsVersion -match "Home")) {
-            Add-Status "Device is not running Windows Home. Cannot upgrade to Pro using this method."
+            Add-Status "Device is not running Windows Home. Cannot upgrade to Pro using this method." $statusTextBox
             return
         }
 
-        Add-Status "Upgrading $currentWindowsVersion to Pro..."
+        Add-Status "Upgrading $currentWindowsVersion to Pro..." $statusTextBox
         $command = "sc config LicenseManager start= auto & net start LicenseManager & sc config wuauserv start= auto & net start wuauserv & changepk.exe /productkey VK7JG-NPHTM-C97JM-9MPGT-3V66T"
 
         # Create a process to run the command with elevated privileges
@@ -3973,10 +3962,10 @@ function Invoke-UpgradeWindowsHomeToPro {
         # Start the process
         [System.Diagnostics.Process]::Start($psi)
 
-        Add-Status "Starting upgrade process for $currentWindowsVersion to Pro."
+        Add-Status "Starting upgrade process for $currentWindowsVersion to Pro." $statusTextBox
     }
     catch {
-        Add-Status "Error upgrading Windows: $_"
+        Add-Status "Error upgrading Windows: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
 
@@ -4020,7 +4009,7 @@ function Invoke-ActivationDialog {
     $titleTimer.Start()
 
     # Status text box
-    $statusTextBox = New-Object System.Windows.Forms.TextBox
+    $statusTextBox = New-Object System.Windows.Forms.RichTextBox
     $statusTextBox.Multiline = $true
     $statusTextBox.ScrollBars = "Vertical"
     $statusTextBox.Location = New-Object System.Drawing.Point(10, 150)
@@ -4032,8 +4021,6 @@ function Invoke-ActivationDialog {
     $statusTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
     $statusTextBox.Text = "Status messages will appear here..."
     $activateForm.Controls.Add($statusTextBox)
-
-    Add-Status "Password management completed."
 
     # Activation buttons
     $btnWin10Pro = New-DynamicButton -text "Windows Pro" -x 10 -y 50 -width 235 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
@@ -4683,8 +4670,6 @@ function Invoke-RenameDialog {
     $statusTextBox.Text = "Ready to rename device..."
     $renameForm.Controls.Add($statusTextBox)
 
-    Add-Status "Device rename ready."
-
     # Rename button
     $renameButton = New-Object System.Windows.Forms.Button
     $renameButton.Text = "Rename Device"
@@ -4720,7 +4705,7 @@ function Invoke-RenameDialog {
     # Set the cancel button (Escape key)
     $renameForm.CancelButton = $cancelButton
 
-    # When the form is closed, show the main menu againf
+    # When the form is closed, show the main menu again
     $renameForm.Add_FormClosed({
             Show-MainMenu
         })
@@ -5527,7 +5512,7 @@ for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
     }
 }
 
-# Cáº­p nháº­t láº¡i bá»‘ cá»¥c menu
+# Update menu layout function
 function Update-MenuLayout {
     $formWidth = $script:form.ClientSize.Width
     $formHeight = $script:form.ClientSize.Height
@@ -5552,7 +5537,7 @@ function Update-MenuLayout {
     }
 }
 
-# ThÃªm sá»± kiá»‡n resize
+# Add resize event handler to update menu layout
 $script:form.Add_Resize({ Update-MenuLayout })
 Update-MenuLayout
 
