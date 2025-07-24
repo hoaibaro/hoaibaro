@@ -4065,7 +4065,7 @@ function Invoke-WindowsFeaturesConfiguration {
         return $true
     }
     catch {
-        Add-Status "ERROR during Windows Features Configuration: $_"
+        Add-Status "ERROR during Windows Features Configuration: $_" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 }
@@ -4128,27 +4128,27 @@ function Invoke-FeaturesDialog {
 
                 # Clear status textbox
                 $featuresStatusTextBox.Clear()
-                Add-Status "Starting Windows Features Configuration..."
+                Add-Status "Starting Windows Features Configuration..." $statusTextBox
                 [System.Windows.Forms.Application]::DoEvents()
 
                 # Run Windows Features Configuration
-                $result = Invoke-WindowsFeaturesConfiguration -deviceType "General" -statusTextBox $featuresStatusTextBox
+                $result = Invoke-WindowsFeaturesConfiguration -deviceType "General" -statusTextBox $statusTextBox
 
                 if ($result) {
-                    Add-Status "Windows Features configuration completed!!!"
+                    Add-Status "Windows Features configuration completed !!!" $statusTextBox
                     $startButton.Text = "Completed"
                     $startButton.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 0)
                 }
                 else {
-                    Add-Status "Windows Features configuration failed!"
+                    Add-Status "Windows Features configuration failed!" $statusTextBox ([System.Drawing.Color]::Red)
                     $startButton.Text = "Failed"
                     $startButton.BackColor = [System.Drawing.Color]::FromArgb(150, 0, 0)
                 }
 
             }
             catch {
-                Add-Status "ERROR: $_"
-                $startButton.Text = "Error Occurred"
+                Add-Status "ERROR: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                $startButton.Text = "Error Occurred" 
                 $startButton.BackColor = [System.Drawing.Color]::FromArgb(150, 0, 0)
             }
         })
@@ -4219,36 +4219,36 @@ function Invoke-EnableWindowsFeatures {
             if ($currentFeature) {
                 $currentState = $currentFeature.State
                 if ($currentState -eq "Enabled") {
-                    Add-Status "$($feature.DisplayName): Already enabled. Skipping..."
+                    Add-Status "$($feature.DisplayName): Already enabled. Skipping..." $statusTextBox
                 }
                 elseif ($currentState -eq "Disabled") {
-                    Add-Status "$($feature.DisplayName): Currently disabled. Enabling..."
+                    Add-Status "$($feature.DisplayName): Currently disabled. Enabling..." $statusTextBox
 
                     # Enable feature using DISM command
                     $enableArgs = $feature.Command.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries) | Select-Object -Skip 1
                     $enableResult = Start-Process -FilePath "dism" -ArgumentList $enableArgs -Wait -PassThru -WindowStyle Hidden
 
                     if ($enableResult.ExitCode -eq 0) {
-                        Add-Status "$($feature.DisplayName): Enabled successfully!"
+                        Add-Status "$($feature.DisplayName): Enabled successfully!" $statusTextBox
                     }
                     elseif ($enableResult.ExitCode -eq 3010) {
-                        Add-Status "$($feature.DisplayName): Enabled successfully! (Restart required)"
+                        Add-Status "$($feature.DisplayName): Enabled successfully! (Restart required)" $statusTextBox
                     }
                     else {
-                        Add-Status "WARNING: Failed to enable $($feature.DisplayName) (Exit code: $($enableResult.ExitCode))"
+                        Add-Status "WARNING: Failed to enable $($feature.DisplayName) (Exit code: $($enableResult.ExitCode))" $statusTextBox([System.Drawing.Color]::Yellow)
                     }
                 }
                 else {
-                    Add-Status "WARNING: $($feature.DisplayName) is in unexpected state: $currentState"
+                    Add-Status "WARNING: $($feature.DisplayName) is in unexpected state: $currentState" $statusTextBox([System.Drawing.Color]::Yellow)
                 }
             }
             else {
-                Add-Status "WARNING: Could not find feature $($feature.Name)"
+                Add-Status "WARNING: Could not find feature $($feature.Name)" $statusTextBox([System.Drawing.Color]::Yellow)
             }
 
         }
         catch {
-            Add-Status "ERROR: Failed to process $($feature.DisplayName): $_"
+            Add-Status "ERROR: Failed to process $($feature.DisplayName): $_" $statusTextBox([System.Drawing.Color]::Red)
         }
     }
 }
@@ -4281,43 +4281,43 @@ function Invoke-DisableWindowsFeatures {
             if ($currentFeature) {
                 $currentState = $currentFeature.State
                 if ($currentState -eq "Disabled") {
-                    Add-Status "$($feature.DisplayName): Already disabled.Skipping..."
+                    Add-Status "$($feature.DisplayName): Already disabled.Skipping..." $statusTextBox
                 }
                 elseif ($currentState -eq "Enabled") {
-                    Add-Status "$($feature.DisplayName): Currently enabled. Disabling..."
+                    Add-Status "$($feature.DisplayName): Currently enabled. Disabling..." $statusTextBox
 
                     # Disable feature using DISM command
                     $disableArgs = $feature.Command.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries) | Select-Object -Skip 1
                     $disableResult = Start-Process -FilePath "dism" -ArgumentList $disableArgs -Wait -PassThru -WindowStyle Hidden
 
                     if ($disableResult.ExitCode -eq 0) {
-                        Add-Status "$($feature.DisplayName): Disabled successfully!"
+                        Add-Status "$($feature.DisplayName): Disabled successfully!" $statusTextBox
                     }
                     elseif ($disableResult.ExitCode -eq 3010) {
-                        Add-Status "$($feature.DisplayName): Disabled successfully! (Restart required)"
+                        Add-Status "$($feature.DisplayName): Disabled successfully! (Restart required)" $statusTextBox
                     }
                     else {
-                        Add-Status "WARNING: Failed to disable $($feature.DisplayName) (Exit code: $($disableResult.ExitCode))"
+                        Add-Status "WARNING: Failed to disable $($feature.DisplayName) (Exit code: $($disableResult.ExitCode))" $statusTextBox([System.Drawing.Color]::Yellow)
                     }
 
                     # Verify new state
                     Start-Sleep -Seconds 2
                     $newFeature = Get-WindowsOptionalFeature -Online -FeatureName $feature.Name -ErrorAction SilentlyContinue
                     if ($newFeature) {
-                        Add-Status "$($feature.DisplayName): Verified new state is $($newFeature.State)"
+                        Add-Status "$($feature.DisplayName): Verified new state is $($newFeature.State)" $statusTextBox
                     }
                 }
                 else {
-                    Add-Status "WARNING: $($feature.DisplayName) is in unexpected state: $currentState"
+                    Add-Status "WARNING: $($feature.DisplayName) is in unexpected state: $currentState" $statusTextBox([System.Drawing.Color]::Yellow)
                 }
             }
             else {
-                Add-Status "WARNING: Could not find feature $($feature.Name)"
+                Add-Status "WARNING: Could not find feature $($feature.Name)" $statusTextBox([System.Drawing.Color]::Yellow)
             }
 
         }
         catch {
-            Add-Status "ERROR: Failed to process $($feature.DisplayName): $_"
+            Add-Status "ERROR: Failed to process $($feature.DisplayName): $_" $statusTextBox([System.Drawing.Color]::Red)
         }
     }
 }
