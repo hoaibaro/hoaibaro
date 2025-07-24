@@ -4323,208 +4323,6 @@ function Invoke-DisableWindowsFeatures {
 }
 
 # [7] Rename Device Functions
-function Rename-DeviceWithBatch {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$newName,
-
-        [scriptblock]$statusCallback,
-
-        [bool]$showUI = $false
-    )
-
-    function Add-Status {
-        param([string]$message)
-        if ($statusCallback) {
-            & $statusCallback $message
-        }
-    }
-
-    try {
-        # Validate computer name
-        if ([string]::IsNullOrWhiteSpace($newName)) {
-            $errorMsg = "Error: New computer name cannot be empty."
-            Add-Status $errorMsg
-            if ($showUI) {
-                [System.Windows.Forms.MessageBox]::Show($errorMsg, "Validation Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            }
-            return $false
-        }
-
-        # Remove spaces and convert to uppercase
-        $newName = $newName.Trim().ToUpper()
-
-        # Validate computer name format
-        if ($newName.Length -gt 15) {
-            $errorMsg = "Error: Computer name cannot exceed 15 characters."
-            Add-Status $errorMsg
-            if ($showUI) {
-                [System.Windows.Forms.MessageBox]::Show($errorMsg, "Validation Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            }
-            return $false
-        }
-
-        if ($newName -match '[^A-Z0-9-]') {
-            $errorMsg = "Error: Computer name can only contain letters, numbers, and hyphens."
-            Add-Status $errorMsg
-            if ($showUI) {
-                [System.Windows.Forms.MessageBox]::Show($errorMsg, "Validation Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            }
-            return $false
-        }
-
-        # Check if name is the same as current
-        $currentName = $env:COMPUTERNAME
-        if ($newName -eq $currentName) {
-            $errorMsg = "Error: New name is the same as current name ($currentName)."
-            Add-Status $errorMsg
-            if ($showUI) {
-                [System.Windows.Forms.MessageBox]::Show($errorMsg, "Validation Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            }
-            return $false
-        }
-
-        Add-Status "Validating new computer name: $newName"
-        Add-Status "Current computer name: $currentName"
-
-        # Confirm with user if showUI is enabled
-        if ($showUI) {
-            $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-                "Are you sure you want to rename this computer from '$currentName' to '$newName'?`n`nThis will require a restart to take effect.",
-                "Confirm Computer Rename",
-                [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                [System.Windows.Forms.MessageBoxIcon]::Question
-            )
-
-            if ($confirmResult -ne [System.Windows.Forms.DialogResult]::Yes) {
-                Add-Status "Operation cancelled by user."
-                return $false
-            }
-        }
-
-        # Create batch file for renaming computer
-        $batchFilePath = [System.IO.Path]::GetTempFileName() + ".bat"
-        $batchContent = @"
-@echo off
-echo ============================================================ > rename_log.txt
-echo              Computer Rename Operation >> rename_log.txt
-echo ============================================================ >> rename_log.txt
-echo. >> rename_log.txt
-echo Current name: $currentName >> rename_log.txt
-echo New name: $newName >> rename_log.txt
-echo. >> rename_log.txt
-
-echo Renaming computer to $newName... >> rename_log.txt
-powershell -WindowStyle Hidden -Command "& { try { Rename-Computer -NewName '$newName' -Force -ErrorAction Stop; Write-Output 'Computer renamed successfully.' } catch { Write-Error `$_.Exception.Message; exit 1 } }" > rename_output.txt 2>&1
-
-type rename_output.txt >> rename_log.txt
-
-if errorlevel 1 (
-    echo PowerShell rename failed, trying wmic... >> rename_log.txt
-    wmic computersystem where name="%COMPUTERNAME%" call rename name="$newName" > wmic_output.txt 2>&1
-    type wmic_output.txt >> rename_log.txt
-
-    if errorlevel 1 (
-        echo ERROR: Failed to rename computer using both PowerShell and WMIC. >> rename_log.txt
-        del wmic_output.txt
-        del rename_output.txt
-        exit /b 1
-    )
-    del wmic_output.txt
-) else (
-    echo Successfully renamed computer using PowerShell. >> rename_log.txt
-)
-del rename_output.txt
-
-echo. >> rename_log.txt
-echo Computer rename completed successfully! >> rename_log.txt
-echo A restart is required for the changes to take effect. >> rename_log.txt
-exit /b 0
-"@
-
-        Set-Content -Path $batchFilePath -Value $batchContent -Force -Encoding ASCII
-
-        Add-Status "Renaming computer from '$currentName' to '$newName'..."
-        Add-Status "Processing... Please wait while the operation completes."
-
-        # Create a process to run batch file with admin privileges
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "cmd.exe"
-        $psi.Arguments = "/c `"$batchFilePath`""
-        $psi.UseShellExecute = $true
-        $psi.Verb = "runas"
-        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-        # Run process
-        $batchProcess = [System.Diagnostics.Process]::Start($psi)
-        $batchProcess.WaitForExit()
-
-        # Check if operation was successful
-        if ($batchProcess.ExitCode -eq 0) {
-            Add-Status "Computer successfully renamed to '$newName'."
-            Add-Status "A restart is required for the changes to take effect."
-
-            if ($showUI) {
-                $restartResult = [System.Windows.Forms.MessageBox]::Show(
-                    "Computer has been successfully renamed to '$newName'.`n`nA restart is required for the changes to take effect.`n`nWould you like to restart now?",
-                    "Rename Successful",
-                    [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                    [System.Windows.Forms.MessageBoxIcon]::Information
-                )
-
-                if ($restartResult -eq [System.Windows.Forms.DialogResult]::Yes) {
-                    Add-Status "Restarting computer..."
-                    Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 5" -NoNewWindow
-                }
-            }
-
-            $success = $true
-        }
-        else {
-            Add-Status "Operation completed with warnings or errors."
-            Add-Status "Exit code: $($batchProcess.ExitCode)"
-
-            if ($showUI) {
-                [System.Windows.Forms.MessageBox]::Show(
-                    "Computer rename operation completed with warnings.`n`nPlease check if the operation was successful and restart manually if needed.",
-                    "Operation Completed",
-                    [System.Windows.Forms.MessageBoxButtons]::OK,
-                    [System.Windows.Forms.MessageBoxIcon]::Warning
-                )
-            }
-
-            $success = $true # Still consider it successful as it might have worked
-        }
-
-        # Clean up files
-        Remove-Item $batchFilePath -Force -ErrorAction SilentlyContinue
-        Remove-Item "rename_log.txt" -Force -ErrorAction SilentlyContinue
-
-        return $success
-    }
-    catch {
-        $errorMsg = "Error during computer rename operation: $_"
-        Add-Status $errorMsg
-
-        if ($showUI) {
-            [System.Windows.Forms.MessageBox]::Show(
-                $errorMsg + "`n`nMake sure you have administrator privileges.",
-                "Error",
-                [System.Windows.Forms.MessageBoxButtons]::OK,
-                [System.Windows.Forms.MessageBoxIcon]::Error
-            )
-        }
-
-        # Clean up files
-        if (Test-Path $batchFilePath) {
-            Remove-Item $batchFilePath -Force -ErrorAction SilentlyContinue
-        }
-        Remove-Item "rename_log.txt" -Force -ErrorAction SilentlyContinue
-
-        return $false
-    }
-}
-
 function Invoke-RenameDialog {
     Hide-MainMenu
     # Create device rename form
@@ -4680,18 +4478,71 @@ function Invoke-RenameDialog {
     $renameButton.Location = New-Object System.Drawing.Point(30, 240)
     $renameButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $renameButton.Add_Click({
-            $newName = $newNameTextBox.Text.Trim()
-
-            # Disable the rename button to prevent multiple clicks
-            $renameButton.Enabled = $false
-
-            # Call the rename function with a status callback
-            [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', 'result')]
-            $result = Rename-DeviceWithBatch -newName $newName -statusCallback ${function:Add-Status} -showUI $true
-
-            # Re-enable the rename button
+        $newName = $newNameTextBox.Text.Trim()
+        
+        # Disable button để tránh click nhiều lần
+        $renameButton.Enabled = $false
+        
+        # Clear status trước khi bắt đầu
+        $statusTextBox.Clear()
+        
+        # Validation cơ bản
+        if ([string]::IsNullOrWhiteSpace($newName)) {
+            Add-Status "Lỗi: Tên máy tính không được để trống!" $statusTextBox ([System.Drawing.Color]::Red)
             $renameButton.Enabled = $true
-        })
+            return
+        }
+        
+        # Lấy tên máy hiện tại
+        $currentName = $env:COMPUTERNAME
+        
+        if ($newName -eq $currentName) {
+            Add-Status "Tên mới giống tên hiện tại. Không cần đổi tên." $statusTextBox ([System.Drawing.Color]::Yellow)
+            $renameButton.Enabled = $true
+            return
+        }
+        
+        # Xác nhận với user
+        $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+            "Bạn có chắc muốn đổi tên máy tính từ '$currentName' thành '$newName'?`n`nMáy tính sẽ cần khởi động lại để áp dụng thay đổi.",
+            "Xác nhận đổi tên máy tính",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Question
+        )
+        
+        if ($confirmResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+            Add-Status "Đang đổi tên máy tính từ '$currentName' thành '$newName'..." $statusTextBox
+            
+            try {
+                # Sử dụng Rename-Computer trực tiếp
+                Rename-Computer -NewName $newName -Force -ErrorAction Stop
+                Add-Status "Thành công! Máy tính sẽ được đổi tên thành '$newName' sau khi khởi động lại." $statusTextBox ([System.Drawing.Color]::Green)
+                
+                # Hỏi user có muốn restart ngay không
+                $restartResult = [System.Windows.Forms.MessageBox]::Show(
+                    "Đổi tên thành công! Bạn có muốn khởi động lại máy ngay bây giờ?",
+                    "Khởi động lại",
+                    [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                    [System.Windows.Forms.MessageBoxIcon]::Question
+                )
+                
+                if ($restartResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+                    Add-Status "Đang khởi động lại máy tính..." $statusTextBox
+                    Start-Sleep -Seconds 2
+                    Restart-Computer -Force
+                }
+            }
+            catch {
+                Add-Status "LỖI: Không thể đổi tên máy tính: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+            }
+        }
+        else {
+            Add-Status "Đã hủy việc đổi tên máy tính." $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        
+        # Re-enable button
+        $renameButton.Enabled = $true
+    })
     $renameForm.Controls.Add($renameButton)
 
     # Cancel button
@@ -4717,7 +4568,6 @@ function Invoke-RenameDialog {
 # [8] Password Functions
 function Show-SetPasswordForm {
     param(
-        [string]$currentUser,
         [System.Windows.Forms.RichTextBox]$statusTextBox
     )
 
@@ -4754,6 +4604,8 @@ function Show-SetPasswordForm {
     $userLabel.Location = New-Object System.Drawing.Point(10, 70)
     $form.Controls.Add($userLabel)
 
+    $currentUser = $env:USERNAME
+
     # Current user label
     $currentUserLabel = New-Object System.Windows.Forms.Label
     $currentUserLabel.Text = $currentUser
@@ -4782,7 +4634,7 @@ function Show-SetPasswordForm {
     $passwordTextBox.Location = New-Object System.Drawing.Point(150, 105)
     $passwordTextBox.BackColor = [System.Drawing.Color]::Black
     $passwordTextBox.ForeColor = [System.Drawing.Color]::Lime
-    $passwordTextBox.UseSystemPasswordChar = $true # Máº·c Ä‘á»‹nh hiá»ƒn thá»‹ password
+    $passwordTextBox.UseSystemPasswordChar = $true # Mặc định hiển thị password
     $form.Controls.Add($passwordTextBox)
 
     # Show Password checkbox (default checked)
@@ -5317,7 +5169,7 @@ function Show-DomainManagementForm {
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $joinForm.Controls.Add($titleLabel)
 
-    # In Ä‘áº­m ComputerName vÃ  DomainName (hoáº·c Workgroup náº¿u khÃ´ng join domain)
+    # Current computer name label 
     $boldFont = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
     $currentNameBoldLabel = New-DomainManagementLabel -Text $computerInfo.ComputerName -X 170 -Y 70 -Width 320 -Height 30 -FontSize 12 -FontStyle ([System.Drawing.FontStyle]::Bold)
     $currentNameBoldLabel.Font = $boldFont
@@ -5325,7 +5177,7 @@ function Show-DomainManagementForm {
     $currentNameBoldLabel.BackColor = [System.Drawing.Color]::Transparent
     $joinForm.Controls.Add($currentNameBoldLabel)
 
-    # Náº¿u mÃ¡y chÆ°a join domain thÃ¬ hiá»ƒn thá»‹ lÃ  "<TÃªn workgroup>"
+    # Current domain/workgroup name label
     if (-not $computerInfo.IsPartOfDomain -or $computerInfo.Domain -eq $computerInfo.ComputerName) {
         $domainDisplay = "$($computerInfo.Domain)"
     }
