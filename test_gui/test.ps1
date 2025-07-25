@@ -2382,6 +2382,7 @@ function Invoke-VolumeManagementDialog {
                 $selectedDrive = $driveListBox.SelectedItem.ToString()
                 if ($selectedDrive.Length -gt 0) {
                     $driveLetter = $selectedDrive.Substring(0, 1)
+                    
                     # Update for Change Letter button
                     if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Change Drive Letter") {
                         # Find the GroupBox in the change letter panel
@@ -2395,7 +2396,7 @@ function Invoke-VolumeManagementDialog {
                         }
                     }
 
-                    #Update for Shrink Volume button
+                    # Update for Shrink Volume button
                     if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Shrink Volume") {
                         # Use script scope variable for shrink volume
                         if ($script:selectedDriveTextBox) {
@@ -2403,57 +2404,49 @@ function Invoke-VolumeManagementDialog {
                         }
                     }
 
-                    # # Update for Extend Volume button
-                    # if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Extend Volume") {
-                    #     # Find the textboxes in the extend volume panel
-                    #     $extendGroupBox = $contentPanel.Controls | Where-Object { $_ -is [System.Windows.Forms.GroupBox] }
-                    #     if ($extendGroupBox) {
-                    #         $textBoxes = $extendGroupBox.Controls | Where-Object { $_ -is [System.Windows.Forms.TextBox] }
-                    #         if ($textBoxes.Count -ge 2) {
-                    #             $sourceTextBox = $textBoxes[0]
-                    #             $targetTextBox = $textBoxes[1]
-
-                    #             # If source drive is empty, fill it
-                    #             if ($sourceTextBox.Text -eq "") {
-                    #                 $sourceTextBox.Text = $driveLetter
-                    #             }
-                    #             # Otherwise, if target drive is empty and different from source, fill it
-                    #             elseif ($targetTextBox.Text -eq "" -and $driveLetter -ne $sourceTextBox.Text) {
-                    #                 $targetTextBox.Text = $driveLetter
-                    #             }
-                    #         }
-                    #     }
-                    # }
-
-                    # Advanced logic: Allow swapping source and target drives by clicking on the drive list box
+                    # Update for Extend Volume button
                     if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Extend Volume") {
                         if ($script:extendSourceDriveTextBox -and $script:extendTargetDriveTextBox) {
-                            # Check if selected drive is C
-                            if ($driveLetter -eq "C") {
-                                Add-Status "CẢNH BÁO: Không thể chọn ổ C làm Source Drive! Ổ C là ổ hệ thống." $statusTextBox ([System.Drawing.Color]::Red)
-                                return
-                            }
-                            # Get current values
-                            $sourceDrive = $script:extendSourceDriveTextBox.Text.Trim()
-                            $targetDrive = $script:extendTargetDriveTextBox.Text.Trim()
+                            $currentSource = $script:extendSourceDriveTextBox.Text.Trim()
+                            $currentTarget = $script:extendTargetDriveTextBox.Text.Trim()
                             
-                            # If both textboxes are empty, fill source first
-                            if ([string]::IsNullOrEmpty($sourceDrive) -and [string]::IsNullOrEmpty($targetDrive)) {
+                            # Logic mới: 
+                            # 1. Nếu source trống -> fill source (trừ ổ C)
+                            # 2. Nếu source có rồi và khác với drive được chọn -> fill target (cho phép C)
+                            # 3. Nếu cả 2 đều có rồi -> thay đổi target
+                            
+                            if ([string]::IsNullOrEmpty($currentSource)) {
+                                # Case 1: Source trống -> fill source (KHÔNG cho phép C)
+                                if ($driveLetter -eq "C" -or $driveLetter -eq "c") {
+                                    Add-Status "❌ Không thể chọn ổ C làm Source Drive! Hãy chọn ổ khác." $statusTextBox ([System.Drawing.Color]::Red)
+                                    Add-Status "💡 Gợi ý: Chọn ổ C làm Target Drive để mở rộng ổ C" $statusTextBox ([System.Drawing.Color]::Cyan)
+                                    return
+                                }
                                 $script:extendSourceDriveTextBox.Text = $driveLetter
+                                Add-Status "✅ Đã chọn drive $driveLetter làm Source Drive" $statusTextBox ([System.Drawing.Color]::Green)
                             }
-                            # If only source is filled and different drive selected, fill target
-                            elseif (![string]::IsNullOrEmpty($sourceDrive) -and [string]::IsNullOrEmpty($targetDrive) -and $driveLetter -ne $sourceDrive) {
+                            elseif ($driveLetter -eq $currentSource) {
+                                # Case 2: Click vào drive đang là source -> clear target để user có thể chọn lại
+                                $script:extendTargetDriveTextBox.Text = ""
+                                Add-Status "🔄 Đã xóa Target Drive. Hãy chọn drive khác làm Target." $statusTextBox ([System.Drawing.Color]::Yellow)
+                            }
+                            elseif ([string]::IsNullOrEmpty($currentTarget) -or $driveLetter -ne $currentTarget) {
+                                # Case 3: Target trống hoặc chọn drive khác -> fill/update target (CHO PHÉP C)
                                 $script:extendTargetDriveTextBox.Text = $driveLetter
-                            }
-                            # If both are filled, replace the one that doesn't match current selection
-                            elseif (![string]::IsNullOrEmpty($sourceDrive) -and ![string]::IsNullOrEmpty($targetDrive)) {
-                                if ($driveLetter -ne $sourceDrive -and $driveLetter -ne $targetDrive) {
-                                    $script:extendTargetDriveTextBox.Text = $driveLetter
+                                if ($driveLetter -eq "C") {
+                                    Add-Status "Đã chọn ổ C làm Target Drive - sẽ mở rộng ổ C" $statusTextBox
+                                    Add-Status "Ổ $currentSource sẽ bị xóa để mở rộng ổ C" $statusTextBox
+                                } else {
+                                    Add-Status "Đã chọn drive $driveLetter làm Target Drive" $statusTextBox
                                 }
                             }
-                            # If same as source, clear target
-                            elseif ($driveLetter -eq $sourceDrive) {
-                                $script:extendTargetDriveTextBox.Text = ""
+                            else {
+                                # Case 4: Click vào drive đang là target
+                                if ($driveLetter -eq "C") {
+                                    Add-Status "Ổ C đã được chọn làm Target Drive để mở rộng" $statusTextBox
+                                } else {
+                                    Add-Status "Drive $driveLetter đã được chọn làm Target Drive" $statusTextBox
+                                }
                             }
                         }
                     }
@@ -2774,9 +2767,7 @@ assign letter=$newLetter
         }
 
         Add-Status "Ready to extend volume. Select source and target drives, then click Extend." $statusTextBox
-
-        # Don't refresh drive list to preserve user selection
-        # Update-DriveList $driveListBox
+        Update-DriveList $driveListBox
     }
     $volumeForm.Controls.Add($btnExtendVolume)
 
@@ -2904,7 +2895,7 @@ function New-ShrinkVolumePartitionSizeOptions {
     $script:customSizeTextBox.BackColor = [System.Drawing.Color]::Black
     $script:customSizeTextBox.ForeColor = [System.Drawing.Color]::Lime
     $script:customSizeTextBox.Font = New-Object System.Drawing.Font("Consolas", 11)
-    $script:customSizeTextBox.Text = "102400"  # Default to 100GB in MB
+    $script:customSizeTextBox.Text = "112640"  # Default to 100GB in MB
     $script:customSizeTextBox.Enabled = $false
     $radioPanel.Controls.Add($script:customSizeTextBox)
 
@@ -2967,13 +2958,13 @@ function Get-ShrinkVolumePartitionSize {
     $sizeMB = 0
 
     if ($script:radio100GB.Checked) {
-        $sizeMB = 102400
+        $sizeMB = 112640
     }
     elseif ($script:radio200GB.Checked) {
-        $sizeMB = 204955
+        $sizeMB = 214748
     }
     elseif ($script:radio500GB.Checked) {
-        $sizeMB = 512000
+        $sizeMB = 524288
     }
     elseif ($script:radioCustom.Checked) {
         # Validate custom size input
@@ -3118,7 +3109,7 @@ powershell -command "Get-WmiObject Win32_LogicalDisk | Select-Object @{Name='Nam
 echo Operation completed successfully. >> shrink_status.txt
 "@
     Set-Content -Path $batchFilePath -Value $batchContent -Force -Encoding ASCII
-
+    $statusTextBox.Clear()
     Add-Status "Shrinking drive $driveLetter..." $statusTextBox
 
     try {
@@ -3416,10 +3407,18 @@ function New-ExtendVolumeGroupBox {
     $script:extendSourceDriveTextBox.TextAlign = [System.Windows.Forms.HorizontalAlignment]::Center
     # Add focus events for better user experience
     $script:extendSourceDriveTextBox.Add_GotFocus({ $this.SelectAll() })
-    $script:extendSourceDriveTextBox.Add_TextChanged({ $currentText = $this.Text.ToUpper()
-        if ($currentText -eq "C") {
-            $this.Text = ""
-        } })
+    $script:extendSourceDriveTextBox.Add_TextChanged({
+            $currentText = $this.Text.ToUpper()
+            if ($currentText -eq "C") {
+                $this.Text = ""
+                Add-Status "❌ Không thể nhập ổ C làm Source Drive!" $statusTextBox ([System.Drawing.Color]::Red)
+                Add-Status "💡 Hãy nhập ổ C vào Target Drive để mở rộng ổ C" $statusTextBox ([System.Drawing.Color]::Cyan)
+            }
+            # Kiểm tra trùng với target
+            if ($script:extendTargetDriveTextBox -and $currentText -eq $script:extendTargetDriveTextBox.Text.Trim()) {
+                Add-Status "⚠️ Source và Target không thể trùng nhau!" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        })
     $extendGroupBox.Controls.Add($script:extendSourceDriveTextBox)
 
     # Target drive label
@@ -3443,13 +3442,14 @@ function New-ExtendVolumeGroupBox {
     $script:extendTargetDriveTextBox.TextAlign = [System.Windows.Forms.HorizontalAlignment]::Center
     # Add focus events for better user experience
     $script:extendTargetDriveTextBox.Add_GotFocus({ $this.SelectAll() })
-    $script:extendTargetDriveTextBox.Add_TextChanged({ 
-        $currentText = $this.Text.ToUpper()
-        # Kiểm tra nếu trùng với source drive
-        if ($script:extendSourceDriveTextBox -and 
-            $currentText -eq $script:extendSourceDriveTextBox.Text.Trim()) {
-            Add-Status "Cảnh báo: Target drive không thể trùng với Source drive!" $statusTextBox ([System.Drawing.Color]::Yellow)
-    } })
+    $script:extendTargetDriveTextBox.Add_TextChanged({
+            $currentText = $this.Text.ToUpper()
+            
+            # Kiểm tra trùng với source
+            if ($script:extendSourceDriveTextBox -and $currentText -eq $script:extendSourceDriveTextBox.Text.Trim()) {
+                Add-Status "⚠️ Target không thể trùng với Source Drive!" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        })
     $extendGroupBox.Controls.Add($script:extendTargetDriveTextBox)
 
     # Warning label
@@ -3478,7 +3478,7 @@ function New-ExtendVolumeGroupBox {
 }
 
 function New-ExtendActionButton {
-    param([hashtable]$extendControls)
+    param([hashtable]$extendControls, [System.Windows.Forms.RichTextBox]$statusTextBox)
 
     $groupBox = $extendControls.GroupBox
 
@@ -3495,7 +3495,8 @@ function New-ExtendActionButton {
             $targetDrive = $script:extendTargetDriveTextBox.Text.Trim().ToUpper()
         }
 
-        Add-Status "Source Drive: '$sourceDrive' | Target Drive: '$targetDrive'" ([System.Drawing.Color]::Green) $statusTextBox
+        $statusTextBox.Clear()
+        Add-Status "Source Drive: '$sourceDrive' | Target Drive: '$targetDrive'" $statusTextBox
 
         # Validate input
         if (-not (Test-ExtendVolumeInput -sourceDrive $sourceDrive -targetDrive $targetDrive)) {
@@ -3517,7 +3518,7 @@ function New-ExtendActionButton {
 
         # Perform merge operation using script scope textboxes
         Add-Status "Merging volumes: deleting drive $sourceDrive and extending drive $targetDrive..." $statusTextBox
-        Invoke-ExtendVolumeOperation -sourceDrive $sourceDrive -targetDrive $targetDrive -sourceDriveTextBox $script:extendSourceDriveTextBox -targetDriveTextBox $script:extendTargetDriveTextBox
+        Invoke-ExtendVolumeOperation -sourceDrive $sourceDrive -targetDrive $targetDrive -statusTextBox $statusTextBox
     }
     $groupBox.Controls.Add($mergeButton)
 
@@ -3532,8 +3533,9 @@ function New-ExtendActionButton {
 }
 
 function Test-ExtendVolumeInput {
-    param([string]$sourceDrive, [string]$targetDrive)
-    # Check if source drive is C
+    param([string]$sourceDrive, [string]$targetDrive, [System.Windows.Forms.TextBox]$statusTextBox)
+
+    # Check if source drive is C - CHỈ CẤM SOURCE, KHÔNG CẤM TARGET
     if ($sourceDrive -eq "C") {
         Add-Status "LỖI: Không thể sử dụng ổ C làm Source Drive! Ổ C là ổ hệ thống Windows." $statusTextBox ([System.Drawing.Color]::Red)
         Add-Status "Hãy chọn ổ đĩa khác làm Source Drive." $statusTextBox ([System.Drawing.Color]::Red)
@@ -3589,29 +3591,24 @@ function Test-ExtendVolumeInput {
 }
 
 function Invoke-ExtendVolumeOperation {
-    param([string]$sourceDrive, [string]$targetDrive, $sourceDriveTextBox, $targetDriveTextBox)
+    param([string]$sourceDrive, [string]$targetDrive, [System.Windows.Forms.RichTextBox]$statusTextBox)
 
-    # Kiá»ƒm tra xem hai á»• Ä‘Ä©a cÃ³ náº±m trÃªn cÃ¹ng má»™t Ä‘Ä©a váº­t lÃ½ khÃ´ng
     try {
+        # Verify disk compatibility first
         $sourcePartition = Get-Partition -DriveLetter $sourceDrive -ErrorAction Stop
         $targetPartition = Get-Partition -DriveLetter $targetDrive -ErrorAction Stop
 
-        $sourceDiskNumber = $sourcePartition.DiskNumber
-        $targetDiskNumber = $targetPartition.DiskNumber
-
-        if ($sourceDiskNumber -ne $targetDiskNumber) {
-            Add-Status "Error: Drives are not on the same physical disk. Operation aborted for safety." $statusTextBox ([System.Drawing.Color]::Red)
-            Add-Status "Source drive $sourceDrive is on disk $sourceDiskNumber, target drive $targetDrive is on disk $targetDiskNumber." $statusTextBox ([System.Drawing.Color]::Red)
+        if ($sourcePartition.DiskNumber -ne $targetPartition.DiskNumber) {
+            Add-Status "Error: Drives are not on the same physical disk. Operation aborted." $statusTextBox ([System.Drawing.Color]::Red)
             return
         }
-        Add-Status "Verified: Both drives are on the same physical disk (Disk $sourceDiskNumber)." $statusTextBox
+        Add-Status "Verified: Both drives are on the same physical disk (Disk $($sourcePartition.DiskNumber))." $statusTextBox
     }
     catch {
-        Add-Status "Warning: Could not verify disk compatibility. Error: $($_.Exception.Message)"
-        Add-Status "Proceeding anyway, but operation may fail if drives are on different disks."
+        Add-Status "Warning: Could not verify disk compatibility. Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 
-    # Create a batch file that will run the merge operation
+    # Create batch file
     $batchFilePath = "merge_volumes.bat"
     $batchContent = @"
 @echo off
@@ -3634,26 +3631,17 @@ if errorlevel 1 (
         echo delete volume override
     ) > diskpart_delete.txt
 
-    start /b /wait "" cmd /c "diskpart /s diskpart_delete.txt > diskpart_delete_output.txt 2>&1"
+    diskpart /s diskpart_delete.txt > diskpart_delete_output.txt 2>&1
     type diskpart_delete_output.txt >> merge_log.txt
-
-    if errorlevel 1 (
-        echo ERROR: Failed to delete source drive $sourceDrive. >> merge_log.txt
-        del diskpart_delete.txt
-        del diskpart_delete_output.txt
-        del delete_output.txt
-        exit /b 1
-    )
-    del diskpart_delete.txt
-    del diskpart_delete_output.txt
+    del diskpart_delete.txt diskpart_delete_output.txt
 )
 del delete_output.txt
 
 echo Waiting for system to update... >> merge_log.txt
-timeout /t 2 /nobreak > nul
+timeout /t 3 /nobreak > nul
 
 echo Extending target drive $targetDrive... >> merge_log.txt
-powershell -WindowStyle Hidden -command "& { try { `$size = (Get-PartitionSupportedSize -DriveLetter $targetDrive).SizeMax; Resize-Partition -DriveLetter $targetDrive -Size `$size -ErrorAction Stop; Write-Output 'Successfully extended partition using PowerShell.' } catch { Write-Error `$_.Exception.Message; exit 1 } }" > extend_output.txt 2>&1
+powershell -WindowStyle Hidden -command "& { try { `$size = (Get-PartitionSupportedSize -DriveLetter $targetDrive).SizeMax; Resize-Partition -DriveLetter $targetDrive -Size `$size -ErrorAction Stop; Write-Output 'Successfully extended partition.' } catch { Write-Error `$_.Exception.Message; exit 1 } }" > extend_output.txt 2>&1
 
 type extend_output.txt >> merge_log.txt
 
@@ -3665,31 +3653,19 @@ if errorlevel 1 (
         echo extend
     ) > diskpart_extend.txt
 
-    start /b /wait "" cmd /c "diskpart /s diskpart_extend.txt > diskpart_extend_output.txt 2>&1"
+    diskpart /s diskpart_extend.txt > diskpart_extend_output.txt 2>&1
     type diskpart_extend_output.txt >> merge_log.txt
-
-    if errorlevel 1 (
-        echo ERROR: Failed to extend target drive $targetDrive. >> merge_log.txt
-        del diskpart_extend.txt
-        del diskpart_extend_output.txt
-        del extend_output.txt
-        exit /b 1
-    )
-    del diskpart_extend.txt
-    del diskpart_extend_output.txt
-) else (
-    echo Successfully extended partition using PowerShell. >> merge_log.txt
+    del diskpart_extend.txt diskpart_extend_output.txt
 )
 del extend_output.txt
 
 echo. >> merge_log.txt
 echo Merge completed successfully! >> merge_log.txt
-echo Operation completed. >> merge_log.txt
+echo MERGE_SUCCESS >> merge_log.txt
 exit /b 0
 "@
 
     Set-Content -Path $batchFilePath -Value $batchContent -Force -Encoding ASCII
-
     Add-Status "Processing... Please wait while the operation completes." $statusTextBox
 
     try {
@@ -3698,47 +3674,52 @@ exit /b 0
         $psi.FileName = "cmd.exe"
         $psi.Arguments = "/c `"$batchFilePath`""
         $psi.UseShellExecute = $true
-        $psi.Verb = "runas"
+        $psi.Verb = "runas"  # Run as admin
         $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
-        # Clean up all temporary files
-        $tempFiles = @(
-            $batchFilePath,
-            "merge_log.txt",
-            "delete_output.txt",
-            "diskpart_delete.txt",
-            "diskpart_delete_output.txt",
-            "extend_output.txt",
-            "diskpart_extend.txt",
-            "diskpart_extend_output.txt"
-        )
-
-        foreach ($file in $tempFiles) {
-            if (Test-Path $file) {
-                Remove-Item $file -Force -ErrorAction SilentlyContinue
+        # Start the process
+        $process = [System.Diagnostics.Process]::Start($psi)
+        
+        if ($process) {
+            Add-Status "Batch process started. Waiting for completion..." $statusTextBox
+            
+            # Wait for process to complete
+            $process.WaitForExit()
+            $exitCode = $process.ExitCode
+            
+            Add-Status "Batch process completed with exit code: $exitCode" $statusTextBox
+            
+            # Check results
+            if (Test-Path "merge_log.txt") {
+                $logContent = Get-Content "merge_log.txt" -Raw
+                
+                if ($logContent -match "MERGE_SUCCESS") {
+                    Add-Status "Drive $sourceDrive has been deleted and drive $targetDrive has been extended." $statusTextBox
+                    Update-DriveList
+                }
+                else {
+                    Add-Status "⚠️ Operation completed with warnings. Check merge_log.txt for details." $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
             }
+            else {
+                Add-Status "❌ No log file found. Operation may have failed." $statusTextBox ([System.Drawing.Color]::Red)
+            }
+        }
+        else {
+            Add-Status "❌ Failed to start batch process." $statusTextBox ([System.Drawing.Color]::Red)
         }
     }
     catch {
-        Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
-
-        # Clean up all temporary files in case of error
-        $tempFiles = @(
-            $batchFilePath,
-            "merge_log.txt",
-            "delete_output.txt",
-            "diskpart_delete.txt",
-            "diskpart_delete_output.txt",
-            "extend_output.txt",
-            "diskpart_extend.txt",
-            "diskpart_extend_output.txt"
-        )
-
+        Add-Status "❌ Error running batch operation: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+    }
+    finally {
+        # Clean up files after showing results
+        Start-Sleep -Seconds 2
+        $tempFiles = @($batchFilePath, "delete_output.txt", "extend_output.txt", "diskpart_delete.txt", "diskpart_extend.txt", "diskpart_delete_output.txt", "diskpart_extend_output.txt")
         foreach ($file in $tempFiles) {
             Remove-Item $file -Force -ErrorAction SilentlyContinue
         }
     }
-    Add-Status "Merge operation initiated. Please check the log file for details." $statusTextBox([System.Drawing.Color]::Red)
 }
 
 # [5] Activate Functions
@@ -4097,18 +4078,18 @@ function Invoke-FeaturesDialog {
     $featuresForm.Controls.Add($titleLabel)
 
     # Status textbox
-    $featuresStatusTextBox = New-Object System.Windows.Forms.RichTextBox
-    $featuresStatusTextBox.Multiline = $true
-    $featuresStatusTextBox.ScrollBars = "Vertical"
-    $featuresStatusTextBox.Location = New-Object System.Drawing.Point(10, 70)
-    $featuresStatusTextBox.Size = New-Object System.Drawing.Size(450, 220)
-    $featuresStatusTextBox.BackColor = [System.Drawing.Color]::Black
-    $featuresStatusTextBox.ForeColor = [System.Drawing.Color]::Lime
-    $featuresStatusTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
-    $featuresStatusTextBox.ReadOnly = $true
-    $featuresStatusTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-    $featuresStatusTextBox.Text = "Ready to configure Windows Features..."
-    $featuresForm.Controls.Add($featuresStatusTextBox)
+    $statusTextBox = New-Object System.Windows.Forms.RichTextBox
+    $statusTextBox.Multiline = $true
+    $statusTextBox.ScrollBars = "Vertical"
+    $statusTextBox.Location = New-Object System.Drawing.Point(10, 70)
+    $statusTextBox.Size = New-Object System.Drawing.Size(450, 220)
+    $statusTextBox.BackColor = [System.Drawing.Color]::Black
+    $statusTextBox.ForeColor = [System.Drawing.Color]::Lime
+    $statusTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
+    $statusTextBox.ReadOnly = $true
+    $statusTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+    $statusTextBox.Text = "Ready to configure Windows Features..."
+    $featuresForm.Controls.Add($statusTextBox)
 
     # Start Configuration button
     $startButton = New-Object System.Windows.Forms.Button
@@ -4127,7 +4108,7 @@ function Invoke-FeaturesDialog {
                 $startButton.Text = "Running..."
 
                 # Clear status textbox
-                $featuresStatusTextBox.Clear()
+                $statusTextBox.Clear()
                 Add-Status "Starting Windows Features Configuration..." $statusTextBox
                 [System.Windows.Forms.Application]::DoEvents()
 
@@ -5311,7 +5292,7 @@ function Show-DomainManagementForm {
     $joinForm.ShowDialog()
 }
 
-# --- Táº O MENU 2 Cá»˜T, Tá»° Äá»˜NG CO GIÃƒN ---
+# T
 $menuButtons = @(
     @{text = '[1] Run All'; action = { Invoke-RunAllOperations -mainForm $script:form } },
     @{text = '[6] Features'; action = { Invoke-FeaturesDialog } },
@@ -5325,16 +5306,16 @@ $menuButtons = @(
     @{text = '[0] Exit'; action = { $script:form.Close() } }
 )
 
-# Cáº¥u hÃ¬nh cÃ¡c nÃºt menu
+# Các tham số cho các nút menu
 $buttonHeight = 60
 $buttonSpacingY = 10
 $buttonTop = 80
 $buttonLeft = 30
 $buttonControls = @()
 
-# Táº¡o cÃ¡c nÃºt menu
+# Tạo các nút menu
 for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
-    # NÃºt bÃªn trÃ¡i
+    # Nút bên trái
     if ($menuButtons[$i].text -eq '[0] Exit') {
         $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0))
     }
@@ -5347,7 +5328,7 @@ for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
     $btnL.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $script:form.Controls.Add($btnL)
     $buttonControls += $btnL
-    # NÃºt bÃªn pháº£i
+    # Nút bên phải
     if ($i + 1 -lt $menuButtons.Count) {
         if ($menuButtons[$i + 1].text -eq '[0] Exit') {
             $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0))
