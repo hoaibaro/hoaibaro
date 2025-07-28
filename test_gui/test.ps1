@@ -175,10 +175,10 @@ function Add-TitleAnimation {
 
     # Set default colors if not provided
     if (-not $color1 -or $color1 -eq [System.Drawing.Color]::Empty) {
-        $color1 = [System.Drawing.Color]::FromArgb(0, 255, 0)
+        $color1 = [System.Drawing.Color]::Lime
     }
     if (-not $color2 -or $color2 -eq [System.Drawing.Color]::Empty) {
-        $color2 = [System.Drawing.Color]::FromArgb(0, 200, 0)
+        $color2 = [System.Drawing.Color]::LimeGreen
     }
 
     # Create timer for animation
@@ -295,7 +295,7 @@ function Invoke-RunAllOperations {
     $statusForm.Controls.Add($statusTextBox)
 
     # Add title animation
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::Lime) -color2 ([System.Drawing.Color]::FromArgb(0, 220, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Progress bar
     $progressBar = New-Object System.Windows.Forms.ProgressBar
@@ -664,7 +664,7 @@ function Invoke-WiFiAutoConnection {
             $connectResult = Start-Process -FilePath "netsh" -ArgumentList "wlan connect name=`"$SSID`"" -Wait -PassThru -WindowStyle Hidden
 
             if ($connectResult.ExitCode -eq 0) {
-                # Đợi má»™t chút để kết nối ổn định
+                # Đợi một chút để kết nối ổn định
                 Add-Status "Waiting for connection to establish..." $statusTextBox
                 Start-Sleep -Seconds 5
 
@@ -697,7 +697,7 @@ function Invoke-WiFiAutoConnection {
             Add-Status "ERROR connecting to WiFi: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
-        # XÃ³a file profile táº¡m
+        # Xóa file profile tạm
         try {
             if (Test-Path $profileFile) {
                 Remove-Item -Path $profileFile -Force -ErrorAction SilentlyContinue
@@ -716,7 +716,7 @@ function Invoke-WiFiAutoConnection {
     }
 }
 
-# STEP 2: Choose Device Type and Rename
+# STEP 1: Choose Device Type and Rename
 function Invoke-RenamebyDevice {
     param (
         [string]$deviceType,
@@ -956,7 +956,6 @@ function Invoke-FileCleanup {
     }
 }
 
-# Function to customize taskbar - Windows 10 & 11 compatible
 function Invoke-TaskbarCustomization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
@@ -1101,7 +1100,6 @@ function Invoke-TaskbarCustomization {
     }
 }
 
-
 function Invoke-StartupOptimization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
@@ -1182,8 +1180,6 @@ function Invoke-PowerOptionsConfiguration {
     }
 }
 
-
-# Alternative method using PowerShell 7+ and Windows Terminal commands
 function Invoke-AdvancedTaskbarCustomization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
@@ -4111,21 +4107,20 @@ function Invoke-FeaturesDialog {
     $featuresForm.MaximizeBox = $false
     $featuresForm.MinimizeBox = $false
 
-    Add-GradientBackground -form $featuresForm -topColor ([System.Drawing.Color]::FromArgb(0, 0, 0)) -bottomColor ([System.Drawing.Color]::FromArgb(0, 40, 0))
-
+    Add-GradientBackground -form $featuresForm
     # Title label
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "WINDOWS FEATURES CONFIGURATION"
     $titleLabel.Location = New-Object System.Drawing.Point(0, 20)
     $titleLabel.Size = New-Object System.Drawing.Size(470, 35)
-    $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 255, 0)
+    $titleLabel.ForeColor = [System.Drawing.Color]::Lime
     $titleLabel.Font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $featuresForm.Controls.Add($titleLabel)
 
     # Add animation to the title
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Status textbox
     $statusTextBox = New-Object System.Windows.Forms.RichTextBox
@@ -4245,7 +4240,7 @@ function Invoke-EnableWindowsFeatures {
 
     foreach ($feature in $featuresToEnable) {
         try {
-            # Kiá»ƒm tra tráº¡ng thÃ¡i hiá»‡n táº¡i cá»§a feature báº±ng PowerShell cmdlet
+            # Kiểm tra trạng thái hiện tại của feature bằng PowerShell cmdlet
             $currentFeature = Get-WindowsOptionalFeature -Online -FeatureName $feature.Name -ErrorAction SilentlyContinue
             if ($currentFeature) {
                 $currentState = $currentFeature.State
@@ -4286,10 +4281,10 @@ function Invoke-EnableWindowsFeatures {
 
 function Invoke-DisableWindowsFeatures {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-    # Láº¥y phiÃªn báº£n há»‡ Ä‘iá»u hÃ nh
+    # Lấy phiên bản hệ điều hành
     $osVersion = (Get-CimInstance Win32_OperatingSystem).Caption
 
-    # Danh sÃ¡ch cÃ¡c features cáº§n disable
+    # Danh sách các features cần disable
     $featuresToDisable = @(
         @{
             Name        = "Internet-Explorer-Optional-amd64"
@@ -4300,13 +4295,13 @@ function Invoke-DisableWindowsFeatures {
     )
 
     foreach ($feature in $featuresToDisable) {
-        # Kiá»ƒm tra xem cÃ³ nÃªn thá»±c thi trÃªn OS hiá»‡n táº¡i khÃ´ng
+        # Kiểm tra xem tính năng có hỗ trợ trên phiên bản hệ điều hành hiện tại không
         if ($feature.SupportedOS -and -not ($osVersion -like "*$($feature.SupportedOS)*")) {
-            Add-Status "$($feature.DisplayName): Not apply on $osVersion. Skipping..."
+            Add-Status "$($feature.DisplayName): Not apply on $osVersion." $statusTextBox
             continue
         }
         try {
-            # Kiá»ƒm tra tráº¡ng thÃ¡i hiá»‡n táº¡i cá»§a feature
+            # Kiểm tra trạng thái hiện tại của feature
             $currentFeature = Get-WindowsOptionalFeature -Online -FeatureName $feature.Name -ErrorAction SilentlyContinue
 
             if ($currentFeature) {
@@ -4373,7 +4368,7 @@ function Invoke-RenameDialog {
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "RENAME DEVICE"
     $titleLabel.Font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
-    $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 255, 0)
+    $titleLabel.ForeColor = [System.Drawing.Color]::Lime
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.Size = New-Object System.Drawing.Size(470, 40)
     $titleLabel.Location = New-Object System.Drawing.Point(0, 20)
@@ -4409,7 +4404,7 @@ function Invoke-RenameDialog {
     $deviceGroupBox = New-Object System.Windows.Forms.GroupBox
     $deviceGroupBox.Text = "Device Type"
     $deviceGroupBox.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
-    $deviceGroupBox.ForeColor = [System.Drawing.Color]::FromArgb(0, 255, 0)
+    $deviceGroupBox.ForeColor = [System.Drawing.Color]::Lime
     $deviceGroupBox.Size = New-Object System.Drawing.Size(460, 80)
     $deviceGroupBox.Location = New-Object System.Drawing.Point(10, 110)
     $deviceGroupBox.BackColor = [System.Drawing.Color]::Transparent
@@ -4600,13 +4595,42 @@ function Invoke-RenameDialog {
 }
 
 # [8] Password Functions
+
+# Helper function to detect Windows version
+function Get-WindowsVersion {
+    try {
+        $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        $version = $osInfo.Version
+        $caption = $osInfo.Caption
+
+        $isWindows11 = $caption -like "*Windows 11*" -or
+                      ($version -like "10.0.22*") -or
+                      ([System.Environment]::OSVersion.Version.Build -ge 22000)
+
+        return @{
+            IsWindows11 = $isWindows11
+            Version = $version
+            Caption = $caption
+            Build = [System.Environment]::OSVersion.Version.Build
+        }
+    }
+    catch {
+        # Fallback detection
+        $build = [System.Environment]::OSVersion.Version.Build
+        return @{
+            IsWindows11 = $build -ge 22000
+            Version = [System.Environment]::OSVersion.Version.ToString()
+            Caption = "Unknown"
+            Build = $build
+        }
+    }
+}
+
 function Show-SetPasswordForm {
     param(
+        [string]$currentUser,
         [System.Windows.Forms.RichTextBox]$statusTextBox
     )
-
-    # Hide main menu
-    Hide-MainMenu
 
     # Set Password Form
     $form = New-Object System.Windows.Forms.Form
@@ -4624,14 +4648,14 @@ function Show-SetPasswordForm {
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "PASSWORD"
     $titleLabel.Font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
-    $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 255, 0)
+    $titleLabel.ForeColor = [System.Drawing.Color]::Lime
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $titleLabel.Size = New-Object System.Drawing.Size(400, 40)
     $titleLabel.Location = New-Object System.Drawing.Point(0, 20)
     $form.Controls.Add($titleLabel)
 
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # User label
     $userLabel = New-Object System.Windows.Forms.Label
@@ -4643,8 +4667,6 @@ function Show-SetPasswordForm {
     $userLabel.Location = New-Object System.Drawing.Point(10, 70)
     $form.Controls.Add($userLabel)
 
-    $currentUser = $env:USERNAME
-
     # Current user label
     $currentUserLabel = New-Object System.Windows.Forms.Label
     $currentUserLabel.Text = $currentUser
@@ -4654,7 +4676,6 @@ function Show-SetPasswordForm {
     $currentUserLabel.AutoSize = $true
     $currentUserLabel.Location = New-Object System.Drawing.Point(150, 70)
     $form.Controls.Add($currentUserLabel)
-
 
     # Password label
     $passwordLabel = New-Object System.Windows.Forms.Label
@@ -4673,10 +4694,10 @@ function Show-SetPasswordForm {
     $passwordTextBox.Location = New-Object System.Drawing.Point(150, 105)
     $passwordTextBox.BackColor = [System.Drawing.Color]::Black
     $passwordTextBox.ForeColor = [System.Drawing.Color]::Lime
-    $passwordTextBox.UseSystemPasswordChar = $true # Mặc định hiển thị password
+    $passwordTextBox.UseSystemPasswordChar = $false
     $form.Controls.Add($passwordTextBox)
 
-    # Show Password checkbox (default checked)
+    # Show Password checkbox
     $showPasswordCheckBox = New-Object System.Windows.Forms.CheckBox
     $showPasswordCheckBox.Text = "Show"
     $showPasswordCheckBox.Location = New-Object System.Drawing.Point (320, 110)
@@ -4701,6 +4722,27 @@ function Show-SetPasswordForm {
     $infoLabel.Location = New-Object System.Drawing.Point(0, 140)
     $form.Controls.Add($infoLabel)
 
+    # Windows version info label
+    try {
+        $winVersion = Get-WindowsVersion
+        $versionText = if ($winVersion.IsWindows11) { "Windows 11" } else { "Windows 10" }
+        $versionLabel = New-Object System.Windows.Forms.Label
+        $versionLabel.Text = "$versionText (Build: $($winVersion.Build))"
+        $versionLabel.Font = New-Object System.Drawing.Font("Arial", 8)
+        $versionLabel.ForeColor = [System.Drawing.Color]::Gray
+        $versionLabel.BackColor = [System.Drawing.Color]::Transparent
+        $versionLabel.TextAlign = [System.Drawing.ContentAlignment]::BottomRight
+        $versionLabel.Size = New-Object System.Drawing.Size(200, 15)
+        $versionLabel.Location = New-Object System.Drawing.Point(190, 250)
+        $form.Controls.Add($versionLabel)
+    }
+    catch {
+        # Ignore version detection errors
+    }
+
+    # Thêm biến lưu kết quả
+    $dialogResult = @{ Action = ""; Password = "" }
+
     # Set Password button
     $setButton = New-Object System.Windows.Forms.Button
     $setButton.Text = "Set"
@@ -4711,32 +4753,9 @@ function Show-SetPasswordForm {
     $setButton.Location = New-Object System.Drawing.Point(10, 180)
     $setButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $setButton.Add_Click({
-            $password = $passwordTextBox.Text
-            try {
-                # Create a command to set the password
-                if ([string]::IsNullOrEmpty($password)) {
-                    $command = "net user $currentUser """""
-                }
-                else {
-                    $command = "net user $currentUser $password"
-                }
-                $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -NoNewWindow -Wait -PassThru
-                if ($process.ExitCode -eq 0) {
-                    if ([string]::IsNullOrEmpty($password)) {
-                        [System.Windows.Forms.MessageBox]::Show("Password has been removed. User '$currentUser' can now log in without a password.", "Password Removed", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                    }
-                    else {
-                        [System.Windows.Forms.MessageBox]::Show("Password has been changed.", "Password Change", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                    }
-                    $form.Close()
-                }
-                else {
-                    throw "Failed to set password. Exit code: $($process.ExitCode)"
-                }
-            }
-            catch {
-                [System.Windows.Forms.MessageBox]::Show("Error setting password: $_`n`nNote: This operation requires administrative privileges.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            }
+            $dialogResult.Action = "set"
+            $dialogResult.Password = $passwordTextBox.Text
+            $form.Close()
         })
     $form.Controls.Add($setButton)
 
@@ -4750,6 +4769,7 @@ function Show-SetPasswordForm {
     $cancelButton.Location = New-Object System.Drawing.Point(195, 180)
     $cancelButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $cancelButton.Add_Click({
+            $dialogResult.Action = "cancel"
             $form.Close()
         })
     $form.Controls.Add($cancelButton)
@@ -4763,23 +4783,6 @@ function Show-SetPasswordForm {
             $passwordTextBox.Focus()
         })
 
-    # ThÃªm biáº¿n lÆ°u káº¿t quáº£
-    $dialogResult = @{ Action = ""; Password = "" }
-
-    # Sá»­a event Set
-    $setButton.Add_Click({
-            $dialogResult.Action = "set"
-            $dialogResult.Password = $passwordTextBox.Text
-            $form.Close()
-        })
-
-    # Sá»­a event Cancel
-    $cancelButton.Add_Click({
-            $dialogResult.Action = "cancel"
-            $form.Close()
-            Show-MainMenu
-        })
-
     # Show the form
     $form.ShowDialog()
     return $dialogResult
@@ -4791,17 +4794,145 @@ function Set-UserPassword {
         [string]$password
     )
     try {
-        if ([string]::IsNullOrEmpty($password)) {
-            # XÃ³a máº­t kháº©u (blank)
-            $command = "net user $user """""
+        # Get Windows version info
+        $winVersion = Get-WindowsVersion
+
+        # Check if running as administrator
+        $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+
+        if (-not $isAdmin) {
+            throw "This operation requires administrative privileges. Please run as administrator."
+        }
+
+        # Validate user exists
+        try {
+            Get-LocalUser -Name $user -ErrorAction Stop | Out-Null
+        }
+        catch {
+            throw "User '$user' does not exist on this system."
+        }
+
+        # Enhanced Windows 11 compatible password setting logic
+        if ($winVersion.IsWindows11) {
+            # Windows 11 - Multiple approaches for better compatibility
+            if ([string]::IsNullOrEmpty($password)) {
+                # Method 1: Try Set-LocalUser with empty password
+                try {
+                    $securePassword = ConvertTo-SecureString "" -AsPlainText -Force
+                    Set-LocalUser -Name $user -Password $securePassword -ErrorAction Stop
+                    return $true
+                }
+                catch {
+                    Write-Warning "Set-LocalUser failed: $($_.Exception.Message)"
+                }
+
+                # Method 2: Try WMI approach for Windows 11
+                try {
+                    $userAccount = Get-WmiObject -Class Win32_UserAccount -Filter "Name='$user' AND LocalAccount=True" -ErrorAction Stop
+                    if ($userAccount) {
+                        $userAccount.SetPassword("")
+                        return $true
+                    }
+                }
+                catch {
+                    Write-Warning "WMI approach failed: $($_.Exception.Message)"
+                }
+
+                # Method 3: Enhanced net user with UAC handling
+                try {
+                    $escapedUser = $user -replace '"', '""'
+                    $arguments = "/c net user `"$escapedUser`" """""
+                    $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+                    $processInfo.FileName = "cmd.exe"
+                    $processInfo.Arguments = $arguments
+                    $processInfo.UseShellExecute = $true
+                    $processInfo.Verb = "runas"  # Force UAC elevation
+                    $processInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+
+                    $process = [System.Diagnostics.Process]::Start($processInfo)
+                    $process.WaitForExit(10000)  # 10 second timeout
+                    return $process.ExitCode -eq 0
+                }
+                catch {
+                    Write-Warning "Enhanced net user failed: $($_.Exception.Message)"
+                }
+            }
+            else {
+                # Set new password - Windows 11
+                # Method 1: Try Set-LocalUser
+                try {
+                    $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+                    Set-LocalUser -Name $user -Password $securePassword -ErrorAction Stop
+                    return $true
+                }
+                catch {
+                    Write-Warning "Set-LocalUser failed: $($_.Exception.Message)"
+                }
+
+                # Method 2: Try WMI approach
+                try {
+                    $userAccount = Get-WmiObject -Class Win32_UserAccount -Filter "Name='$user' AND LocalAccount=True" -ErrorAction Stop
+                    if ($userAccount) {
+                        $userAccount.SetPassword($password)
+                        return $true
+                    }
+                }
+                catch {
+                    Write-Warning "WMI approach failed: $($_.Exception.Message)"
+                }
+
+                # Method 3: Enhanced net user with UAC handling
+                try {
+                    $escapedUser = $user -replace '"', '""'
+                    $escapedPassword = $password -replace '"', '""'
+                    $arguments = "/c net user `"$escapedUser`" `"$escapedPassword`""
+                    $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+                    $processInfo.FileName = "cmd.exe"
+                    $processInfo.Arguments = $arguments
+                    $processInfo.UseShellExecute = $true
+                    $processInfo.Verb = "runas"  # Force UAC elevation
+                    $processInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+
+                    $process = [System.Diagnostics.Process]::Start($processInfo)
+                    $process.WaitForExit(10000)  # 10 second timeout
+                    return $process.ExitCode -eq 0
+                }
+                catch {
+                    Write-Warning "Enhanced net user failed: $($_.Exception.Message)"
+                }
+            }
+
+            # If all Windows 11 methods fail, throw error
+            throw "All Windows 11 password setting methods failed. Please ensure you have administrative privileges and UAC is properly configured."
         }
         else {
-            $command = "net user $user $password"
+            # Windows 10 - use traditional approach with enhancements
+            try {
+                # Method 1: Try Set-LocalUser first (available in Windows 10 1607+)
+                if ([string]::IsNullOrEmpty($password)) {
+                    $securePassword = ConvertTo-SecureString "" -AsPlainText -Force
+                }
+                else {
+                    $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+                }
+                Set-LocalUser -Name $user -Password $securePassword -ErrorAction Stop
+                return $true
+            }
+            catch {
+                # Method 2: Fallback to net user command
+                if ([string]::IsNullOrEmpty($password)) {
+                    $command = "net user `"$user`" """""
+                }
+                else {
+                    $command = "net user `"$user`" `"$password`""
+                }
+                $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -NoNewWindow -Wait -PassThru
+                return $process.ExitCode -eq 0
+            }
         }
-        $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -NoNewWindow -Wait -PassThru
-        return $process.ExitCode -eq 0
     }
     catch {
+        Write-Error "Error setting password: $_"
         return $false
     }
 }
@@ -4810,14 +4941,9 @@ function Remove-UserPassword {
     param(
         [string]$user
     )
-    try {
-        $command = "net user $user """""
-        $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -NoNewWindow -Wait -PassThru
-        return $process.ExitCode -eq 0
-    }
-    catch {
-        return $false
-    }
+    # This function is now redundant as Set-UserPassword handles empty passwords
+    # Just call Set-UserPassword with empty password
+    return Set-UserPassword -user $user -password ""
 }
 
 function Invoke-SetPasswordDialog {
@@ -4827,31 +4953,111 @@ function Invoke-SetPasswordDialog {
         [bool]$showMenuAfter = $true
     )
 
-    $result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox 
-    Hide-MainMenu
+    try {
+        $result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox
+        Hide-MainMenu
 
-    if ($result.Action -eq "set") {
-        $success = Set-UserPassword -user $currentUser -password $result.Password
-        if ($success) {
-            if ([string]::IsNullOrEmpty($result.Password)) {
-                [System.Windows.Forms.MessageBox]::Show("Password has been removed. User '$currentUser' can now log in without a password.", "Password Removed", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        if ($result.Action -eq "set") {
+            try {
+                $success = Set-UserPassword -user $currentUser -password $result.Password
+                if ($success) {
+                    if ([string]::IsNullOrEmpty($result.Password)) {
+                        [System.Windows.Forms.MessageBox]::Show("Password has been removed. User '$currentUser' can now log in without a password.", "Password Removed", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                        if ($statusTextBox) {
+                            Add-Status "Password removed successfully for user: $currentUser" $statusTextBox ([System.Drawing.Color]::Lime)
+                        }
+                    }
+                    else {
+                        [System.Windows.Forms.MessageBox]::Show("Password has been changed successfully.", "Password Change", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                        if ($statusTextBox) {
+                            Add-Status "Password changed successfully for user: $currentUser" $statusTextBox ([System.Drawing.Color]::Lime)
+                        }
+                    }
+                }
+                else {
+                    throw "Password operation failed"
+                }
             }
-            else {
-                [System.Windows.Forms.MessageBox]::Show("Password has been changed.", "Password Change", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            catch {
+                # Enhanced error message for Windows 11 compatibility
+                $winVersion = Get-WindowsVersion
+                $versionText = if ($winVersion.IsWindows11) { "Windows 11" } else { "Windows 10" }
+
+                $errorMessage = "Error setting password: $($_.Exception.Message)`n`n"
+                $errorMessage += "System: $versionText (Build: $($winVersion.Build))`n`n"
+                $errorMessage += "Troubleshooting steps:`n"
+                $errorMessage += "1. Ensure you are running as Administrator`n"
+                $errorMessage += "2. Check UAC (User Account Control) settings`n"
+
+                if ($winVersion.IsWindows11) {
+                    $errorMessage += "3. For Windows 11: Try running PowerShell as Administrator`n"
+                    $errorMessage += "4. Check Windows Security policies`n"
+                    $errorMessage += "5. Verify Local Security Policy settings`n"
+                }
+                else {
+                    $errorMessage += "3. For Windows 10: Standard administrative privileges should work`n"
+                }
+
+                [System.Windows.Forms.MessageBox]::Show($errorMessage, "Password Setting Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                if ($statusTextBox) {
+                    Add-Status "Failed to set password for user: $currentUser - $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+                }
             }
         }
-        else {
-            [System.Windows.Forms.MessageBox]::Show("Error setting password. This operation may require administrative privileges.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        elseif ($result.Action -eq "remove") {
+            try {
+                $success = Remove-UserPassword -user $currentUser
+                if ($success) {
+                    [System.Windows.Forms.MessageBox]::Show("Password has been removed. User '$currentUser' can now log in without a password.", "Password Removed", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    if ($statusTextBox) {
+                        Add-Status "Password removed successfully for user: $currentUser" $statusTextBox ([System.Drawing.Color]::Lime)
+                    }
+                }
+                else {
+                    throw "Password removal failed"
+                }
+            }
+            catch {
+                # Enhanced error message for Windows 11 compatibility
+                $winVersion = Get-WindowsVersion
+                $versionText = if ($winVersion.IsWindows11) { "Windows 11" } else { "Windows 10" }
+
+                $errorMessage = "Error removing password: $($_.Exception.Message)`n`n"
+                $errorMessage += "System: $versionText (Build: $($winVersion.Build))`n`n"
+                $errorMessage += "Troubleshooting steps:`n"
+                $errorMessage += "1. Ensure you are running as Administrator`n"
+                $errorMessage += "2. Check UAC (User Account Control) settings`n"
+
+                if ($winVersion.IsWindows11) {
+                    $errorMessage += "3. For Windows 11: Try running PowerShell as Administrator`n"
+                    $errorMessage += "4. Check Windows Security policies`n"
+                    $errorMessage += "5. Verify Local Security Policy settings`n"
+                }
+                else {
+                    $errorMessage += "3. For Windows 10: Standard administrative privileges should work`n"
+                }
+
+                [System.Windows.Forms.MessageBox]::Show($errorMessage, "Password Removal Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                if ($statusTextBox) {
+                    Add-Status "Failed to remove password for user: $currentUser - $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+                }
+            }
         }
+        elseif ($result.Action -eq "cancel") {
+            if ($statusTextBox) {
+                Add-Status "Password operation cancelled by user" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        }
+
+        return $result.Action -ne "cancel"
     }
-    elseif ($result.Action -eq "remove") {
-        $success = Remove-UserPassword -user $currentUser
-        if ($success) {
-            [System.Windows.Forms.MessageBox]::Show("Password has been removed. User '$currentUser' can now log in without a password.", "Password Removed", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    catch {
+        $errorMessage = "Unexpected error in password dialog: $($_.Exception.Message)"
+        [System.Windows.Forms.MessageBox]::Show($errorMessage, "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        if ($statusTextBox) {
+            Add-Status $errorMessage $statusTextBox ([System.Drawing.Color]::Red)
         }
-        else {
-            [System.Windows.Forms.MessageBox]::Show("Error removing password. This operation may require administrative privileges.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-        }
+        return $false
     }
     if ($showMenuAfter) { Show-MainMenu }
 }
@@ -5204,12 +5410,12 @@ function Show-DomainManagementForm {
 
     # Create title label
     $titleLabel = New-DomainManagementLabel -Text "DOMAIN MANAGEMENT" -X 10 -Y 20 -Width 480 -Height 40 -FontSize 16 -FontStyle ([System.Drawing.FontStyle]::Bold)
-    $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 255, 0)
+    $titleLabel.ForeColor = [System.Drawing.Color]::Lime
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $joinForm.Controls.Add($titleLabel)
 
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Current computer name label 
     $boldFont = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
@@ -5360,7 +5566,10 @@ $menuButtons = @(
     @{text = '[2] Software'; action = { Show-InstallSoftwareDialog } },
     @{text = '[7] Rename'; action = { Invoke-RenameDialog } },
     @{text = '[3] Power'; action = { Invoke-PowerOptionsDialog } },
-    @{text = '[8] Password'; action = { Show-SetPasswordForm } },
+    @{text = '[8] Password'; action = {
+        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.Split('\')[-1]
+        Invoke-SetPasswordDialog -currentUser $currentUser -statusTextBox $null -showMenuAfter $true
+    } },
     @{text = '[4] Volume'; action = { Invoke-VolumeManagementDialog } },
     @{text = '[9] Domain'; action = { Show-DomainManagementForm } },
     @{text = '[5] Activate'; action = { Invoke-ActivationDialog } },
