@@ -133,20 +133,20 @@ function Add-GradientBackground {
     }
 }
 
-# Táº¡o form chÃ­nh cÃ³ thá»ƒ thay Ä‘á»•i kÃ­ch thÆ°á»›c
+# Create main form
 $script:form = New-Object System.Windows.Forms.Form
 $script:form.Text = "BAOPROVIP - SYSTEM MANAGEMENT"
 $script:form.Size = New-Object System.Drawing.Size(500, 400)
-$script:form.MinimumSize = New-Object System.Drawing.Size(500, 400)  # KÃ­ch thÆ°á»›c tá»‘i thiá»ƒu
+$script:form.MinimumSize = New-Object System.Drawing.Size(500, 400)  # Kích thước tối thiểu
 $script:form.StartPosition = "CenterScreen"
 $script:form.BackColor = [System.Drawing.Color]::Black
-$script:form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable  # CHá»– NÃ€Y THAY Äá»”I
-$script:form.MaximizeBox = $true  # Cho phÃ©p maximize
+$script:form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
+$script:form.MaximizeBox = $true  # Cho phép maximize
 
 # Apply gradient background using global function
-Add-GradientBackground -form $script:form -topColor ([System.Drawing.Color]::FromArgb(0, 0, 0)) -bottomColor ([System.Drawing.Color]::FromArgb(0, 50, 0))
+Add-GradientBackground -form $script:form
 
-# TiÃªu Ä‘á» - RESPONSIVE
+# Title label
 $titleLabel = New-Object System.Windows.Forms.Label
 $titleLabel.Text = "WELCOME TO BAOPROVIP"
 $titleLabel.Font = New-Object System.Drawing.Font("Arial", 20, [System.Drawing.FontStyle]::Bold)
@@ -158,14 +158,20 @@ $titleLabel.BackColor = [System.Drawing.Color]::Transparent
 $titleLabel.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
 $script:form.Controls.Add($titleLabel)
 
-# Global function to add title animation
+# Global function to add title animation - IMPROVED
 function Add-TitleAnimation {
     param(
         [System.Windows.Forms.Label]$titleLabel,
-        [int]$interval = 500,
+        [int]$interval = 500, # Default interval is 500ms
         [System.Drawing.Color]$color1,
         [System.Drawing.Color]$color2
     )
+
+    # Validate input
+    if (-not $titleLabel) {
+        Write-Warning "TitleLabel is null, cannot add animation"
+        return $null
+    }
 
     # Set default colors if not provided
     if (-not $color1 -or $color1 -eq [System.Drawing.Color]::Empty) {
@@ -179,39 +185,48 @@ function Add-TitleAnimation {
     $titleTimer = New-Object System.Windows.Forms.Timer
     $titleTimer.Interval = $interval
 
-    # Capture variables in local scope for timer callback
-    $localTitleLabel = $titleLabel
-    $localColor1 = $color1
-    $localColor2 = $color2
+    # Store references in timer's Tag property for proper cleanup
+    $titleTimer.Tag = @{
+        Label = $titleLabel
+        Color1 = $color1
+        Color2 = $color2
+    }
 
     $titleTimer.Add_Tick({
-            try {
-                if ($localTitleLabel) {
-                    # Simple toggle between two colors
-                    if ($localTitleLabel.ForeColor.Name -eq "Lime") {
-                        $localTitleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 200, 0)
-                    }
-                    else {
-                        $localTitleLabel.ForeColor = [System.Drawing.Color]::Lime
-                    }
-
-                    # Force UI update
-                    $localTitleLabel.Refresh()
-                    [System.Windows.Forms.Application]::DoEvents()
+        try {
+            $data = $this.Tag
+            $label = $data.Label
+            
+            # Check if label still exists and is not disposed
+            if ($label -and -not $label.IsDisposed) {
+                # Toggle between colors using ARGB comparison for reliability
+                if ($label.ForeColor.ToArgb() -eq $data.Color1.ToArgb()) {
+                    $label.ForeColor = $data.Color2
+                } else {
+                    $label.ForeColor = $data.Color1
                 }
+                
+                # Force UI update
+                $label.Refresh()
+                [System.Windows.Forms.Application]::DoEvents()
+            } else {
+                # Stop timer if label is disposed
+                $this.Stop()
             }
-            catch {
-                # Silently ignore errors in animation
-            }
-        })
-    $titleTimer.Start()
+        }
+        catch {
+            # Stop timer on any error to prevent crashes
+            $this.Stop()
+            Write-Host "Animation stopped due to error: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    })
 
-    # Return timer object so it can be disposed later
+    $titleTimer.Start()
     return $titleTimer
 }
 
 # Add animation using global function
-Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
+Add-TitleAnimation -titleLabel $titleLabel
 
 # Add status with optional color parameter
 function Add-Status {
@@ -261,7 +276,7 @@ function Invoke-RunAllOperations {
     $titleLabel.Location = New-Object System.Drawing.Point(0, 20)
     $titleLabel.Size = New-Object System.Drawing.Size(580, 30)
     $titleLabel.ForeColor = [System.Drawing.Color]::Lime
-    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
+    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $statusForm.Controls.Add($titleLabel)
@@ -280,7 +295,7 @@ function Invoke-RunAllOperations {
     $statusForm.Controls.Add($statusTextBox)
 
     # Add title animation
-    $titleTimer = Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::Lime) -color2 ([System.Drawing.Color]::FromArgb(0, 220, 0))
+    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::Lime) -color2 ([System.Drawing.Color]::FromArgb(0, 220, 0))
 
     # Progress bar
     $progressBar = New-Object System.Windows.Forms.ProgressBar
@@ -294,17 +309,18 @@ function Invoke-RunAllOperations {
     [System.Windows.Forms.Application]::DoEvents()
 
     try {
-        # STEP 0: WiFi AUTO-CONNECTION FUNCTION (DONE)
-        # Add-Status "STEP 0: Connecting to WiFi network..." $statusTextBox
+        # STEP 0: WiFi AUTO-CONNECTION
+        Add-Status "STEP 0: Connecting to WiFi network..." $statusTextBox
 
-        # $progressBar.Value = 5
+        $progressBar.Value = 5
 
-        # $wifiResult = Invoke-WiFiAutoConnection $statusTextBox
-        # if ($wifiResult) {
-        #     Add-Status "WiFi connection completed!" $statusTextBox
-        # } else {
-        #     Add-Status "WiFi connection failed, but continuing..." $statusTextBox
-        # }
+        $wifiResult = Invoke-WiFiAutoConnection $statusTextBox
+        if ($wifiResult) {
+            Add-Status "WiFi connection completed!" $statusTextBox
+        }
+        else {
+            Add-Status "WiFi connection failed, but continuing..." $statusTextBox
+        }
 
         # STEP 1: Device Selection and Software Installation (DONE)
         Add-Status "STEP 1: Selecting Device Type and Installing Software..." $statusTextBox
@@ -366,33 +382,34 @@ function Invoke-RunAllOperations {
             Add-Status "Selected device type: $deviceType" $statusTextBox
         }
         else {
-            Add-Status "Device type selection cancelled. Exiting..." $statusTextBox
+            Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)
             return
         }
 
         # Copy software files
-        # Add-Status "Copying software files..." $statusTextBox
-        # $copyResult = Copy-SoftwareFiles -deviceType $deviceType $statusTextBox
-        # if (-not $copyResult) {
-        #     Add-Status "Error copying software files. Exiting..." $statusTextBox
-        #     return
-        # }
+        Add-Status "Copying software files..." $statusTextBox
+        $copyResult = Copy-SoftwareFiles -deviceType $deviceType $statusTextBox
+        if (-not $copyResult) {
+            Add-Status "Error copying software files. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)
+            return
+        }
 
         # Install software
-        # Add-Status "Installing software..." $statusTextBox
-        # Install-Software -deviceType $deviceType $statusTextBox
-        # Add-Status "All installation completed successfully for $deviceType !!!" $statusTextBox
+        Add-Status "Installing software..." $statusTextBox
+        Install-Software -deviceType $deviceType $statusTextBox
+        Add-Status "All installation completed successfully for $deviceType !!!" $statusTextBox
 
         # STEP 2: System Configuration and Shortcut Creation
-        # Add-Status "STEP 2: Configuring System..." $statusTextBox
-        # $progressBar.Value = 28
+        Add-Status "STEP 2: Configuring System..." $statusTextBox
+        $progressBar.Value = 28
 
-        # $configResult = Invoke-RenamebyDevice -deviceType $deviceType $statusTextBox
-        # if ($configResult) {
-        #     Add-Status "STEP 2 completed successfully !!!" $statusTextBox
-        # } else {
-        #     Add-Status "STEP 2 encountered errors. Check logs."
-        # }
+        $configResult = Invoke-RenamebyDevice -deviceType $deviceType $statusTextBox
+        if ($configResult) {
+            Add-Status "STEP 2 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
+        }
+        else {
+            Add-Status "STEP 2 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
+        }
 
         # STEP 3: System Cleanup and Optimization
         Add-Status "STEP 3: Cleaning up system and optimizing performance..." $statusTextBox
@@ -406,7 +423,7 @@ function Invoke-RunAllOperations {
             Add-Status "STEP 3 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
-        STEP 4: Windows and Office Activation
+        # STEP 4: Windows and Office Activation
         Add-Status "STEP 4: Activating Windows 10 Pro and Office 2019 Pro Plus..." $statusTextBox
         $progressBar.Value = 56
 
@@ -418,7 +435,7 @@ function Invoke-RunAllOperations {
             Add-Status "STEP 4 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
-        STEP 5: Windows Features Configuration
+        # STEP 5: Windows Features Configuration
         Add-Status "STEP 5: Configuring Windows Features..." $statusTextBox
         $progressBar.Value = 70
 
@@ -457,7 +474,7 @@ function Invoke-RunAllOperations {
         Add-Status "Computer will restart if domain join was successful." $statusTextBox
     }
     catch {
-        Add-Status "Error occurred: $_" $statusTextBox
+        Add-Status "Error occurred: $_" $statusTextBox ([System.Drawing.Color]::Red)
         [System.Windows.Forms.MessageBox]::Show(
             "An error occurred during the operations: $_",
             "Error",
@@ -473,17 +490,17 @@ function Invoke-RunAllOperations {
 }
 
 # STEP 0: WiFi AUTO-CONNECTION FUNCTION (DONE)
-function Invoke-WiFiAutoConnection {
+function Invoke-WiFiAutoConnection {    
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
     Add-Status "Checking WiFi connection..." $statusTextBox
 
     try {
-        # PhÆ°Æ¡ng phÃ¡p 1: Kiá»ƒm tra báº±ng InterfaceType (71 = Wireless80211)
+        # Phương pháp 1: Kiểm tra bằng InterfaceType (71 = Wireless80211)
         $wifiAdapter = Get-NetAdapter | Where-Object { $_.InterfaceType -eq 71 }
 
         if (-not $wifiAdapter) {
-            # PhÆ°Æ¡ng phÃ¡p 2: Kiá»ƒm tra báº±ng PhysicalMediaType
+            # Phương pháp 2: Kiểm tra bằng PhysicalMediaType
             Add-Status "Method 1 failed, trying alternative detection..." $statusTextBox
             $wifiAdapter = Get-NetAdapter | Where-Object {
                 $_.PhysicalMediaType -eq 'Native 802.11' -or
@@ -493,7 +510,7 @@ function Invoke-WiFiAutoConnection {
         }
 
         if (-not $wifiAdapter) {
-            # PhÆ°Æ¡ng phÃ¡p 3: Kiá»ƒm tra báº±ng InterfaceDescription
+            # Phương pháp 3: Kiểm tra bằng InterfaceDescription
             Add-Status "Method 2 failed, trying description-based detection..." $statusTextBox
             $wifiAdapter = Get-NetAdapter | Where-Object {
                 $_.InterfaceDescription -like "*wireless*" -or
@@ -505,7 +522,7 @@ function Invoke-WiFiAutoConnection {
         }
 
         if (-not $wifiAdapter) {
-            # PhÆ°Æ¡ng phÃ¡p 4: Kiá»ƒm tra báº±ng WMI
+            # Phương pháp 4: Kiểm tra bằng WMI
             Add-Status "Method 3 failed, trying WMI detection..."
             try {
                 $wmiWifiAdapters = Get-WmiObject -Class Win32_NetworkAdapter | Where-Object {
@@ -518,8 +535,8 @@ function Invoke-WiFiAutoConnection {
                 }
 
                 if ($wmiWifiAdapters) {
-                    Add-Status "WiFi adapter detected via WMI: $($wmiWifiAdapters[0].Name)"
-                    # Thá»­ láº¥y láº¡i báº±ng Get-NetAdapter vá»›i tÃªn tá»« WMI
+                    Add-Status "WiFi adapter detected via WMI: $($wmiWifiAdapters[0].Name)" $statusTextBox
+                    # Thử lấy lại bằng Get-NetAdapter với tên từ WMI
                     $wifiAdapter = Get-NetAdapter | Where-Object { $_.Name -eq $wmiWifiAdapters[0].NetConnectionID }
                 }
             }
@@ -529,7 +546,7 @@ function Invoke-WiFiAutoConnection {
         }
 
         if (-not $wifiAdapter) {
-            # PhÆ°Æ¡ng phÃ¡p 5: Kiá»ƒm tra service WLAN AutoConfig
+            # Phương pháp 5: Kiểm tra service WLAN AutoConfig
             Add-Status "Method 4 failed, checking WLAN service..." $statusTextBox
             try {
                 $wlanService = Get-Service -Name "WlanSvc" -ErrorAction SilentlyContinue
@@ -537,22 +554,22 @@ function Invoke-WiFiAutoConnection {
                     Add-Status "WLAN service is running, but no adapter detected through PowerShell" $statusTextBox
                     Add-Status "Attempting direct netsh approach..." $statusTextBox
 
-                    # Thá»­ sá»­ dá»¥ng netsh Ä‘á»ƒ kiá»ƒm tra interfaces
+                    # Thử sử dụng netsh để kiểm tra interfaces
                     $netshResult = netsh wlan show interfaces 2>$null
                     if ($netshResult -and $netshResult -notlike "*There is no wireless interface on the system*") {
-                        Add-Status "WiFi interface detected via netsh, proceeding with connection..."
-                        # Tiáº¿p tá»¥c vá»›i quÃ¡ trÃ¬nh káº¿t ná»‘i mÃ  khÃ´ng cáº§n PowerShell adapter object
+                        Add-Status "WiFi interface detected via netsh, proceeding with connection..." $statusTextBox
+                        # Tiếp tục với quá trình kết nối mà không cần PowerShell adapter object
                         $useNetshOnly = $true
                     }
                     else {
-                        Add-Status "No WiFi interface found via netsh either"
-                        Add-Status "No WiFi adapter found. Skipping WiFi connection..."
+                        Add-Status "No WiFi interface found via netsh either" $statusTextBox
+                        Add-Status "No WiFi adapter found. Skipping WiFi connection..." $statusTextBox
                         return $true
                     }
                 }
                 else {
-                    Add-Status "WLAN service not running. No WiFi capability detected."
-                    Add-Status "Skipping WiFi connection..."
+                    Add-Status "WLAN service not running. No WiFi capability detected." $statusTextBox
+                    Add-Status "Skipping WiFi connection..." $statusTextBox
                     return $true
                 }
             }
@@ -567,7 +584,7 @@ function Invoke-WiFiAutoConnection {
             Add-Status "WiFi adapter found: $($wifiAdapter.Name) - $($wifiAdapter.InterfaceDescription)" $statusTextBox
         }
 
-        # Kiá»ƒm tra xem Ä‘Ã£ káº¿t ná»‘i WiFi "VietUnion_5.0GHz" chÆ°a
+        # Kiểm tra xem đã kết nối WiFi "VietUnion_5.0GHz" chưa
         try {
             $currentConnection = netsh wlan show interfaces | Select-String "SSID" | Select-String "VietUnion_5.0GHz"
 
@@ -580,15 +597,15 @@ function Invoke-WiFiAutoConnection {
             Add-Status "Could not check current connection, proceeding with connection attempt..." $statusTextBox
         }
 
-        # ThÃ´ng tin WiFi
+        # Thông tin WiFi
         $SSID = "VietUnion_5.0GHz"
         $Password = "Pay00@17Years$"
         $profileFile = "$env:TEMP\VietUnion_5.0GHz_profile.xml"
 
-        # Táº¡o hex cho SSID
+        # Tạo hex cho SSID
         $SSIDHEX = ($SSID.ToCharArray() | ForEach-Object { '{0:X}' -f ([int]$_) }) -join ''
 
-        # Táº¡o XML profile cho WiFi
+        # Tạo XML profile cho WiFi
         $xmlContent = @"
                 <?xml version="1.0"?>
                 <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
@@ -623,42 +640,42 @@ function Invoke-WiFiAutoConnection {
             $xmlContent | Out-File -FilePath $profileFile -Encoding UTF8
         }
         catch {
-            Add-Status "ERROR: Could not create WiFi profile file: $_" $statusTextBox
+            Add-Status "ERROR: Could not create WiFi profile file: $_" $statusTextBox ([System.Drawing.Color]::Red)
             return $false
         }
 
-        # ThÃªm profile WiFi
+        # Thêm profile WiFi
         try {
             $addResult = Start-Process -FilePath "netsh" -ArgumentList "wlan add profile filename=`"$profileFile`"" -Wait -PassThru -WindowStyle Hidden
 
             if ($addResult.ExitCode -eq 0) {
             }
             else {
-                Add-Status "Warning: WiFi profile add returned exit code $($addResult.ExitCode)" $statusTextBox
+                Add-Status "Warning: WiFi profile add returned exit code $($addResult.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
         }
         catch {
-            Add-Status "ERROR adding WiFi profile: $_" $statusTextBox
+            Add-Status "ERROR adding WiFi profile: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
-        # Káº¿t ná»‘i WiFi
+        # Kết nối WiFi
         Add-Status "Connecting to 'VietUnion_5.0GHz' WiFi..." $statusTextBox
         try {
             $connectResult = Start-Process -FilePath "netsh" -ArgumentList "wlan connect name=`"$SSID`"" -Wait -PassThru -WindowStyle Hidden
 
             if ($connectResult.ExitCode -eq 0) {
-                # Äá»£i má»™t chÃºt Ä‘á»ƒ káº¿t ná»‘i á»•n Ä‘á»‹nh
+                # Đợi má»™t chút để kết nối ổn định
                 Add-Status "Waiting for connection to establish..." $statusTextBox
                 Start-Sleep -Seconds 5
 
-                # XÃ¡c minh káº¿t ná»‘i
+                # Xác minh kết nối
                 try {
                     $verifyConnection = netsh wlan show interfaces | Select-String "SSID" | Select-String "VietUnion_5.0GHz"
                     if ($verifyConnection) {
                     }
                     else {
-                        Add-Status "Warning: Could not verify WiFi connection to 'VietUnion_5.0GHz'" $statusTextBox
-                        # Kiá»ƒm tra xem cÃ³ káº¿t ná»‘i WiFi nÃ o khÃ´ng
+                        Add-Status "Warning: Could not verify WiFi connection to 'VietUnion_5.0GHz'" $statusTextBox ([System.Drawing.Color]::Yellow)
+                        # Kiểm tra xem có kết nối WiFi nào không
                         $anyConnection = netsh wlan show interfaces | Select-String "State" | Select-String "connected"
                         if ($anyConnection) {
                             Add-Status "Device is connected to a different WiFi network" $statusTextBox
@@ -673,11 +690,11 @@ function Invoke-WiFiAutoConnection {
                 }
             }
             else {
-                Add-Status "Warning: WiFi connection command returned exit code $($connectResult.ExitCode)" $statusTextBox
+                Add-Status "Warning: WiFi connection command returned exit code $($connectResult.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
         }
         catch {
-            Add-Status "ERROR connecting to WiFi: $_" $statusTextBox
+            Add-Status "ERROR connecting to WiFi: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         # XÃ³a file profile táº¡m
@@ -694,23 +711,23 @@ function Invoke-WiFiAutoConnection {
 
     }
     catch {
-        Add-Status "ERROR during WiFi connection: $_" $statusTextBox
+        Add-Status "ERROR during WiFi connection: $_" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 }
 
-# STEP 2:
+# STEP 2: Choose Device Type and Rename
 function Invoke-RenamebyDevice {
     param (
         [string]$deviceType,
         [System.Windows.Forms.RichTextBox]$statusTextBox
     )
     try {
-        # --- Hiá»ƒn thá»‹ tÃªn mÃ¡y tÃ­nh hiá»‡n táº¡i vÃ  Ä‘á»•i tÃªn ---
+        # Get current computer name
         $currentName = $env:COMPUTERNAME
         Add-Status "Current computer name: $currentName" $statusTextBox
 
-        # Táº¡o form hiá»ƒn thá»‹ thÃ´ng tin vÃ  nháº­p tÃªn má»›i
+        # Create rename form
         $renameForm = New-Object System.Windows.Forms.Form
         $renameForm.Text = "Computer Name Configuration"
         $renameForm.Size = New-Object System.Drawing.Size(450, 250)
@@ -720,22 +737,22 @@ function Invoke-RenamebyDevice {
         $renameForm.MaximizeBox = $false
         $renameForm.MinimizeBox = $false
 
-        # THÃŠM Xá»¬ LÃ PHÃM ESC VÃ€ ENTER
+        # 
         $renameForm.KeyPreview = $true
         $renameForm.Add_KeyDown({
                 param($sender, $e)
                 if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
-                    # ESC Ä‘á»ƒ Ä‘Ã³ng form
+                    # ESC 
                     $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
                     $renameForm.Close()
                 }
                 elseif ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) {
-                    # ENTER Ä‘á»ƒ thá»±c hiá»‡n rename
+                    # Enter 
                     $okButton.PerformClick()
                 }
             })
 
-        # Label hiá»ƒn thá»‹ tÃªn hiá»‡n táº¡i
+        # 
         $currentNameLabel = New-Object System.Windows.Forms.Label
         $currentNameLabel.Text = "Current Computer Name: $currentName"
         $currentNameLabel.Location = New-Object System.Drawing.Point(20, 20)
@@ -754,7 +771,7 @@ function Invoke-RenamebyDevice {
             $prefix = "HOL"
         }
 
-        # Label hÆ°á»›ng dáº«n nháº­p tÃªn má»›i
+        # 
         $instructionLabel = New-Object System.Windows.Forms.Label
         $instructionLabel.Text = "Enter new name (will be prefixed with $prefix):"
         $instructionLabel.Location = New-Object System.Drawing.Point(20, 60)
@@ -764,14 +781,14 @@ function Invoke-RenamebyDevice {
         $instructionLabel.BackColor = [System.Drawing.Color]::Transparent
         $renameForm.Controls.Add($instructionLabel)
 
-        # TextBox nháº­p tÃªn má»›i
+        # 
         $nameTextBox = New-Object System.Windows.Forms.RichTextBox
         $nameTextBox.Location = New-Object System.Drawing.Point(20, 90)
         $nameTextBox.Size = New-Object System.Drawing.Size(300, 25)
         $nameTextBox.Font = New-Object System.Drawing.Font("Arial", 10)
         $renameForm.Controls.Add($nameTextBox)
 
-        # THÃŠM Xá»¬ LÃ PHÃM ENTER CHO TEXTBOX
+        # 
         $nameTextBox.Add_KeyDown({
                 param($sender, $e)
                 if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) {
@@ -779,7 +796,7 @@ function Invoke-RenamebyDevice {
                 }
             })
 
-        # Label hiá»ƒn thá»‹ preview tÃªn má»›i
+        # 
         $previewLabel = New-Object System.Windows.Forms.Label
         $previewLabel.Text = "New name will be: $prefix"
         $previewLabel.Location = New-Object System.Drawing.Point(20, 125)
@@ -789,7 +806,7 @@ function Invoke-RenamebyDevice {
         $previewLabel.BackColor = [System.Drawing.Color]::Transparent
         $renameForm.Controls.Add($previewLabel)
 
-        # Cáº­p nháº­t preview khi ngÆ°á»i dÃ¹ng gÃµ
+        # 
         $nameTextBox.Add_TextChanged({
                 $newPreview = $prefix + $nameTextBox.Text.Trim()
                 $previewLabel.Text = "New name will be: $newPreview"
@@ -842,27 +859,27 @@ function Invoke-RenamebyDevice {
                     Add-Status "Renaming computer from '$currentName' to '$newName'..." $statusTextBox
                     try {
                         Rename-Computer -NewName $newName -Force -ErrorAction Stop
-                        Add-Status "Computer will be renamed to '$newName' after restart."
+                        Add-Status "Computer will be renamed to '$newName' after restart." $statusTextBox
                     }
                     catch {
-                        Add-Status "ERROR: Failed to rename computer: $_"
+                        Add-Status "ERROR: Failed to rename computer: $_" $statusTextBox ([System.Drawing.Color]::Red)
                     }
                 }
                 else {
-                    Add-Status "New name is same as current name. Skipping..."
+                    Add-Status "New name is same as current name. Skipping..." $statusTextBox
                 }
             }
             else {
-                Add-Status "No computer name entered. Skipping rename..."
+                Add-Status "No computer name entered. Skipping rename..." $statusTextBox
             }
         }
         else {
-            Add-Status "Computer rename cancelled by user."
+            Add-Status "Computer rename cancelled by user." $statusTextBox
         }
         return $true
     }
     catch {
-        Add-Status "ERROR during System Configuration: $_"
+        Add-Status "ERROR during System Configuration: $_" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 }
@@ -875,7 +892,7 @@ function Invoke-SystemCleanup {
     )
 
     try {
-        Add-Status "Starting set timezone, power options..." $statusTextBox
+        Add-Status "Starting system cleanup and optimization..." $statusTextBox
 
         # --- 1. System File Cleanup ---
         Invoke-FileCleanup $statusTextBox
@@ -883,16 +900,16 @@ function Invoke-SystemCleanup {
         # --- 2. Taskbar Customization ---
         Invoke-TaskbarCustomization $statusTextBox
 
-        # --- 4. Startup Program Management ---
+        # --- 3. Startup Program Management ---
         Invoke-StartupOptimization $statusTextBox
 
-        # --- 6. Timezone Configuration ---
+        # --- 4. Timezone Configuration ---
         Invoke-TimezoneConfiguration $statusTextBox
 
-        # --- 7. Power Options Configuration ---
+        # --- 5. Power Options Configuration ---
         Invoke-PowerOptionsConfiguration $statusTextBox
 
-        Add-Status "System cleanup and optimization completed successfully!" $statusTextBox
+        Add-Status "System cleanup and optimization completed." $statusTextBox
         return $true
 
     }
@@ -907,14 +924,14 @@ function Invoke-FileCleanup {
 
     Add-Status "Cleaning temporary files..." $statusTextBox
 
-    # Äá»‹nh nghÄ©a cÃ¡c Ä‘Æ°á»ng dáº«n cáº§n dá»n dáº¹p
+    # Temporary files
     $tempPaths = @(
         "$env:TEMP\*",
         "$env:WINDIR\Temp\*",
         "$env:USERPROFILE\AppData\Local\Temp\*"
     )
 
-    # Dá»n dáº¹p file táº¡m
+    # 
     $tempPaths | ForEach-Object {
         try {
             Remove-Item -Path $_ -Recurse -Force -ErrorAction SilentlyContinue
@@ -922,7 +939,6 @@ function Invoke-FileCleanup {
         catch {
             Add-Status "Warning: Could not clean $_" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-        Add-Status "Temporary files cleaned." $statusTextBox
     }
 
     # Dá»n dáº¹p Recycle Bin vÃ  Windows Update cache
@@ -1162,7 +1178,7 @@ function Invoke-PowerOptionsConfiguration {
         Add-Status "Power options configured to  'Do Nothing' completed successfully!" $statusTextBox
     }
     catch {
-        Add-Status "Warning: Could not configure power options: $_"
+        Add-Status "Warning: Could not configure power options: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
 
@@ -1332,7 +1348,7 @@ function Copy-SoftwareFiles {
             Add-Status "Temporary folder already exists. Skipping..." $statusTextBox
         }
 
-        # Check D: drive
+        # Check D: drive exists
         if (-not (Test-Path "D:\")) {
             Add-Status "WARNING: D drive not found. Creating mock installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
 
@@ -1371,7 +1387,7 @@ function Copy-SoftwareFiles {
             Add-Status "SetupFiles    is already copied. Skipping..." $statusTextBox
         }
 
-        # Copy Office 2019
+        # Copy Office 2019 folders
         if (-not (Test-Path "$tempDir\Office2019")) {
             $officeSource = "D:\SOFTWARE\OFFICE\Office 2019"
             if (Test-Path $officeSource) {
@@ -1438,7 +1454,7 @@ function Copy-SoftwareFiles {
         # Copy ForceScout
         $forceScoutDest = "$env:USERPROFILE\Downloads\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
         if (-not (Test-Path $forceScoutDest)) {
-            $forceScoutSource = "D:\SOFTWARE\PAYOO\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
+            $forceScoutSource = "D:\SOFTWARE\PAYOO\SC--wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
             if (Test-Path $forceScoutSource) {
                 Add-Status "Copying ForceScout file..." $statusTextBox
                 try {
@@ -1552,8 +1568,8 @@ function Copy-SoftwareFiles {
         return $true
     }
     catch {
-        Add-Status "CRITICAL ERROR in Copy-SoftwareFiles: $_"
-        Add-Status "Error details: $($_.Exception.Message)"
+        Add-Status "CRITICAL ERROR in Copy-SoftwareFiles: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Error details: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 }
@@ -1566,169 +1582,18 @@ function Install-Software {
         $setupDir = "$tempDir\Software"
         $office2019Dir = "$tempDir\Office2019"
 
-        # 1. Check and uninstall OneDrive if present - SIMPLIFIED STATUS VERSION
-        $oneDrivePaths = @(
-            "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe",
-            "$env:PROGRAMFILES\Microsoft OneDrive\OneDrive.exe",
-            "$env:PROGRAMFILES(x86)\Microsoft OneDrive\OneDrive.exe"
-        )
-
-        $oneDriveFound = $false
-        $oneDriveExecutable = $null
-
-        # TÃ¬m OneDrive executable
-        foreach ($path in $oneDrivePaths) {
-            if (Test-Path $path) {
-                $oneDriveFound = $true
-                $oneDriveExecutable = $path
-                break
+        # 1. Check and uninstall OneDrive if present
+        if (Test-OneDriveInstalled) {
+            $result = Uninstall-OneDriveComplete -statusTextBox $statusTextBox
+            
+            if ($result) {
+                Add-Status "OneDrive: Has been uninstalled!" $statusTextBox
+            } else {
+                Add-Status "OneDrive: Removal incomplete. Check Control Panel." $statusTextBox ([System.Drawing.Color]::Yellow)
             }
+        } else {
+            Add-Status "OneDrive: Not installed. Skipping..." $statusTextBox
         }
-
-        if ($oneDriveFound) {
-            Add-Status "OneDrive found. Uninstalling..." $statusTextBox
-
-            try {
-                # Force kill OneDrive processes
-                $oneDriveProcesses = @("OneDrive", "OneDriveSetup", "FileCoAuth", "OneDriveStandaloneUpdater", "OneDriveUpdaterService")
-
-                foreach ($processName in $oneDriveProcesses) {
-                    try {
-                        $processes = Get-Process -Name $processName -ErrorAction SilentlyContinue
-                        if ($processes) {
-                            foreach ($proc in $processes) {
-                                $proc.Kill()
-                                $proc.WaitForExit(5000)
-                            }
-                        }
-                    }
-                    catch {
-                        # Silent error handling
-                    }
-                }
-
-                # Stop OneDrive services
-                $services = @("OneDrive Updater Service")
-                foreach ($serviceName in $services) {
-                    try {
-                        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-                        if ($service -and $service.Status -eq 'Running') {
-                            Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
-                        }
-                    }
-                    catch {
-                        # Silent error handling
-                    }
-                }
-
-                Start-Sleep -Seconds 2
-
-                # Try uninstall with OneDriveSetup.exe
-                $uninstallSuccess = $false
-                $setupPaths = @(
-                    "$env:SYSTEMROOT\SysWOW64\OneDriveSetup.exe",
-                    "$env:SYSTEMROOT\System32\OneDriveSetup.exe"
-                )
-
-                foreach ($setupPath in $setupPaths) {
-                    if (Test-Path $setupPath) {
-                        try {
-                            $result = Start-Process -FilePath $setupPath -ArgumentList "/uninstall /allusers" -Wait -PassThru -WindowStyle Hidden
-
-                            if ($result.ExitCode -eq 0) {
-                                $uninstallSuccess = $true
-                                break
-                            }
-                        }
-                        catch {
-                            # Try next method
-                            continue
-                        }
-                    }
-                }
-
-                # Manual cleanup if uninstall failed
-                if (-not $uninstallSuccess) {
-                    # Clean registry entries
-                    $registryPaths = @(
-                        "HKCU:\Software\Microsoft\OneDrive",
-                        "HKLM:\SOFTWARE\Microsoft\OneDrive"
-                    )
-
-                    foreach ($regPath in $registryPaths) {
-                        if (Test-Path $regPath) {
-                            Remove-Item -Path $regPath -Recurse -Force -ErrorAction SilentlyContinue
-                        }
-                    }
-
-                    # Remove from startup
-                    try {
-                        Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "OneDrive" -ErrorAction SilentlyContinue
-                    }
-                    catch {
-                        # Silent error handling
-                    }
-
-                    # Clean folders
-                    $oneDriveFolders = @(
-                        "$env:LOCALAPPDATA\Microsoft\OneDrive",
-                        "$env:PROGRAMDATA\Microsoft OneDrive",
-                        "$env:USERPROFILE\OneDrive",
-                        "$env:PROGRAMFILES\Microsoft OneDrive",
-                        "$env:PROGRAMFILES(x86)\Microsoft OneDrive"
-                    )
-
-                    foreach ($folder in $oneDriveFolders) {
-                        if (Test-Path $folder) {
-                            try {
-                                takeown /f "$folder" /r /d y 2>$null | Out-Null
-                                icacls "$folder" /grant administrators:F /t 2>$null | Out-Null
-
-                                Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
-                                    try {
-                                        $_.Attributes = 'Normal'
-                                    }
-                                    catch {
-                                        # Silent error handling
-                                    }
-                                }
-
-                                Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
-                            }
-                            catch {
-                                # Silent error handling
-                            }
-                        }
-                    }
-
-                    # Remove from File Explorer navigation pane
-                    try {
-                        $regPath1 = "HKCR:\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}"
-                        if (Test-Path $regPath1) {
-                            Set-ItemProperty -Path $regPath1 -Name "System.IsPinnedToNameSpaceTree" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-                        }
-
-                        $regPath2 = "HKCR:\Wow6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}"
-                        if (Test-Path $regPath2) {
-                            Set-ItemProperty -Path $regPath2 -Name "System.IsPinnedToNameSpaceTree" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-                        }
-                    }
-                    catch {
-                        # Silent error handling
-                    }
-                }
-
-                Add-Status "OneDrive uninstalled successfully!" $statusTextBox
-
-            }
-            catch {
-                Add-Status "OneDrive uninstalled successfully!" $statusTextBox
-            }
-        }
-        else {
-            Add-Status "OneDrive:     Has Not installed. Skipping..." $statusTextBox
-        }
-
 
         # 2. Install 7-Zip - FIXED VERSION
         $sevenZipPaths = @(
@@ -1983,6 +1848,247 @@ function Install-Software {
     }
 }
 
+function Test-OneDriveInstalled {
+    # Method 1: Check via registry (most accurate)
+    $uninstallKeys = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*"
+    )
+    
+    foreach ($keyPath in $uninstallKeys) {
+        try {
+            $programs = Get-ItemProperty $keyPath -ErrorAction SilentlyContinue | Where-Object { 
+                $_.DisplayName -like "*OneDrive*" -or $_.DisplayName -like "*Microsoft OneDrive*"
+            }
+            if ($programs) {
+                return $true
+            }
+        }
+        catch {
+            # Continue checking other paths
+        }
+    }
+    
+    # Method 2: Check via file system
+    $oneDrivePaths = @(
+        "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe",
+        "$env:PROGRAMFILES\Microsoft OneDrive\OneDrive.exe",
+        "$env:PROGRAMFILES(x86)\Microsoft OneDrive\OneDrive.exe"
+    )
+    
+    foreach ($path in $oneDrivePaths) {
+        if (Test-Path $path) {
+            return $true
+        }
+    }
+    
+    # Method 3: Check via Get-Package
+    try {
+        $package = Get-Package | Where-Object { $_.Name -like "*OneDrive*" }
+        if ($package) {
+            return $true
+        }
+    }
+    catch {
+        # Package method not available
+    }
+    
+    return $false
+}
+
+function Uninstall-OneDriveComplete {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
+    
+    try {
+        # First, verify OneDrive is actually installed
+        if (-not (Test-OneDriveInstalled)) {
+            Add-Status "OneDrive: Not found in system. Skipping..." $statusTextBox
+            return $true
+        }
+        
+        Add-Status "OneDrive detected. Starting uninstallation..." $statusTextBox
+        
+        # Step 1: Kill all OneDrive processes first
+        $oneDriveProcesses = @("OneDrive", "OneDriveSetup", "FileCoAuth", "OneDriveStandaloneUpdater", "OneDriveUpdaterService")
+        
+        foreach ($processName in $oneDriveProcesses) {
+            try {
+                $processes = Get-Process -Name $processName -ErrorAction SilentlyContinue
+                if ($processes) {
+                    foreach ($proc in $processes) {
+                        $proc.Kill()
+                        Start-Sleep -Milliseconds 500
+                    }
+                }
+            }
+            catch {
+                # Silent process termination
+            }
+        }
+        
+        # Step 2: Try registry-based uninstall with verification
+        $uninstallSuccess = $false
+        $registryPaths = @(
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+            "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+            "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+        )
+        
+        foreach ($regPath in $registryPaths) {
+            if ($uninstallSuccess) { break }
+
+            try {
+                $subKeys = Get-ChildItem -Path $regPath -ErrorAction SilentlyContinue
+                
+                foreach ($key in $subKeys) {
+                    $program = Get-ItemProperty -Path $key.PSPath -ErrorAction SilentlyContinue
+                    
+                    if ($program.DisplayName -like "*OneDrive*" -and $program.UninstallString) {
+                        $uninstallString = $program.UninstallString
+                        
+                        # Try different uninstall approaches
+                        $uninstallCommands = @()
+                        
+                        # Add quiet uninstall if available
+                        if ($program.QuietUninstallString) {
+                            $uninstallCommands += $program.QuietUninstallString
+                        }
+                        
+                        # Parse regular uninstall string and add silent parameters
+                        if ($uninstallString -match '"([^"]+)"(.*)') {
+                            $exe = $matches[1]
+                            $args = $matches[2].Trim()
+                            $uninstallCommands += "`"$exe`" $args /quiet /norestart"
+                            $uninstallCommands += "`"$exe`" $args /S"
+                            $uninstallCommands += "`"$exe`" $args /silent"
+                        }
+                        
+                        # Try each uninstall command
+                        foreach ($cmd in $uninstallCommands) {
+                            try {
+                                $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$cmd`"" -Wait -PassThru -WindowStyle Hidden
+                                
+                                if ($process.ExitCode -eq 0 -or $process.ExitCode -eq 3010) {
+                                    $uninstallSuccess = $true
+                                    break
+                                }
+                                else {
+                                    Add-Status "Exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red)
+                                }
+                            }
+                            catch {
+                                Add-Status "Command failed: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+                            }
+                        }
+                        
+                        if ($uninstallSuccess) { break }
+                    }
+                }
+            }
+            catch {
+                Add-Status "Registry access error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+            }
+        }
+        
+        # Step 3: Wait and verify uninstall
+        if ($uninstallSuccess) {
+            Start-Sleep -Seconds 5
+            
+            # Check if OneDrive is still installed
+            $stillInstalled = Test-OneDriveInstalled
+            
+            if ($stillInstalled) {
+                Add-Status "OneDrive still detected after uninstall attempt" $statusTextBox ([System.Drawing.Color]::Yellow)
+                $uninstallSuccess = $false
+            }
+            else {
+                Add-Status "OneDrive has been uninstalled." $statusTextBox
+                return $true
+            }
+        }
+        
+        # Step 4: Try OneDriveSetup.exe method
+        if (-not $uninstallSuccess) {
+            $setupPaths = @(
+                "$env:SYSTEMROOT\SysWOW64\OneDriveSetup.exe",
+                "$env:SYSTEMROOT\System32\OneDriveSetup.exe",
+                "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDriveSetup.exe"
+            )
+            
+            foreach ($setupPath in $setupPaths) {
+                if (Test-Path $setupPath) {
+                    try {
+                        Add-Status "Using: $setupPath" $statusTextBox
+                        
+                        # Try multiple uninstall parameters
+                        $setupCommands = @(
+                            "/uninstall /allusers",
+                            "/uninstall",
+                            "/uninstall /quiet"
+                        )
+                        
+                        foreach ($args in $setupCommands) {
+                            $process = Start-Process -FilePath $setupPath -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
+                            
+                            if ($process.ExitCode -eq 0) {
+                                Start-Sleep -Seconds 3
+                                
+                                if (-not (Test-OneDriveInstalled)) {
+                                    Add-Status "OneDrive has been uninstalled." $statusTextBox
+                                    return $true
+                                }
+                            }
+                        }
+                    }
+                    catch {
+                        Add-Status "OneDriveSetup failed: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+                    }
+                }
+            }
+        }
+        
+        # Step 5: Final verification and cleanup
+        if (Test-OneDriveInstalled) {
+            Add-Status "OneDrive still present. Manual intervention may be required." $statusTextBox ([System.Drawing.Color]::Yellow)
+            
+            # Try to open Control Panel for manual uninstall
+            try {
+                Start-Process -FilePath "appwiz.cpl" -WindowStyle Normal
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Automatic uninstall failed.`n`nControl Panel has been opened.`nPlease manually uninstall 'Microsoft OneDrive'.",
+                    "Manual Uninstall Required",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Warning
+                )
+            }
+            catch {
+                Add-Status "Could not open Control Panel" $statusTextBox ([System.Drawing.Color]::Red)
+            }
+            
+            return $false
+        }
+        else {
+            Add-Status "OneDrive has been uninstalled." $statusTextBox
+            
+            # Clean up remaining registry entries
+            try {
+                Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "OneDrive" -ErrorAction SilentlyContinue
+            }
+            catch {
+                # Silent cleanup
+            }
+            
+            return $true
+        }
+        
+    }
+    catch {
+        Add-Status "Critical error in OneDrive removal: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+        return $false
+    }
+}
+
 function Show-InstallSoftwareDialog {
     Hide-MainMenu
     # Create device type selection form
@@ -1996,7 +2102,7 @@ function Show-InstallSoftwareDialog {
     $deviceTypeForm.MinimizeBox = $false
 
     # Apply gradient background using global function
-    Add-GradientBackground -form $deviceTypeForm -topColor ([System.Drawing.Color]::FromArgb(0, 0, 0)) -bottomColor ([System.Drawing.Color]::FromArgb(0, 40, 0))
+    Add-GradientBackground -form $deviceTypeForm
 
     # Title label
     $titleLabel = New-Object System.Windows.Forms.Label
@@ -2087,7 +2193,7 @@ function Show-InstallSoftwareDialog {
     $deviceTypeForm.ShowDialog()
 }
 
-# [3] Power Options Helper Functions
+# [3] Power Options Functions
 function Invoke-SetTimezonePower {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
 
@@ -2207,7 +2313,7 @@ function Invoke-PowerOptionsDialog {
     $powerForm.MinimizeBox = $false
 
     # Apply gradient background using global function
-    Add-GradientBackground -form $powerForm -topColor ([System.Drawing.Color]::FromArgb(0, 0, 0)) -bottomColor ([System.Drawing.Color]::FromArgb(0, 40, 0))
+    Add-GradientBackground -form $powerForm
 
     # Title label with animation
     $titleLabel = New-Object System.Windows.Forms.Label
@@ -2215,23 +2321,12 @@ function Invoke-PowerOptionsDialog {
     $titleLabel.Location = New-Object System.Drawing.Point(145, 20)
     $titleLabel.Size = New-Object System.Drawing.Size(200, 40)
     $titleLabel.ForeColor = [System.Drawing.Color]::Lime
-    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
+    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $titleLabel.Padding = New-Object System.Windows.Forms.Padding(5)
 
-    # Add animation to the title
-    $titleTimer = New-Object System.Windows.Forms.Timer
-    $titleTimer.Interval = 500
-    $titleTimer.Add_Tick({
-            if ($titleLabel.ForeColor -eq [System.Drawing.Color]::Lime) {
-                $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 220, 0)
-            }
-            else {
-                $titleLabel.ForeColor = [System.Drawing.Color]::Lime
-            }
-        })
-    $titleTimer.Start($titleLabel)
+    Add-TitleAnimation -label $titleLabel
 
     $powerForm.Controls.Add($titleLabel)
 
@@ -2270,8 +2365,6 @@ function Invoke-PowerOptionsDialog {
 
     # Cleanup timer when form is closed
     $powerForm.Add_FormClosed({
-            $titleTimer.Stop()
-            $titleTimer.Dispose()
             Show-MainMenu
         })
 
@@ -2311,7 +2404,6 @@ function Invoke-VolumeManagementDialog {
     $volumeForm.MaximizeBox = $false
     $volumeForm.MinimizeBox = $false
 
-    # Apply gradient background using global function
     Add-GradientBackground -form $volumeForm
 
     # Title label with animation
@@ -2325,18 +2417,7 @@ function Invoke-VolumeManagementDialog {
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $titleLabel.Padding = New-Object System.Windows.Forms.Padding(5)
 
-    # Add animation to the title
-    $titleTimer = New-Object System.Windows.Forms.Timer
-    $titleTimer.Interval = 500
-    $titleTimer.Add_Tick({
-            if ($titleLabel.ForeColor -eq [System.Drawing.Color]::Lime) {
-                $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 220, 0)
-            }
-            else {
-                $titleLabel.ForeColor = [System.Drawing.Color]::Lime
-            }
-        })
-    $titleTimer.Start()
+    Add-TitleAnimation -titleLabel $titleLabel
 
     $volumeForm.Controls.Add($titleLabel)
 
@@ -2418,35 +2499,20 @@ function Invoke-VolumeManagementDialog {
                             if ([string]::IsNullOrEmpty($currentSource)) {
                                 # Case 1: Source trống -> fill source (KHÔNG cho phép C)
                                 if ($driveLetter -eq "C" -or $driveLetter -eq "c") {
-                                    Add-Status "❌ Không thể chọn ổ C làm Source Drive! Hãy chọn ổ khác." $statusTextBox ([System.Drawing.Color]::Red)
-                                    Add-Status "💡 Gợi ý: Chọn ổ C làm Target Drive để mở rộng ổ C" $statusTextBox ([System.Drawing.Color]::Cyan)
                                     return
                                 }
                                 $script:extendSourceDriveTextBox.Text = $driveLetter
-                                Add-Status "✅ Đã chọn drive $driveLetter làm Source Drive" $statusTextBox ([System.Drawing.Color]::Green)
                             }
                             elseif ($driveLetter -eq $currentSource) {
                                 # Case 2: Click vào drive đang là source -> clear target để user có thể chọn lại
                                 $script:extendTargetDriveTextBox.Text = ""
-                                Add-Status "🔄 Đã xóa Target Drive. Hãy chọn drive khác làm Target." $statusTextBox ([System.Drawing.Color]::Yellow)
                             }
                             elseif ([string]::IsNullOrEmpty($currentTarget) -or $driveLetter -ne $currentTarget) {
                                 # Case 3: Target trống hoặc chọn drive khác -> fill/update target (CHO PHÉP C)
                                 $script:extendTargetDriveTextBox.Text = $driveLetter
-                                if ($driveLetter -eq "C") {
-                                    Add-Status "Đã chọn ổ C làm Target Drive - sẽ mở rộng ổ C" $statusTextBox
-                                    Add-Status "Ổ $currentSource sẽ bị xóa để mở rộng ổ C" $statusTextBox
-                                } else {
-                                    Add-Status "Đã chọn drive $driveLetter làm Target Drive" $statusTextBox
-                                }
                             }
                             else {
-                                # Case 4: Click vào drive đang là target
-                                if ($driveLetter -eq "C") {
-                                    Add-Status "Ổ C đã được chọn làm Target Drive để mở rộng" $statusTextBox
-                                } else {
-                                    Add-Status "Drive $driveLetter đã được chọn làm Target Drive" $statusTextBox
-                                }
+                                return
                             }
                         }
                     }
@@ -2630,7 +2696,6 @@ assign letter=$newLetter
 
                     # Update drive list
                     $driveCount = Update-DriveList
-                    Add-Status "Drive list updated. Found $driveCount drives." $statusTextBox
 
                     # Clear textboxes
                     if ($script:oldLetterTextBox) {
@@ -2789,7 +2854,7 @@ assign letter=$newLetter
     $volumeForm.ShowDialog()
 }
 
-# [4.2] Shrink Volume Function
+# [4.2] Shrink Volume Functions
 function New-ShrinkVolumeTitle {
     param([System.Windows.Forms.Panel]$contentPanel)
 
@@ -3262,7 +3327,7 @@ function New-ShrinkVolumeActionButton {
     $contentPanel.Controls.Add($shrinkButton)
 }
 
-# [4.3] Rename Volume Function
+# [4.3] Rename Volume Functions
 function New-RenameVolumeTitle {
     param([System.Windows.Forms.Panel]$parentPanel)
     $titleLabel = New-Object System.Windows.Forms.Label
@@ -3358,7 +3423,7 @@ function New-RenameActionButton {
     $groupBox.Controls.Add($renameButton)
 }
 
-# [4.4] Extend Volume Function
+# [4.4] Extend Volume Functions
 function New-ExtendVolumeTitle {
     param([System.Windows.Forms.Panel]$parentPanel)
 
@@ -3411,12 +3476,6 @@ function New-ExtendVolumeGroupBox {
             $currentText = $this.Text.ToUpper()
             if ($currentText -eq "C") {
                 $this.Text = ""
-                Add-Status "❌ Không thể nhập ổ C làm Source Drive!" $statusTextBox ([System.Drawing.Color]::Red)
-                Add-Status "💡 Hãy nhập ổ C vào Target Drive để mở rộng ổ C" $statusTextBox ([System.Drawing.Color]::Cyan)
-            }
-            # Kiểm tra trùng với target
-            if ($script:extendTargetDriveTextBox -and $currentText -eq $script:extendTargetDriveTextBox.Text.Trim()) {
-                Add-Status "⚠️ Source và Target không thể trùng nhau!" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
         })
     $extendGroupBox.Controls.Add($script:extendSourceDriveTextBox)
@@ -3898,12 +3957,11 @@ function Invoke-ActivateOffice2019 {
             }
         }
         catch {
-            Add-Status "Could not verify final activation status: $_" $statusTextBox
+            Add-Status "Could not verify final activation status: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
         }
     }
     catch {
         Add-Status "CRITICAL ERROR in Office activation: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        Add-Status "Error details: $($_.Exception.Message)" $statusTextBox
     }
 }
 
@@ -3963,7 +4021,7 @@ function Invoke-ActivationDialog {
     $activateForm.MinimizeBox = $false
 
     # Apply gradient background using global function
-    Add-GradientBackground -form $activateForm -topColor ([System.Drawing.Color]::FromArgb(0, 0, 0)) -bottomColor ([System.Drawing.Color]::FromArgb(0, 50, 0))
+    Add-GradientBackground -form $activateForm
 
     # Title label
     $titleLabel = New-Object System.Windows.Forms.Label
@@ -3977,17 +4035,7 @@ function Invoke-ActivationDialog {
     $activateForm.Controls.Add($titleLabel)
 
     # Add animation to the title
-    $titleTimer = New-Object System.Windows.Forms.Timer
-    $titleTimer.Interval = 500
-    $titleTimer.Add_Tick({
-            if ($titleLabel.ForeColor -eq [System.Drawing.Color]::Lime) {
-                $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 200, 0)
-            }
-            else {
-                $titleLabel.ForeColor = [System.Drawing.Color]::Lime
-            }
-        })
-    $titleTimer.Start()
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Status text box
     $statusTextBox = New-Object System.Windows.Forms.RichTextBox
@@ -4023,7 +4071,6 @@ function Invoke-ActivationDialog {
 
     # When the form is closed, show the main menu again
     $activateForm.Add_FormClosed({
-            $titleTimer.Stop()
             Show-MainMenu
         })
 
@@ -4064,7 +4111,7 @@ function Invoke-FeaturesDialog {
     $featuresForm.MaximizeBox = $false
     $featuresForm.MinimizeBox = $false
 
-    Add-GradientBackground -form $featuresForm
+    Add-GradientBackground -form $featuresForm -topColor ([System.Drawing.Color]::FromArgb(0, 0, 0)) -bottomColor ([System.Drawing.Color]::FromArgb(0, 40, 0))
 
     # Title label
     $titleLabel = New-Object System.Windows.Forms.Label
@@ -4076,6 +4123,9 @@ function Invoke-FeaturesDialog {
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $featuresForm.Controls.Add($titleLabel)
+
+    # Add animation to the title
+    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
 
     # Status textbox
     $statusTextBox = New-Object System.Windows.Forms.RichTextBox
@@ -4174,7 +4224,7 @@ function Invoke-FeaturesDialog {
 
 function Invoke-EnableWindowsFeatures {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-    # Danh sÃ¡ch cÃ¡c features cáº§n enable
+    # Danh sách các features cần enable
     $featuresToEnable = @(
         @{
             Name        = "NetFx3"
@@ -4317,18 +4367,20 @@ function Invoke-RenameDialog {
     $renameForm.MinimizeBox = $false
 
     # Apply gradient background using global function
-    Add-GradientBackground -form $renameForm -topColor ([System.Drawing.Color]::FromArgb(0, 0, 0)) -bottomColor ([System.Drawing.Color]::FromArgb(0, 50, 0))
+    Add-GradientBackground -form $renameForm
 
     # Create title label
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "RENAME DEVICE"
-    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
+    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
     $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 255, 0)
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.Size = New-Object System.Drawing.Size(470, 40)
     $titleLabel.Location = New-Object System.Drawing.Point(0, 20)
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $renameForm.Controls.Add($titleLabel)
+
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Get current computer name
     $currentName = $env:COMPUTERNAME
@@ -4459,71 +4511,72 @@ function Invoke-RenameDialog {
     $renameButton.Location = New-Object System.Drawing.Point(30, 240)
     $renameButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $renameButton.Add_Click({
-        $newName = $newNameTextBox.Text.Trim()
+            $newName = $newNameTextBox.Text.Trim()
         
-        # Disable button để tránh click nhiều lần
-        $renameButton.Enabled = $false
+            # Disable button để tránh click nhiều lần
+            $renameButton.Enabled = $false
         
-        # Clear status trước khi bắt đầu
-        $statusTextBox.Clear()
+            # Clear status trước khi bắt đầu
+            $statusTextBox.Clear()
         
-        # Validation cơ bản
-        if ([string]::IsNullOrWhiteSpace($newName)) {
-            Add-Status "Lỗi: Tên máy tính không được để trống!" $statusTextBox ([System.Drawing.Color]::Red)
-            $renameButton.Enabled = $true
-            return
-        }
+            # Validation cơ bản
+            if ([string]::IsNullOrWhiteSpace($newName)) {
+                Add-Status "Error: Please enter a new device name!" $statusTextBox ([System.Drawing.Color]::Red)
+                $renameButton.Enabled = $true
+                return
+            }
         
-        # Lấy tên máy hiện tại
-        $currentName = $env:COMPUTERNAME
+            # Lấy tên máy hiện tại
+            $currentName = $env:COMPUTERNAME
         
-        if ($newName -eq $currentName) {
-            Add-Status "Tên mới giống tên hiện tại. Không cần đổi tên." $statusTextBox ([System.Drawing.Color]::Yellow)
-            $renameButton.Enabled = $true
-            return
-        }
+            if ($newName -eq $currentName) {
+                Add-Status "Warning: New name is the same as the current name. No action taken." $statusTextBox ([System.Drawing.Color]::Yellow)
+                $renameButton.Enabled = $true
+                return
+            }
         
-        # Xác nhận với user
-        $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-            "Bạn có chắc muốn đổi tên máy tính từ '$currentName' thành '$newName'?`n`nMáy tính sẽ cần khởi động lại để áp dụng thay đổi.",
-            "Xác nhận đổi tên máy tính",
-            [System.Windows.Forms.MessageBoxButtons]::YesNo,
-            [System.Windows.Forms.MessageBoxIcon]::Question
-        )
+            # Xác nhận với user
+            $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+                "Are you sure you want to rename this device from '$currentName' to '$newName'?`n`nThis operation requires a restart.",
+                "Confirm Rename",
+                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                [System.Windows.Forms.MessageBoxIcon]::Question
+            )
         
-        if ($confirmResult -eq [System.Windows.Forms.DialogResult]::Yes) {
-            Add-Status "Đang đổi tên máy tính từ '$currentName' thành '$newName'..." $statusTextBox
+            if ($confirmResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+                Add-Status "Renaming device from '$currentName' to '$newName'..." $statusTextBox
             
-            try {
-                # Sử dụng Rename-Computer trực tiếp
-                Rename-Computer -NewName $newName -Force -ErrorAction Stop
-                Add-Status "Thành công! Máy tính sẽ được đổi tên thành '$newName' sau khi khởi động lại." $statusTextBox ([System.Drawing.Color]::Green)
+                try {
+                    # Sử dụng Rename-Computer trực tiếp
+                    Rename-Computer -NewName $newName -Force -ErrorAction Stop
+                    Add-Status "Device rename completed successfully!" $statusTextBox
+                    Add-Status "Please restart your device for changes to take effect." $statusTextBox
                 
-                # Hỏi user có muốn restart ngay không
-                $restartResult = [System.Windows.Forms.MessageBox]::Show(
-                    "Đổi tên thành công! Bạn có muốn khởi động lại máy ngay bây giờ?",
-                    "Khởi động lại",
-                    [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                    [System.Windows.Forms.MessageBoxIcon]::Question
-                )
+                    # Hỏi user có muốn restart ngay không
+                    $restartResult = [System.Windows.Forms.MessageBox]::Show(
+                        "Do you want to restart your device now?",
+                        "Restart Confirmation",
+                        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                        [System.Windows.Forms.MessageBoxIcon]::Question
+                    )
                 
-                if ($restartResult -eq [System.Windows.Forms.DialogResult]::Yes) {
-                    Add-Status "Đang khởi động lại máy tính..." $statusTextBox
-                    Start-Sleep -Seconds 2
-                    Restart-Computer -Force
+                    if ($restartResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+                        Add-Status "Restarting device..." $statusTextBox
+                        Start-Sleep -Seconds 2
+                        Restart-Computer -Force
+                    }
+                }
+                catch {
+                    Add-Status "Error renaming device: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             }
-            catch {
-                Add-Status "LỖI: Không thể đổi tên máy tính: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+            else {
+                Add-Status "Rename operation cancelled by user." $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-        }
-        else {
-            Add-Status "Đã hủy việc đổi tên máy tính." $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
         
-        # Re-enable button
-        $renameButton.Enabled = $true
-    })
+            # Re-enable button
+            $renameButton.Enabled = $true
+        })
     $renameForm.Controls.Add($renameButton)
 
     # Cancel button
@@ -4552,6 +4605,9 @@ function Show-SetPasswordForm {
         [System.Windows.Forms.RichTextBox]$statusTextBox
     )
 
+    # Hide main menu
+    Hide-MainMenu
+
     # Set Password Form
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "Password"
@@ -4567,13 +4623,15 @@ function Show-SetPasswordForm {
     # Title
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "PASSWORD"
-    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
+    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
     $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 255, 0)
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $titleLabel.Size = New-Object System.Drawing.Size(400, 40)
     $titleLabel.Location = New-Object System.Drawing.Point(0, 20)
     $form.Controls.Add($titleLabel)
+
+    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
 
     # User label
     $userLabel = New-Object System.Windows.Forms.Label
@@ -4719,6 +4777,7 @@ function Show-SetPasswordForm {
     $cancelButton.Add_Click({
             $dialogResult.Action = "cancel"
             $form.Close()
+            Show-MainMenu
         })
 
     # Show the form
@@ -4768,8 +4827,8 @@ function Invoke-SetPasswordDialog {
         [bool]$showMenuAfter = $true
     )
 
-    Hide-MainMenu
     $result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox 
+    Hide-MainMenu
 
     if ($result.Action -eq "set") {
         $success = Set-UserPassword -user $currentUser -password $result.Password
@@ -4797,7 +4856,7 @@ function Invoke-SetPasswordDialog {
     if ($showMenuAfter) { Show-MainMenu }
 }
 
-# [9] Domain
+# [9] Domain Management Functions
 $script:DomainConfig = @{
     FormWidth         = 500
     FormHeight        = 450
@@ -5144,11 +5203,13 @@ function Show-DomainManagementForm {
     Add-GradientBackground -form $joinForm
 
     # Create title label
-    $titleLabel = New-DomainManagementLabel -Text "DOMAIN MANAGEMENT" -X 10 -Y 20 -Width 480 -Height 40 -FontSize 14 -FontStyle ([System.Drawing.FontStyle]::Bold)
+    $titleLabel = New-DomainManagementLabel -Text "DOMAIN MANAGEMENT" -X 10 -Y 20 -Width 480 -Height 40 -FontSize 16 -FontStyle ([System.Drawing.FontStyle]::Bold)
     $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(0, 255, 0)
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $joinForm.Controls.Add($titleLabel)
+
+    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
 
     # Current computer name label 
     $boldFont = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
@@ -5292,7 +5353,7 @@ function Show-DomainManagementForm {
     $joinForm.ShowDialog()
 }
 
-# T
+# Các nút menu
 $menuButtons = @(
     @{text = '[1] Run All'; action = { Invoke-RunAllOperations -mainForm $script:form } },
     @{text = '[6] Features'; action = { Invoke-FeaturesDialog } },
@@ -5385,5 +5446,5 @@ $script:form.Add_KeyDown({
 # Enable key events
 $script:form.KeyPreview = $true
 
-# Báº¯t Ä‘áº§u chÆ°Æ¡ng trÃ¬nh
+# Show the form
 $script:form.ShowDialog()
