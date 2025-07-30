@@ -39,7 +39,25 @@ function Show-MainMenu {
     $script:form.Show()
 }
 
-# 
+# GLOBAL ESC TO CLOSE FORM
+function Add-EscapeHandler {
+    param(
+        [System.Windows.Forms.Form]$form
+    )
+    
+    # Add KeyDown event handler for Esc key
+    $form.Add_KeyDown({
+        param($sender, $e)
+        if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
+            $form.Close()
+        }
+    })
+
+    # Enable key events
+    $form.KeyPreview = $true
+}
+
+# Dynamic Button 
 function New-DynamicButton {
     param (
         [string]$text,
@@ -158,7 +176,7 @@ $titleLabel.BackColor = [System.Drawing.Color]::Transparent
 $titleLabel.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
 $script:form.Controls.Add($titleLabel)
 
-# Global function to add title animation - IMPROVED
+# Global function to add title animation
 function Add-TitleAnimation {
     param(
         [System.Windows.Forms.Label]$titleLabel,
@@ -322,7 +340,7 @@ function Invoke-RunAllOperations {
             Add-Status "WiFi connection failed, but continuing..." $statusTextBox
         }
 
-        # STEP 1: Device Selection and Software Installation (DONE)
+        # STEP 1: Device Selection and Software Installation
         Add-Status "STEP 1: Selecting Device Type and Installing Software..." $statusTextBox
         $progressBar.Value = 14
 
@@ -489,7 +507,7 @@ function Invoke-RunAllOperations {
     }
 }
 
-# STEP 0: WiFi AUTO-CONNECTION FUNCTION (DONE)
+# STEP 0: WiFi AUTO-CONNECTION FUNCTION
 function Invoke-WiFiAutoConnection {    
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
@@ -2173,16 +2191,8 @@ function Show-InstallSoftwareDialog {
     }
     $deviceTypeForm.Controls.Add($btnLaptop)
 
-    # Add KeyDown event handler for Esc key
-    $deviceTypeForm.Add_KeyDown({
-            param($sender, $e)
-            if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
-                $deviceTypeForm.Close()
-            }
-        })
-
-    # Enable key events
-    $deviceTypeForm.KeyPreview = $true
+    # Add escape handler to close the form
+    Add-EscapeHandler -form $deviceTypeForm
 
     # When form closes, show main menu
     $deviceTypeForm.Add_FormClosed({
@@ -2362,6 +2372,17 @@ function Invoke-PowerOptionsDialog {
         Invoke-SetTimezonePower -statusTextBox $statusTextBox
     }
     $powerForm.Controls.Add($btnTimeAndPower)
+
+    # Press ESC to close form
+    $powerForm.Add_KeyDown({
+            param($sender, $e)
+            if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
+                $powerForm.Close()
+            }
+        })
+
+    # Enable key events
+    $powerForm.KeyPreview = $true
 
     # Cleanup timer when form is closed
     $powerForm.Add_FormClosed({
@@ -4069,6 +4090,8 @@ function Invoke-ActivationDialog {
     }
     $activateForm.Controls.Add($btnWin10Home)
 
+    Add-EscapeHandler -form $activateForm 
+
     # When the form is closed, show the main menu again
     $activateForm.Add_FormClosed({
             Show-MainMenu
@@ -4201,15 +4224,6 @@ function Invoke-FeaturesDialog {
         })
     $featuresForm.Controls.Add($closeButton)
 
-    # Add KeyDown event handler for Esc key
-    $featuresForm.Add_KeyDown({
-            param($sender, $e)
-            if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
-                $featuresForm.Close()
-            }
-        })
-
-    # Enable key events
     $featuresForm.AcceptButton = $startButton
     $featuresForm.CancelButton = $closeButton
 
@@ -4673,7 +4687,7 @@ function Show-SetPasswordForm {
     $passwordTextBox.Location = New-Object System.Drawing.Point(150, 105)
     $passwordTextBox.BackColor = [System.Drawing.Color]::Black
     $passwordTextBox.ForeColor = [System.Drawing.Color]::Lime
-    $passwordTextBox.UseSystemPasswordChar = $true # Mặc định hiển thị password
+    $passwordTextBox.UseSystemPasswordChar = $false
     $form.Controls.Add($passwordTextBox)
 
     # Show Password checkbox (default checked)
@@ -4777,9 +4791,12 @@ function Show-SetPasswordForm {
     $cancelButton.Add_Click({
             $dialogResult.Action = "cancel"
             $form.Close()
-            Show-MainMenu
         })
 
+    $form.Add_FormClosed({
+        Show-MainMenu
+    })
+    
     # Show the form
     $form.ShowDialog()
     return $dialogResult
@@ -4824,11 +4841,10 @@ function Invoke-SetPasswordDialog {
     param(
         [string]$currentUser,
         [System.Windows.Forms.RichTextBox]$statusTextBox,
-        [bool]$showMenuAfter = $true
+        [bool]$showMenuAfter = $false
     )
 
     $result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox 
-    Hide-MainMenu
 
     if ($result.Action -eq "set") {
         $success = Set-UserPassword -user $currentUser -password $result.Password
@@ -4853,7 +4869,9 @@ function Invoke-SetPasswordDialog {
             [System.Windows.Forms.MessageBox]::Show("Error removing password. This operation may require administrative privileges.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
         }
     }
-    if ($showMenuAfter) { Show-MainMenu }
+    if ($showMenuAfter -and -not $script:form.Visible) { 
+        Show-MainMenu 
+    }
 }
 
 # [9] Domain Management Functions
@@ -5383,9 +5401,6 @@ for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
     else {
         $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action
     }
-    # if ($menuButtons[$i].text -eq '[3] Power' -or $menuButtons[$i].text -eq '[2] Software' -or $menuButtons[$i].text -eq '[5] Activate' -or $menuButtons[$i].text -eq '[6] Features') {
-    #     $btnL.Visible = $false
-    # }
     $btnL.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $script:form.Controls.Add($btnL)
     $buttonControls += $btnL
@@ -5398,9 +5413,6 @@ for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
             $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action
         }
         $btnR.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
-        # if ($menuButtons[$i + 1].text -eq '[6] Features' -or $menuButtons[$i + 1].text -eq '[7] Rename' -or $menuButtons[$i + 1].text -eq '[8] Password' -or $menuButtons[$i + 1].text -eq '[9] Domain') {
-        #     $btnR.Visible = $false
-        # }
         $script:form.Controls.Add($btnR)
         $buttonControls += $btnR
     }
