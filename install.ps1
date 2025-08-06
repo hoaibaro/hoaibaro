@@ -327,17 +327,31 @@ function Invoke-RunAllOperations {
     [System.Windows.Forms.Application]::DoEvents()
 
     try {
-        # STEP 0: WiFi AUTO-CONNECTION
+        # STEP 0: WiFi Connection and Windows Update Check
         Add-Status "STEP 0: Connecting to WiFi network..." $statusTextBox
-
         $progressBar.Value = 5
 
         $wifiResult = Invoke-WiFiAutoConnection $statusTextBox
         if ($wifiResult) {
             Add-Status "WiFi connection completed!" $statusTextBox
+            
+            # STEP 0.5: Start Windows Updates in background
+            Add-Status "STEP 0.5: Starting Windows Updates (Background)..." $statusTextBox
+            $progressBar.Value = 8
+            
+            $updateResult = Invoke-WindowsUpdateCheck $statusTextBox
+            if ($updateResult) {
+                Add-Status "Windows Update process started successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+                Add-Status "Updates will continue in background..." $statusTextBox ([System.Drawing.Color]::Cyan)
+            }
+            else {
+                Add-Status "Windows Update start failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+            
+            Add-Status "STEP 0 completed - continuing with other operations..." $statusTextBox ([System.Drawing.Color]::Cyan)
         }
         else {
-            Add-Status "WiFi connection failed, but continuing..." $statusTextBox
+            Add-Status "WiFi connection failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
         # STEP 1: Device Selection and Software Installation
@@ -414,11 +428,14 @@ function Invoke-RunAllOperations {
 
         # Install software
         Add-Status "Installing software..." $statusTextBox
-        Install-Software -deviceType $deviceType $statusTextBox
-        Add-Status "All installation completed successfully for $deviceType !!!" $statusTextBox
+        $installResult = Install-Software -deviceType $deviceType $statusTextBox
+        if (-not $installResult) {
+            Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        Add-Status "STEP 1 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
 
-        # STEP 2: System Configuration and Shortcut Creation
-        Add-Status "STEP 2: Configuring System..." $statusTextBox
+        # STEP 2: Rename Device
+        Add-Status "STEP 2: Rename Device ..." $statusTextBox
         $progressBar.Value = 28
 
         $configResult = Invoke-RenamebyDevice -deviceType $deviceType $statusTextBox
@@ -429,8 +446,8 @@ function Invoke-RunAllOperations {
             Add-Status "STEP 2 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
-        # STEP 3: System Cleanup and Optimization
-        Add-Status "STEP 3: Cleaning up system and optimizing performance..." $statusTextBox
+        # STEP 3: Power Options
+        Add-Status "STEP 3: Configuring Power Options and Timezone..." $statusTextBox
         $progressBar.Value = 42
 
         $cleanupResult = Invoke-SystemCleanup -deviceType $deviceType -statusTextBox $statusTextBox
@@ -507,229 +524,327 @@ function Invoke-RunAllOperations {
     }
 }
 
-# STEP 0: WiFi AUTO-CONNECTION FUNCTION
 function Invoke-WiFiAutoConnection {    
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-
-    Add-Status "Checking WiFi connection..." $statusTextBox
-
     try {
-        # Phương pháp 1: Kiểm tra bằng InterfaceType (71 = Wireless80211)
-        $wifiAdapter = Get-NetAdapter | Where-Object { $_.InterfaceType -eq 71 }
-
-        if (-not $wifiAdapter) {
-            # Phương pháp 2: Kiểm tra bằng PhysicalMediaType
-            Add-Status "Method 1 failed, trying alternative detection..." $statusTextBox
-            $wifiAdapter = Get-NetAdapter | Where-Object {
-                $_.PhysicalMediaType -eq 'Native 802.11' -or
-                $_.PhysicalMediaType -eq 'Wireless LAN' -or
-                $_.PhysicalMediaType -eq 'Wireless WAN'
-            }
-        }
-
-        if (-not $wifiAdapter) {
-            # Phương pháp 3: Kiểm tra bằng InterfaceDescription
-            Add-Status "Method 2 failed, trying description-based detection..." $statusTextBox
-            $wifiAdapter = Get-NetAdapter | Where-Object {
-                $_.InterfaceDescription -like "*wireless*" -or
-                $_.InterfaceDescription -like "*wifi*" -or
-                $_.InterfaceDescription -like "*802.11*" -or
-                $_.InterfaceDescription -like "*Wi-Fi*" -or
-                $_.InterfaceDescription -like "*WLAN*"
-            }
-        }
-
-        if (-not $wifiAdapter) {
-            # Phương pháp 4: Kiểm tra bằng WMI
-            Add-Status "Method 3 failed, trying WMI detection..." $statusTextBox
-            try {
-                $wmiWifiAdapters = Get-WmiObject -Class Win32_NetworkAdapter | Where-Object {
-                    $_.AdapterType -like "*802.11*" -or
-                    $_.Name -like "*wireless*" -or
-                    $_.Name -like "*wifi*" -or
-                    $_.Name -like "*Wi-Fi*" -or
-                    $_.Name -like "*WLAN*" -or
-                    $_.Description -like "*wireless*"
-                }
-
-                if ($wmiWifiAdapters) {
-                    Add-Status "WiFi adapter detected via WMI: $($wmiWifiAdapters[0].Name)" $statusTextBox
-                    # Thử lấy lại bằng Get-NetAdapter với tên từ WMI
-                    $wifiAdapter = Get-NetAdapter | Where-Object { $_.Name -eq $wmiWifiAdapters[0].NetConnectionID }
-                }
-            }
-            catch {
-                Add-Status "WMI detection failed: $_" $statusTextBox
-            }
-        }
-
-        if (-not $wifiAdapter) {
-            # Phương pháp 5: Kiểm tra service WLAN AutoConfig
-            Add-Status "Method 4 failed, checking WLAN service..." $statusTextBox
-            try {
-                $wlanService = Get-Service -Name "WlanSvc" -ErrorAction SilentlyContinue
-                if ($wlanService -and $wlanService.Status -eq "Running") {
-                    Add-Status "WLAN service is running, but no adapter detected through PowerShell" $statusTextBox
-                    Add-Status "Attempting direct netsh approach..." $statusTextBox
-
-                    # Thử sử dụng netsh để kiểm tra interfaces
-                    $netshResult = netsh wlan show interfaces 2>$null
-                    if ($netshResult -and $netshResult -notlike "*There is no wireless interface on the system*") {
-                        Add-Status "WiFi interface detected via netsh, proceeding with connection..." $statusTextBox
-                        # Tiếp tục với quá trình kết nối mà không cần PowerShell adapter object
-                        $useNetshOnly = $true
-                    }
-                    else {
-                        Add-Status "No WiFi interface found via netsh either" $statusTextBox
-                        Add-Status "No WiFi adapter found. Skipping WiFi connection..." $statusTextBox
-                        return $true
-                    }
-                }
-                else {
-                    Add-Status "WLAN service not running. No WiFi capability detected." $statusTextBox
-                    Add-Status "Skipping WiFi connection..." $statusTextBox
-                    return $true
-                }
-            }
-            catch {
-                Add-Status "Service check failed: $_" $statusTextBox
-                Add-Status "No WiFi adapter found. Skipping WiFi connection..." $statusTextBox
-                return $true
-            }
-        }
-
-        if ($wifiAdapter -and -not $useNetshOnly) {
-            Add-Status "WiFi adapter found: $($wifiAdapter.Name) - $($wifiAdapter.InterfaceDescription)" $statusTextBox
-        }
-
-        # Kiểm tra xem đã kết nối WiFi "VietUnion_5.0GHz" chưa
+        # Check WLAN service
+        Add-Status "Checking WiFi capability..." $statusTextBox
         try {
-            $currentConnection = netsh wlan show interfaces | Select-String "SSID" | Select-String "VietUnion_5.0GHz"
-
-            if ($currentConnection) {
-                Add-Status "Already connected to 'VietUnion_5.0GHz' WiFi. Skipping..." $statusTextBox
+            $wlanService = Get-Service -Name "WlanSvc" -ErrorAction SilentlyContinue
+            if (-not $wlanService) {
+                Add-Status "No WiFi capability detected - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Yellow)
                 return $true
+            }
+            
+            if ($wlanService.Status -ne "Running") {
+                Add-Status "Starting WiFi service..." $statusTextBox
+                Start-Service -Name "WlanSvc" -ErrorAction Stop
+                Start-Sleep -Seconds 3
             }
         }
         catch {
-            Add-Status "Could not check current connection, proceeding with connection attempt..." $statusTextBox
-        }
-
-        # Thông tin WiFi
-        $SSID = "VietUnion_5.0GHz"
-        $Password = "Pay00@17Years$"
-        $profileFile = "$env:TEMP\VietUnion_5.0GHz_profile.xml"
-
-        # Tạo hex cho SSID
-        $SSIDHEX = ($SSID.ToCharArray() | ForEach-Object { '{0:X}' -f ([int]$_) }) -join ''
-
-        # Tạo XML profile cho WiFi
-        $xmlContent = @"
-                <?xml version="1.0"?>
-                <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
-                    <name>$SSID</name>
-                    <SSIDConfig>
-                        <SSID>
-                            <hex>$SSIDHEX</hex>
-                            <name>$SSID</name>
-                        </SSID>
-                    </SSIDConfig>
-                    <connectionType>ESS</connectionType>
-                    <connectionMode>auto</connectionMode>
-                    <MSM>
-                        <security>
-                            <authEncryption>
-                                <authentication>WPA2PSK</authentication>
-                                <encryption>AES</encryption>
-                                <useOneX>false</useOneX>
-                            </authEncryption>
-                            <sharedKey>
-                                <keyType>passPhrase</keyType>
-                                <protected>false</protected>
-                                <keyMaterial>$Password</keyMaterial>
-                            </sharedKey>
-                        </security>
-                    </MSM>
-                </WLANProfile>
-"@
-
-        # Ghi XML profile ra file
-        try {
-            $xmlContent | Out-File -FilePath $profileFile -Encoding UTF8
-        }
-        catch {
-            Add-Status "ERROR: Could not create WiFi profile file: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "WiFi service error: $_" $statusTextBox ([System.Drawing.Color]::Red)
             return $false
         }
 
-        # Thêm profile WiFi
+        # Quick WiFi adapter check
+        Add-Status "Detecting WiFi adapters..." $statusTextBox
         try {
-            $addResult = Start-Process -FilePath "netsh" -ArgumentList "wlan add profile filename=`"$profileFile`"" -Wait -PassThru -WindowStyle Hidden
+            $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -like "*wireless*" -or $_.InterfaceDescription -like "*wifi*" -or $_.InterfaceDescription -like "*802.11*" }
+            
+            if (-not $wifiAdapters) {
+                Add-Status "No WiFi adapters found - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Yellow)
+                return $true
+            }
+            
+            Add-Status "Found $($wifiAdapters.Count) WiFi adapter(s)" $statusTextBox ([System.Drawing.Color]::Green)
+        }
+        catch {
+            Add-Status "WiFi adapter detection failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            return $false
+        }
 
-            if ($addResult.ExitCode -eq 0) {
+        # Check current WiFi connection
+        $targetSSID = "VietUnion_5.0GHz"
+        Add-Status "Checking current WiFi connection..." $statusTextBox
+        
+        try {
+            $currentConnection = netsh wlan show interfaces
+            
+            # Parse current connection info
+            $isConnected = $false
+            $currentSSID = ""
+            
+            foreach ($line in $currentConnection) {
+                if ($line -match "State\s*:\s*connected") {
+                    $isConnected = $true
+                }
+                if ($line -match "SSID\s*:\s*(.+)") {
+                    $currentSSID = $matches[1].Trim()
+                }
+            }
+            
+            # Check if already connected to target network
+            if ($isConnected -and $currentSSID -eq $targetSSID) {
+                Add-Status "Already connected to $targetSSID - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Green)
+                return $true
+            }
+            elseif ($isConnected -and $currentSSID -ne "") {
+                Add-Status "Currently connected to: $currentSSID" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "Need to connect to: $targetSSID" $statusTextBox
             }
             else {
-                Add-Status "Warning: WiFi profile add returned exit code $($addResult.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "No active WiFi connection detected" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
         }
         catch {
-            Add-Status "ERROR adding WiFi profile: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "Could not check current WiFi status - proceeding with setup" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
-        # Kết nối WiFi
-        Add-Status "Connecting to 'VietUnion_5.0GHz' WiFi..." $statusTextBox
+        # Create WiFi profile
+        $SSID = $targetSSID
+        $Password = "Pay00@17Years$"
+        $profileFile = "$env:TEMP\VietUnion_5.0GHz_profile.xml"
+
+        Add-Status "Creating WiFi profile for $SSID..." $statusTextBox
+
         try {
-            $connectResult = Start-Process -FilePath "netsh" -ArgumentList "wlan connect name=`"$SSID`"" -Wait -PassThru -WindowStyle Hidden
+            $SSIDHEX = ($SSID.ToCharArray() | ForEach-Object { '{0:X2}' -f ([int]$_) }) -join ''
+            
+            $profileXML = @"
+<?xml version="1.0"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+    <name>$SSID</name>
+    <SSIDConfig>
+        <SSID>
+            <hex>$SSIDHEX</hex>
+            <name>$SSID</name>
+        </SSID>
+    </SSIDConfig>
+    <connectionType>ESS</connectionType>
+    <connectionMode>auto</connectionMode>
+    <MSM>
+        <security>
+            <authEncryption>
+                <authentication>WPA2PSK</authentication>
+                <encryption>AES</encryption>
+                <useOneX>false</useOneX>
+            </authEncryption>
+            <sharedKey>
+                <keyType>passPhrase</keyType>
+                <protected>false</protected>
+                <keyMaterial>$Password</keyMaterial>
+            </sharedKey>
+        </security>
+    </MSM>
+</WLANProfile>
+"@
 
-            if ($connectResult.ExitCode -eq 0) {
-                # Đợi má»™t chút để kết nối ổn định
-                Add-Status "Waiting for connection to establish..." $statusTextBox
+            [System.IO.File]::WriteAllText($profileFile, $profileXML, [System.Text.Encoding]::UTF8)
+            Add-Status "WiFi profile created successfully" $statusTextBox ([System.Drawing.Color]::Green)
+        }
+        catch {
+            Add-Status "Failed to create WiFi profile: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            return $false
+        }
+
+        # Add WiFi profile
+        Add-Status "Adding WiFi profile to system..." $statusTextBox
+        try {
+            # Remove existing profile first (correct command)
+            $null = netsh wlan delete profile name="$SSID" 2>$null
+            
+            # Add new profile
+            $addResult = netsh wlan add profile filename="$profileFile"
+            if ($LASTEXITCODE -eq 0) {
+                Add-Status "WiFi profile added successfully" $statusTextBox ([System.Drawing.Color]::Green)
+            }
+            else {
+                Add-Status "Failed to add WiFi profile" $statusTextBox ([System.Drawing.Color]::Red)
+                return $false
+            }
+        }
+        catch {
+            Add-Status "WiFi profile addition failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            return $false
+        }
+
+        # Connect to WiFi
+        Add-Status "Connecting to WiFi network..." $statusTextBox
+        try {
+            $connectResult = netsh wlan connect name="$SSID"
+            
+            if ($LASTEXITCODE -eq 0) {
+                Add-Status "WiFi connection initiated" $statusTextBox ([System.Drawing.Color]::Green)
+                
+                # Wait and verify connection
                 Start-Sleep -Seconds 5
+                
+                $verifyResult = netsh wlan show interfaces
+                if ($verifyResult -like "*$SSID*" -and $verifyResult -like "*connected*") {
+                    Add-Status "WiFi connected successfully to $SSID!" $statusTextBox ([System.Drawing.Color]::Green)
+                    return $true
+                }
+                else {
+                    Add-Status "WiFi connection verification failed" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    return $false
+                }
+            }
+            else {
+                Add-Status "WiFi connection failed" $statusTextBox ([System.Drawing.Color]::Red)
+                return $false
+            }
+        }
+        catch {
+            Add-Status "WiFi connection error: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            return $false
+        }
+        finally {
+            # Clean up profile file
+            if (Test-Path $profileFile) {
+                Remove-Item $profileFile -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    catch {
+        Add-Status "WiFi setup failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        return $false
+    }
+}
+function Invoke-WindowsUpdateCheck {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
-                # Xác minh kết nối
+    Add-Status "Starting Windows Update process..." $statusTextBox
+    
+    try {
+        # Quick service check
+        $wuService = Get-Service -Name "wuauserv" -ErrorAction SilentlyContinue
+        if ($wuService -and $wuService.Status -ne "Running") {
+            Start-Service -Name "wuauserv" -ErrorAction SilentlyContinue
+        }
+
+        # Test internet connectivity
+        $testConnection = Test-NetConnection -ComputerName "8.8.8.8" -Port 53 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+        if (-not $testConnection) {
+            Add-Status "No internet connection - skipping Windows Update" $statusTextBox ([System.Drawing.Color]::Yellow)
+            return $false
+        }
+
+        # Trigger updates in background
+        Add-Status "Triggering Windows Update check..." $statusTextBox
+        try {
+            # Use USOClient for immediate trigger
+            Start-Process -FilePath "USOClient.exe" -ArgumentList "ScanInstallWait" -WindowStyle Hidden -ErrorAction Stop
+            Start-Process -FilePath "USOClient.exe" -ArgumentList "StartDownload" -WindowStyle Hidden -ErrorAction SilentlyContinue
+            Start-Process -FilePath "USOClient.exe" -ArgumentList "StartInstall" -WindowStyle Hidden -ErrorAction SilentlyContinue
+            
+            Add-Status "Windows Update triggered successfully" $statusTextBox ([System.Drawing.Color]::Green)
+            return $true
+        }
+        catch {
+            # Fallback to wuauclt
+            try {
+                Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -WindowStyle Hidden -ErrorAction Stop
+                Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow" -WindowStyle Hidden -ErrorAction SilentlyContinue
+                
+                Add-Status "Windows Update triggered via wuauclt" $statusTextBox ([System.Drawing.Color]::Green)
+                return $true
+            }
+            catch {
+                Add-Status "Windows Update trigger failed" $statusTextBox ([System.Drawing.Color]::Yellow)
+                return $false
+            }
+        }
+    }
+    catch {
+        Add-Status "Windows Update setup failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        return $false
+    }
+}
+
+function Start-WindowsUpdateBackground {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+    
+    Add-Status "Starting Windows Update in background..." $statusTextBox ([System.Drawing.Color]::Cyan)
+    
+    try {
+        # Create a background runspace for updates
+        $runspace = [runspacefactory]::CreateRunspace()
+        $runspace.Open()
+        
+        # Create PowerShell instance
+        $powershell = [powershell]::Create()
+        $powershell.Runspace = $runspace
+        
+        # Add script block for background update
+        $scriptBlock = {
+            try {
+                # Enable TLS 1.2
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                
+                # Try multiple update methods
+                # Method 1: USOClient
                 try {
-                    $verifyConnection = netsh wlan show interfaces | Select-String "SSID" | Select-String "VietUnion_5.0GHz"
-                    if ($verifyConnection) {
+                    $null = Start-Process -FilePath "USOClient.exe" -ArgumentList "ScanInstallWait" -Wait -WindowStyle Hidden -ErrorAction Stop
+                    $null = Start-Process -FilePath "USOClient.exe" -ArgumentList "StartDownload" -WindowStyle Hidden -ErrorAction SilentlyContinue
+                    $null = Start-Process -FilePath "USOClient.exe" -ArgumentList "StartInstall" -WindowStyle Hidden -ErrorAction SilentlyContinue
+                    return "USOClient method completed"
+                }
+                catch {
+                    # Continue to next method
+                }
+                
+                # Method 2: PSWindowsUpdate
+                try {
+                    Install-Module -Name PSWindowsUpdate -Force -Scope CurrentUser -ErrorAction Stop
+                    Import-Module PSWindowsUpdate -ErrorAction Stop
+                    $updates = Get-WUList -ErrorAction Stop
+                    if ($updates) {
+                        Install-WindowsUpdate -AcceptAll -AutoReboot -ErrorAction Stop
+                        return "PSWindowsUpdate method completed with $($updates.Count) updates"
                     }
                     else {
-                        Add-Status "Warning: Could not verify WiFi connection to 'VietUnion_5.0GHz'" $statusTextBox ([System.Drawing.Color]::Yellow)
-                        # Kiểm tra xem có kết nối WiFi nào không
-                        $anyConnection = netsh wlan show interfaces | Select-String "State" | Select-String "connected"
-                        if ($anyConnection) {
-                            Add-Status "Device is connected to a different WiFi network" $statusTextBox
-                        }
-                        else {
-                            Add-Status "Device is not connected to any WiFi network" $statusTextBox
-                        }
+                        return "No updates available"
                     }
                 }
                 catch {
-                    Add-Status "Could not verify connection status" $statusTextBox
+                    # Continue to next method
+                }
+                
+                # Method 3: wuauclt
+                try {
+                    $null = Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -Wait -WindowStyle Hidden -ErrorAction Stop
+                    $null = Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow" -WindowStyle Hidden -ErrorAction SilentlyContinue
+                    return "wuauclt method completed"
+                }
+                catch {
+                    return "All update methods failed"
                 }
             }
-            else {
-                Add-Status "Warning: WiFi connection command returned exit code $($connectResult.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+            catch {
+                return "Background update error: $($_.Exception.Message)"
             }
         }
-        catch {
-            Add-Status "ERROR connecting to WiFi: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        
+        $powershell.AddScript($scriptBlock)
+        
+        # Start async execution
+        $asyncResult = $powershell.BeginInvoke()
+        
+        Add-Status "Background Windows Update process started" $statusTextBox ([System.Drawing.Color]::Green)
+        Add-Status "Updates will continue in background while other operations proceed" $statusTextBox ([System.Drawing.Color]::Cyan)
+        
+        # Store references for cleanup (optional)
+        $global:UpdateRunspace = @{
+            PowerShell = $powershell
+            Runspace = $runspace
+            AsyncResult = $asyncResult
         }
-
-        # XÃ³a file profile táº¡m
-        try {
-            if (Test-Path $profileFile) {
-                Remove-Item -Path $profileFile -Force -ErrorAction SilentlyContinue
-            }
-        }
-        catch {
-            # Ignore cleanup errors
-        }
-
+        
         return $true
-
     }
     catch {
-        Add-Status "ERROR during WiFi connection: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Failed to start background update process: $_" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 }
@@ -902,7 +1017,7 @@ function Invoke-RenamebyDevice {
     }
 }
 
-# STEP 3: POWER OPTIONS FUNCTIONS
+# STEP 3: SYSTEM CLEANUP FUNCTIONS
 function Invoke-SystemCleanup {
     param (
         [string]$deviceType,
@@ -912,9 +1027,6 @@ function Invoke-SystemCleanup {
     try {
         # --- 1. System File Cleanup ---
         Invoke-FileCleanup $statusTextBox
-
-        # --- 2. Taskbar Customization ---
-        Invoke-TaskbarCustomization $statusTextBox
 
         # --- 3. Startup Program Management ---
         Invoke-StartupOptimization $statusTextBox
@@ -970,132 +1082,6 @@ function Invoke-FileCleanup {
     }
 }
 
-# Function to customize taskbar - Windows 10 & 11 compatible
-function Invoke-TaskbarCustomization {
-    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-    try {
-        # Detect Windows version
-        $osVersion = (Get-CimInstance Win32_OperatingSystem).Caption
-        $isWindows11 = $osVersion -like "*Windows 11*"
-
-        if ($isWindows11) {
-            Add-Status "Detected Windows 11" $statusTextBox
-        }
-        else {
-            Add-Status "Detected Windows 10" $statusTextBox
-        }
-
-        # 1. DISABLE/UNPIN MS COPILOT (Windows 11 specific)
-        if ($isWindows11) {
-            try {
-                # Disable Copilot via registry
-                $copilotRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-                if (-not (Test-Path $copilotRegPath)) {
-                    New-Item -Path $copilotRegPath -Force | Out-Null
-                }
-
-                # Disable Copilot button on taskbar
-                Set-ItemProperty -Path $copilotRegPath -Name "ShowCopilotButton" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-
-                # Disable Copilot via Group Policy equivalent
-                $copilotPolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"
-                if (-not (Test-Path $copilotPolicyPath)) {
-                    New-Item -Path $copilotPolicyPath -Force -ErrorAction SilentlyContinue | Out-Null
-                }
-                Set-ItemProperty -Path $copilotPolicyPath -Name "TurnOffWindowsCopilot" -Value 1 -Type DWord -ErrorAction SilentlyContinue
-            }
-            catch {
-                Add-Status "Could not disable MS Copilot: $_" $statusTextBox ([System.Drawing.Color]::Red)
-            }
-        }
-        else {
-            Add-Status "MS Copilot not applicable for Windows 10" $statusTextBox
-        }
-
-        # 3. DISABLE WIDGETS (Windows 11) / NEWS AND INTERESTS (Windows 10)
-        try {
-            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-
-            if ($isWindows11) {
-                # Windows 11 - Disable Widgets
-                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarDa" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarWidgets" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-            }
-            else {
-                # Windows 10 - Disable News and Interests
-                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarDa" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-
-                # Additional registry for News and Interests
-                $feedsRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Feeds"
-                if (-not (Test-Path $feedsRegPath)) {
-                    New-Item -Path $feedsRegPath -Force | Out-Null
-                }
-                Set-ItemProperty -Path $feedsRegPath -Name "ShellFeedsTaskbarViewMode" -Value 2 -Type DWord -ErrorAction SilentlyContinue
-            }
-        }
-        catch {
-            Add-Status "Could not disable Widgets/News and Interests: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        }
-
-        # 4. HIDE TASK VIEW BUTTON
-        try {
-            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-
-            # Hide Task View button (works for both Windows 10 and 11)
-            Set-ItemProperty -Path $explorerRegPath -Name "ShowTaskViewButton" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-        }
-        catch {
-            Add-Status "Could not hide Task View button: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        }
-
-        # 5. ADDITIONAL TASKBAR CUSTOMIZATIONS
-        try {
-            $explorerRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-
-            # Hide People button (Windows 10)
-            if (-not $isWindows11) {
-                Set-ItemProperty -Path $explorerRegPath -Name "PeopleBand" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-            }
-
-            # Hide Meet Now button (Windows 10)
-            if (-not $isWindows11) {
-                $meetNowRegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-                if (-not (Test-Path $meetNowRegPath)) {
-                    New-Item -Path $meetNowRegPath -Force | Out-Null
-                }
-                Set-ItemProperty -Path $meetNowRegPath -Name "HideSCAMeetNow" -Value 1 -Type DWord -ErrorAction SilentlyContinue
-            }
-
-            # Windows 11 specific - Hide Chat button
-            if ($isWindows11) {
-                Set-ItemProperty -Path $explorerRegPath -Name "TaskbarMn" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-            }
-        }
-        catch {
-            Add-Status "Could not apply additional customizations: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        }
-
-        # 6. RESTART EXPLORER TO APPLY CHANGES
-        try {
-            # Kill explorer process
-            Stop-Process -Name "explorer" -Force -ErrorAction SilentlyContinue
-
-            # Wait a moment
-            Start-Sleep -Seconds 2
-
-            # Start explorer again
-            Start-Process "explorer.exe"
-        }
-        catch {
-            Add-Status "Could not restart Explorer: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        }
-    }
-    catch {
-        Add-Status "ERROR during taskbar customization: $_" $statusTextBox ([System.Drawing.Color]::Red)
-    }
-}
-
-
 function Invoke-StartupOptimization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     $startupPrograms = @("Microsoft Teams", "Microsoft Co-Pilot", "Microsoft Edge")
@@ -1139,9 +1125,6 @@ function Invoke-TimezoneConfiguration {
 
 function Invoke-PowerOptionsConfiguration {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-
-    Add-Status "Configuring power options to 'Do Nothing'..." $statusTextBox
-
     try {
         $powerConfigs = @(
             @{Setting = "LIDACTION"; Description = "Lid close action" },
@@ -1160,7 +1143,7 @@ function Invoke-PowerOptionsConfiguration {
         powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 0 | Out-Null
 
         powercfg /SETACTIVE SCHEME_CURRENT | Out-Null
-        Add-Status "Power options configured to  'Do Nothing' completed successfully!" $statusTextBox
+        Add-Status "Power options configured to 'Do Nothing' completed successfully!" $statusTextBox
     }
     catch {
         Add-Status "Warning: Could not configure power options: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -1275,8 +1258,6 @@ function Invoke-UserPasswordManagement {
     )
 
     try {
-        Add-Status "Starting user password management..." $statusTextBox
-
         # --- 1. Get Current User Information ---
         $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.Split('\')[-1]
         Add-Status "Current user: $currentUser" $statusTextBox
@@ -1285,10 +1266,10 @@ function Invoke-UserPasswordManagement {
         $passwordResult = Invoke-SetPasswordDialog -currentUser $currentUser -statusTextBox $statusTextBox -showMenuAfter $false
 
         if ($passwordResult) {
-            Add-Status "User password management completed successfully!" $statusTextBox
+            Add-Status "User password management completed." $statusTextBox
         }
         else {
-            Add-Status "User password management was cancelled or failed." $statusTextBox
+            Add-Status "User password management was cancelled or failed." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
         return $true
     }
@@ -1420,7 +1401,7 @@ function Copy-SoftwareFiles {
         # Copy ForceScout
         $forceScoutDest = "$env:USERPROFILE\Downloads\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
         if (-not (Test-Path $forceScoutDest)) {
-            $forceScoutSource = "D:\SOFTWARE\PAYOO\SC--wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
+            $forceScoutSource = "D:\SOFTWARE\PAYOO\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
             if (Test-Path $forceScoutSource) {
                 Add-Status "Copying ForceScout file..." $statusTextBox
                 try {
@@ -1577,6 +1558,7 @@ function Install-Software {
 
         if (-not $sevenZipInstalled) {
             # TÃ¬m file installer vá»›i nhiá»u pattern
+
             $sevenZipFiles = @()
             $searchPatterns = @("7z*.exe", "7-Zip*.exe", "7zip*.exe")
 
@@ -1969,7 +1951,6 @@ function Uninstall-OneDriveComplete {
                 $uninstallSuccess = $false
             }
             else {
-                Add-Status "OneDrive has been uninstalled." $statusTextBox
                 return $true
             }
         }
@@ -2001,7 +1982,6 @@ function Uninstall-OneDriveComplete {
                                 Start-Sleep -Seconds 3
                                 
                                 if (-not (Test-OneDriveInstalled)) {
-                                    Add-Status "OneDrive has been uninstalled." $statusTextBox
                                     return $true
                                 }
                             }
@@ -2929,7 +2909,7 @@ function New-ShrinkVolumePartitionSizeOptions {
     $script:customSizeTextBox.BackColor = [System.Drawing.Color]::Black
     $script:customSizeTextBox.ForeColor = [System.Drawing.Color]::Lime
     $script:customSizeTextBox.Font = New-Object System.Drawing.Font("Consolas", 11)
-    $script:customSizeTextBox.Text = "112640"  # Default to 100GB in MB
+    $script:customSizeTextBox.Text = "103424"  # Default to 100GB in MB
     $script:customSizeTextBox.Enabled = $false
     $radioPanel.Controls.Add($script:customSizeTextBox)
 
@@ -2992,13 +2972,13 @@ function Get-ShrinkVolumePartitionSize {
     $sizeMB = 0
 
     if ($script:radio100GB.Checked) {
-        $sizeMB = 112640
+        $sizeMB = 103424
     }
     elseif ($script:radio200GB.Checked) {
-        $sizeMB = 214748
+        $sizeMB = 205824
     }
     elseif ($script:radio500GB.Checked) {
-        $sizeMB = 524288
+        $sizeMB = 513024
     }
     elseif ($script:radioCustom.Checked) {
         # Validate custom size input
