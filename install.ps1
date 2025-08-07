@@ -524,6 +524,7 @@ function Invoke-RunAllOperations {
     }
 }
 
+# STEP 0: WiFi AUTO-CONNECTION FUNCTION
 function Invoke-WiFiAutoConnection {    
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -576,10 +577,10 @@ function Invoke-WiFiAutoConnection {
             $currentSSID = ""
             
             foreach ($line in $currentConnection) {
-                if ($line -match "State\s*:\s*connected") {
+                if ($line -match "^\s*State\s*:\s*connected\s*$") {
                     $isConnected = $true
                 }
-                if ($line -match "SSID\s*:\s*(.+)") {
+                if ($line -match "^\s*SSID\s*:\s*(.+)$") {
                     $currentSSID = $matches[1].Trim()
                 }
             }
@@ -589,7 +590,7 @@ function Invoke-WiFiAutoConnection {
                 Add-Status "Already connected to $targetSSID - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Green)
                 return $true
             }
-            elseif ($isConnected -and $currentSSID -ne "") {
+            elseif ($isConnected -and $currentSSID -ne "" -and $currentSSID -ne $targetSSID) {
                 Add-Status "Currently connected to: $currentSSID" $statusTextBox ([System.Drawing.Color]::Yellow)
                 Add-Status "Need to connect to: $targetSSID" $statusTextBox
             }
@@ -602,7 +603,7 @@ function Invoke-WiFiAutoConnection {
         }
 
         # Create WiFi profile
-        $SSID = $targetSSID
+        $SSID = "VietUnion_5.0GHz"
         $Password = "Pay00@17Years$"
         $profileFile = "$env:TEMP\VietUnion_5.0GHz_profile.xml"
 
@@ -711,6 +712,7 @@ function Invoke-WiFiAutoConnection {
         return $false
     }
 }
+
 function Invoke-WindowsUpdateCheck {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
@@ -4528,6 +4530,7 @@ function Invoke-RenameDialog {
 # [8] Password Functions
 function Show-SetPasswordForm {
     param(
+        [string]$currentUser,
         [System.Windows.Forms.RichTextBox]$statusTextBox
     )
 
@@ -4537,7 +4540,7 @@ function Show-SetPasswordForm {
     # Set Password Form
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "Password"
-    $form.Size = New-Object System.Drawing.Size(400, 270)
+    $form.Size = New-Object System.Drawing.Size(400, 320)
     $form.StartPosition = "CenterScreen"
     $form.BackColor = [System.Drawing.Color]::Black
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
@@ -4569,7 +4572,10 @@ function Show-SetPasswordForm {
     $userLabel.Location = New-Object System.Drawing.Point(10, 70)
     $form.Controls.Add($userLabel)
 
-    $currentUser = $env:USERNAME
+    # Use parameter or fallback to env
+    if ([string]::IsNullOrEmpty($currentUser)) {
+        $currentUser = $env:USERNAME
+    }
 
     # Current user label
     $currentUserLabel = New-Object System.Windows.Forms.Label
@@ -4581,6 +4587,33 @@ function Show-SetPasswordForm {
     $currentUserLabel.Location = New-Object System.Drawing.Point(150, 70)
     $form.Controls.Add($currentUserLabel)
 
+    # Preset passwords label
+    $presetLabel = New-Object System.Windows.Forms.Label
+    $presetLabel.Text = "Quick Select:"
+    $presetLabel.Font = New-Object System.Drawing.Font("Arial", 12)
+    $presetLabel.ForeColor = [System.Drawing.Color]::White
+    $presetLabel.BackColor = [System.Drawing.Color]::Transparent
+    $presetLabel.Size = New-Object System.Drawing.Size(130, 30)
+    $presetLabel.Location = New-Object System.Drawing.Point(10, 105)
+    $form.Controls.Add($presetLabel)
+
+    # Preset passwords dropdown
+    $presetComboBox = New-Object System.Windows.Forms.ComboBox
+    $presetComboBox.Font = New-Object System.Drawing.Font("Arial", 11)
+    $presetComboBox.Size = New-Object System.Drawing.Size(200, 30)
+    $presetComboBox.Location = New-Object System.Drawing.Point(150, 105)
+    $presetComboBox.BackColor = [System.Drawing.Color]::White
+    $presetComboBox.ForeColor = [System.Drawing.Color]::Black
+    $presetComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+
+    # Add preset password options
+    $presetComboBox.Items.AddRange(@(
+        "Custom (enter below)",
+        "Pr0t3ct10c@1@VU",
+        "Aa1234567890"
+    ))
+    $presetComboBox.SelectedIndex = 0
+    $form.Controls.Add($presetComboBox)
 
     # Password label
     $passwordLabel = New-Object System.Windows.Forms.Label
@@ -4589,14 +4622,14 @@ function Show-SetPasswordForm {
     $passwordLabel.ForeColor = [System.Drawing.Color]::White
     $passwordLabel.BackColor = [System.Drawing.Color]::Transparent
     $passwordLabel.Size = New-Object System.Drawing.Size(130, 30)
-    $passwordLabel.Location = New-Object System.Drawing.Point(10, 110)
+    $passwordLabel.Location = New-Object System.Drawing.Point(10, 145)
     $form.Controls.Add($passwordLabel)
 
     # Password textbox
     $passwordTextBox = New-Object System.Windows.Forms.TextBox
     $passwordTextBox.Font = New-Object System.Drawing.Font("Arial", 12)
     $passwordTextBox.Size = New-Object System.Drawing.Size(160, 30)
-    $passwordTextBox.Location = New-Object System.Drawing.Point(150, 105)
+    $passwordTextBox.Location = New-Object System.Drawing.Point(150, 140)
     $passwordTextBox.BackColor = [System.Drawing.Color]::Black
     $passwordTextBox.ForeColor = [System.Drawing.Color]::Lime
     $passwordTextBox.UseSystemPasswordChar = $false
@@ -4605,7 +4638,7 @@ function Show-SetPasswordForm {
     # Show Password checkbox (default checked)
     $showPasswordCheckBox = New-Object System.Windows.Forms.CheckBox
     $showPasswordCheckBox.Text = "Show"
-    $showPasswordCheckBox.Location = New-Object System.Drawing.Point (320, 110)
+    $showPasswordCheckBox.Location = New-Object System.Drawing.Point (320, 145)
     $showPasswordCheckBox.Size = New-Object System.Drawing.Size(80, 20)
     $showPasswordCheckBox.ForeColor = [System.Drawing.Color]::White
     $showPasswordCheckBox.Font = New-Object System.Drawing.Font("Arial", 9)
@@ -4616,15 +4649,31 @@ function Show-SetPasswordForm {
         })
     $form.Controls.Add($showPasswordCheckBox)
 
+    # Event handler for preset selection
+    $presetComboBox.Add_SelectedIndexChanged({
+        $selectedItem = $presetComboBox.SelectedItem.ToString()
+        switch ($selectedItem) {
+            "Custom (enter below)" {
+                $passwordTextBox.Text = ""
+                $passwordTextBox.Enabled = $true
+                $passwordTextBox.Focus()
+            }
+            default {
+                $passwordTextBox.Text = $selectedItem
+                $passwordTextBox.Enabled = $false  # Disable textbox for preset passwords
+            }
+        }
+    })
+
     # Info label for empty password
     $infoLabel = New-Object System.Windows.Forms.Label
-    $infoLabel.Text = "Leave the password field empty to set a blank password."
+    $infoLabel.Text = "Select a preset password or enter your own."
     $infoLabel.Font = New-Object System.Drawing.Font("Arial", 10, [System.Drawing.FontStyle]::Bold)
     $infoLabel.ForeColor = [System.Drawing.Color]::Red
     $infoLabel.BackColor = [System.Drawing.Color]::Transparent
     $infoLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $infoLabel.Size = New-Object System.Drawing.Size(390, 30)
-    $infoLabel.Location = New-Object System.Drawing.Point(0, 140)
+    $infoLabel.Location = New-Object System.Drawing.Point(0, 175)
     $form.Controls.Add($infoLabel)
 
     # Set Password button
@@ -4634,36 +4683,8 @@ function Show-SetPasswordForm {
     $setButton.ForeColor = [System.Drawing.Color]::White
     $setButton.BackColor = [System.Drawing.Color]::FromArgb(0, 180, 0)
     $setButton.Size = New-Object System.Drawing.Size(180, 40)
-    $setButton.Location = New-Object System.Drawing.Point(10, 180)
+    $setButton.Location = New-Object System.Drawing.Point(10, 220)
     $setButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-    $setButton.Add_Click({
-            $password = $passwordTextBox.Text
-            try {
-                # Create a command to set the password
-                if ([string]::IsNullOrEmpty($password)) {
-                    $command = "net user $currentUser """""
-                }
-                else {
-                    $command = "net user $currentUser $password"
-                }
-                $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -NoNewWindow -Wait -PassThru
-                if ($process.ExitCode -eq 0) {
-                    if ([string]::IsNullOrEmpty($password)) {
-                        [System.Windows.Forms.MessageBox]::Show("Password has been removed. User '$currentUser' can now log in without a password.", "Password Removed", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                    }
-                    else {
-                        [System.Windows.Forms.MessageBox]::Show("Password has been changed.", "Password Change", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                    }
-                    $form.Close()
-                }
-                else {
-                    throw "Failed to set password. Exit code: $($process.ExitCode)"
-                }
-            }
-            catch {
-                [System.Windows.Forms.MessageBox]::Show("Error setting password: $_`n`nNote: This operation requires administrative privileges.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            }
-        })
     $form.Controls.Add($setButton)
 
     # Cancel button
@@ -4671,13 +4692,10 @@ function Show-SetPasswordForm {
     $cancelButton.Text = "Cancel"
     $cancelButton.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
     $cancelButton.ForeColor = [System.Drawing.Color]::White
-    $cancelButton.BackColor = [System.Drawing.Color]::FromArgb(150, 0, 0)
+    $cancelButton.BackColor = [System.Drawing.Color]::FromArgb(180, 0, 0)
     $cancelButton.Size = New-Object System.Drawing.Size(180, 40)
-    $cancelButton.Location = New-Object System.Drawing.Point(195, 180)
+    $cancelButton.Location = New-Object System.Drawing.Point(200, 220)
     $cancelButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-    $cancelButton.Add_Click({
-            $form.Close()
-        })
     $form.Controls.Add($cancelButton)
 
     # Set Accept/Cancel button for Enter/Esc
@@ -4689,17 +4707,40 @@ function Show-SetPasswordForm {
             $passwordTextBox.Focus()
         })
 
-    # ThÃªm biáº¿n lÆ°u káº¿t quáº£
+    # Add result variable
     $dialogResult = @{ Action = ""; Password = "" }
 
-    # Sá»­a event Set
+    # Set button event
     $setButton.Add_Click({
             $dialogResult.Action = "set"
-            $dialogResult.Password = $passwordTextBox.Text
+            
+            # Get password from textbox or handle special cases
+            $selectedPreset = $presetComboBox.SelectedItem.ToString()
+            if ($selectedPreset -eq "Custom (enter below)") {
+                $dialogResult.Password = $passwordTextBox.Text
+            }
+            else {
+                $dialogResult.Password = $selectedPreset
+            }
+            
+            # Actually set the password here
+            $success = Set-UserPassword -user $currentUser -password $dialogResult.Password
+            if ($success) {
+                if ([string]::IsNullOrEmpty($dialogResult.Password)) {
+                    [System.Windows.Forms.MessageBox]::Show("Password has been removed. User '$currentUser' can now log in without a password.", "Password Removed", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                }
+                else {
+                    [System.Windows.Forms.MessageBox]::Show("Password has been changed successfully.", "Password Changed", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                }
+            }
+            else {
+                [System.Windows.Forms.MessageBox]::Show("Error setting password. This operation may require administrative privileges.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            }
+            
             $form.Close()
         })
 
-    # Sá»­a event Cancel
+    # Cancel button event
     $cancelButton.Add_Click({
             $dialogResult.Action = "cancel"
             $form.Close()
@@ -4721,7 +4762,6 @@ function Set-UserPassword {
     )
     try {
         if ([string]::IsNullOrEmpty($password)) {
-            # XÃ³a máº­t kháº©u (blank)
             $command = "net user $user """""
         }
         else {
@@ -5147,6 +5187,8 @@ function Show-DomainManagementForm {
     $currentNameBoldLabel.Font = $boldFont
     $currentNameBoldLabel.ForeColor = [System.Drawing.Color]::WhiteSmoke
     $currentNameBoldLabel.BackColor = [System.Drawing.Color]::Transparent
+    $currentNameBoldLabel.AutoSize = $true
+    $currentNameBoldLabel.Location = New-Object System.Drawing.Point(180, 68)
     $joinForm.Controls.Add($currentNameBoldLabel)
 
     # Current domain/workgroup name label
@@ -5290,7 +5332,7 @@ $menuButtons = @(
     @{text = '[2] Software'; action = { Show-InstallSoftwareDialog } },
     @{text = '[7] Rename'; action = { Invoke-RenameDialog } },
     @{text = '[3] Power'; action = { Invoke-PowerOptionsDialog } },
-    @{text = '[8] Password'; action = { Show-SetPasswordForm } },
+    @{text = '[8] Password'; action = { Show-SetPasswordForm -currentUser $env:USERNAME } },
     @{text = '[4] Volume'; action = { Invoke-VolumeManagementDialog } },
     @{text = '[9] Domain'; action = { Show-DomainManagementForm } },
     @{text = '[5] Activate'; action = { Invoke-ActivationDialog } },
