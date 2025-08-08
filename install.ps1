@@ -415,6 +415,8 @@ function Invoke-RunAllOperations {
         }
         else {
             Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)
+            $statusForm.Close()
+            Show-MainMenu
             return
         }
 
@@ -423,6 +425,8 @@ function Invoke-RunAllOperations {
         $copyResult = Copy-SoftwareFiles -deviceType $deviceType $statusTextBox
         if (-not $copyResult) {
             Add-Status "Error copying software files. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)
+            $statusForm.Close()
+            Show-MainMenu
             return
         }
 
@@ -1086,6 +1090,8 @@ function Invoke-FileCleanup {
 
 function Invoke-StartupOptimization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+    
+    # Disable startup programs
     $startupPrograms = @("Microsoft Teams", "Microsoft Co-Pilot", "Microsoft Edge")
     $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 
@@ -1099,6 +1105,61 @@ function Invoke-StartupOptimization {
         catch {
             Add-Status "Warning: Could not disable startup program $_" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
+    }
+    
+    # Create shortcuts on desktop
+    Add-Status "Creating shortcuts on desktop..." $statusTextBox
+    Invoke-CreateShortcuts $statusTextBox
+}
+
+function Invoke-CreateShortcuts {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+    
+    try {
+        $desktopPath = [Environment]::GetFolderPath("Desktop")
+        $shell = New-Object -ComObject WScript.Shell
+        
+        # Credential Manager shortcut (Control Panel version)
+        $credentialsShortcut = $shell.CreateShortcut("$desktopPath\Credential Manager.lnk")
+        $credentialsShortcut.TargetPath = "rundll32.exe"
+        $credentialsShortcut.Arguments = "shell32.dll,Control_RunDLL vaultcpl.cpl"
+        $credentialsShortcut.Description = "Credential Manager"
+        $credentialsShortcut.IconLocation = "vaultcpl.cpl,0"
+        $credentialsShortcut.Save()
+        Add-Status "Created Credential Manager shortcut" $statusTextBox ([System.Drawing.Color]::Green)
+
+
+        # Internet Options shortcut
+        $internetShortcut = $shell.CreateShortcut("$desktopPath\Internet Options.lnk")
+        $internetShortcut.TargetPath = "rundll32.exe"
+        $internetShortcut.Arguments = "shell32.dll,Control_RunDLL inetcpl.cpl"
+        $internetShortcut.Description = "Internet Properties"
+        $internetShortcut.IconLocation = "inetcpl.cpl,0"
+        $internetShortcut.Save()
+        Add-Status "Created Internet Options shortcut" $statusTextBox ([System.Drawing.Color]::Green)
+        
+        # Network Connections shortcut
+        $networkShortcut = $shell.CreateShortcut("$desktopPath\Network Connections.lnk")
+        $networkShortcut.TargetPath = "rundll32.exe"
+        $networkShortcut.Arguments = "shell32.dll,Control_RunDLL ncpa.cpl"
+        $networkShortcut.Description = "Network Connections"
+        $networkShortcut.IconLocation = "ncpa.cpl,0"
+        $networkShortcut.Save()
+        Add-Status "Created Network Connections shortcut" $statusTextBox ([System.Drawing.Color]::Green)
+        
+        # System Properties shortcut
+        $systemShortcut = $shell.CreateShortcut("$desktopPath\System Properties.lnk")
+        $systemShortcut.TargetPath = "rundll32.exe"
+        $systemShortcut.Arguments = "shell32.dll,Control_RunDLL sysdm.cpl"
+        $systemShortcut.Description = "System Properties"
+        $systemShortcut.IconLocation = "sysdm.cpl,0"
+        $systemShortcut.Save()
+        Add-Status "Created System Properties shortcut" $statusTextBox ([System.Drawing.Color]::Green)
+        
+        Add-Status "All shortcuts created successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+    }
+    catch {
+        Add-Status "Warning: Could not create some Control Panel shortcuts: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
 
@@ -2062,6 +2123,8 @@ function Show-InstallSoftwareDialog {
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $deviceTypeForm.Controls.Add($titleLabel)
+    
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Status text box
     $statusTextBox = New-Object System.Windows.Forms.RichTextBox
@@ -2266,7 +2329,7 @@ function Invoke-PowerOptionsDialog {
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $titleLabel.Padding = New-Object System.Windows.Forms.Padding(5)
 
-    Add-TitleAnimation -label $titleLabel
+    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
 
     $powerForm.Controls.Add($titleLabel)
 
@@ -4947,7 +5010,7 @@ function Set-DomainFormLayout {
             $FormControls.UsernameTextBox.Visible = $true
             # Set username - reset to default if empty
             if ([string]::IsNullOrWhiteSpace($FormControls.UsernameTextBox.Text)) {
-                $FormControls.UsernameTextBox.Text = "-hdk-hieudang"
+                $FormControls.UsernameTextBox.Text = "-hdk-hieudang"  # Correct username with hyphens (no spaces)
             }
             $FormControls.PasswordLabel.Visible = $true
             $FormControls.PasswordTextBox.Visible = $true
@@ -5055,52 +5118,110 @@ function Invoke-ElevatedDomainCommand {
     )
 
     try {
+        # Create a temporary PowerShell script file
+        $tempScript = [System.IO.Path]::GetTempFileName() + ".ps1"
+        
+        # Write the command to the script file with proper error handling (NO PASSWORD DISPLAY)
+        $scriptContent = @"
+try {
+    Write-Host "Starting $OperationType operation..." -ForegroundColor Green
+    Write-Host "Executing domain join command..." -ForegroundColor Yellow
+    
+    # Execute the command (password is hidden in the command itself)
+    Invoke-Expression $Command
+    
+    Write-Host "$OperationType completed successfully!" -ForegroundColor Green
+    Write-Host "Press any key to continue..."
+    `$null = `$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 0
+}
+catch {
+    Write-Host "Error during $OperationType operation:" -ForegroundColor Red
+    Write-Host `$_.Exception.Message -ForegroundColor Red
+    Write-Host "Press any key to continue..."
+    `$null = `$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
+}
+"@
+        
+        Set-Content -Path $tempScript -Value $scriptContent -Encoding UTF8
+        
         # Create process start info for elevated execution
         $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processStartInfo.FileName = "powershell.exe"
-        $processStartInfo.Arguments = "-Command Start-Process powershell.exe -ArgumentList '-Command $Command' -Verb RunAs"
+        $processStartInfo.Arguments = "-ExecutionPolicy Bypass -NoProfile -File `"$tempScript`""
         $processStartInfo.UseShellExecute = $true
         $processStartInfo.Verb = "runas"
+        $processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
 
-        # Start the elevated process
+        # Start the elevated process and wait for completion
         $process = [System.Diagnostics.Process]::Start($processStartInfo)
-
+        
         if ($null -eq $process) {
-            throw "Failed to start elevated process"
+            throw "Failed to start elevated process - User may have cancelled UAC prompt"
         }
 
-        # Show appropriate success message
-        $successMessages = @{
-            'DomainJoin'    = "Domain join command has been initiated. If prompted, please allow the elevation request. Your computer will restart to apply the changes."
-            'WorkgroupJoin' = "Workgroup join command has been initiated. If prompted, please allow the elevation request. Your computer will restart to apply the changes."
+        # Wait for the process to complete (with timeout)
+        $timeout = 120000 # 2 minutes
+        $completed = $process.WaitForExit($timeout)
+        
+        # Clean up temp file
+        if (Test-Path $tempScript) {
+            Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
+        }
+        
+        if (-not $completed) {
+            # Process timed out
+            try { $process.Kill() } catch { }
+            [System.Windows.Forms.MessageBox]::Show(
+                "$OperationType operation timed out after 2 minutes.`n`nThis may indicate:`n- Network connectivity issues`n- Invalid credentials`n- Domain controller unavailable",
+                "Timeout - $OperationType",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            return $false
         }
 
-        $message = $successMessages[$OperationType]
-        if ([string]::IsNullOrEmpty($message)) {
-            $message = "Command has been initiated. Your computer will restart to apply the changes."
+        $exitCode = $process.ExitCode
+        
+        if ($exitCode -eq 0) {
+            # Success - show restart confirmation
+            $restartResult = [System.Windows.Forms.MessageBox]::Show(
+                "$OperationType completed successfully!`n`nYour computer needs to restart to apply the changes.`n`nRestart now?",
+                "Success - $OperationType",
+                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                [System.Windows.Forms.MessageBoxIcon]::Question
+            )
+            
+            if ($restartResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+                # Force restart
+                Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 10 /c `"Restarting to complete $OperationType`"" -WindowStyle Hidden
+            }
+            
+            return $true
         }
-
-        [System.Windows.Forms.MessageBox]::Show(
-            $message,
-            $OperationType,
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Information
-        )
-
-        return $true
+        else {
+            # Failed
+            [System.Windows.Forms.MessageBox]::Show(
+                "$OperationType operation failed (Exit Code: $exitCode).`n`nCommon causes:`n- Invalid username or password`n- Domain not reachable`n- Insufficient permissions`n- Computer already joined to domain",
+                "Failed - $OperationType",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+            return $false
+        }
     }
     catch {
         Write-Error "Failed to execute elevated domain command: $_"
         [System.Windows.Forms.MessageBox]::Show(
-            "Error processing $OperationType operation: $_`n`nNote: This operation requires administrative privileges.",
-            "Error",
+            "Error starting $OperationType operation: $_`n`nPossible causes:`n- UAC prompt was cancelled`n- Insufficient privileges`n- System error",
+            "Error - $OperationType",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
         )
         return $false
     }
 }
-
 function Invoke-DomainJoinOperation {
     param(
         [string]$DomainName,
@@ -5120,11 +5241,104 @@ function Invoke-DomainJoinOperation {
         return $false
     }
 
-    # Escape special characters in password for command line
-    $escapedPassword = $Password -replace "'", "''"
+    # Format username properly for domain join (handle special characters)
+    $formattedUsername = $Username.Trim()
+    if (-not $formattedUsername.Contains('@') -and -not $formattedUsername.Contains('\')) {
+        # If username doesn't contain @ or \, add domain prefix
+        $formattedUsername = "$DomainName\$formattedUsername"
+    }
 
-    # Build domain join command
-    $command = "Add-Computer -DomainName '$DomainName' -Credential (New-Object System.Management.Automation.PSCredential ('$Username', (ConvertTo-SecureString '$escapedPassword' -AsPlainText -Force))) -Restart -Force"
+    # Test domain connectivity first
+    try {
+        Write-Host "Testing domain connectivity to $DomainName..."
+        
+        # Test multiple ports like sysdm.cpl does
+        $ldapTest = Test-NetConnection -ComputerName $DomainName -Port 389 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+        $kerberosTest = Test-NetConnection -ComputerName $DomainName -Port 88 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+        
+        if (-not $ldapTest -and -not $kerberosTest) {
+            $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+                "Cannot reach domain '$DomainName' on standard ports (389/88).`n`nThis may indicate:`n- Domain name is incorrect`n- Network connectivity issues`n- DNS resolution problems`n`nDo you want to continue anyway?",
+                "Domain Connectivity Warning",
+                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            
+            if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
+                return $false
+            }
+        }
+    }
+    catch {
+        Write-Warning "Could not test domain connectivity: $_"
+    }
+
+    # Show confirmation dialog with details
+    $confirmMessage = @"
+Domain Join Details:
+Domain: $DomainName
+Username: $formattedUsername
+Computer: $env:COMPUTERNAME
+
+Do you want to proceed with domain join?
+"@
+
+    $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+        $confirmMessage,
+        "Confirm Domain Join",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+    
+    if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
+        return $false
+    }
+
+    # Escape special characters in password AND username properly
+    $escapedPassword = $Password -replace "'", "''" -replace '"', '""' -replace '`', '``' -replace '\$', '`$'
+    $escapedUsername = $formattedUsername -replace "'", "''" -replace '"', '""' -replace '`', '``' -replace '\$', '`$'
+
+    # Build domain join command with proper escaping for special characters
+    $command = @"
+try {
+    Write-Host "Creating credential object..." -ForegroundColor Yellow
+    `$securePassword = ConvertTo-SecureString '$escapedPassword' -AsPlainText -Force
+    `$credential = New-Object System.Management.Automation.PSCredential('$escapedUsername', `$securePassword)
+    
+    Write-Host "Attempting to join domain '$DomainName'..." -ForegroundColor Yellow
+    Write-Host "Using username: $escapedUsername" -ForegroundColor Yellow
+    
+    Add-Computer -DomainName '$DomainName' -Credential `$credential -Force -Verbose -ErrorAction Stop
+    
+    Write-Host "Domain join completed successfully!" -ForegroundColor Green
+} catch {
+    Write-Host "Domain join failed with error:" -ForegroundColor Red
+    Write-Host `$_.Exception.Message -ForegroundColor Red
+    
+    # Check for common error patterns
+    if (`$_.Exception.Message -like "*logon failure*" -or `$_.Exception.Message -like "*authentication*" -or `$_.Exception.Message -like "*1326*") {
+        Write-Host "This appears to be a credential issue. Please verify:" -ForegroundColor Yellow
+        Write-Host "- Username: $escapedUsername" -ForegroundColor Yellow
+        Write-Host "- Password is correct" -ForegroundColor Yellow
+        Write-Host "- Account has domain join permissions" -ForegroundColor Yellow
+        Write-Host "- Account is not locked or disabled" -ForegroundColor Yellow
+    }
+    elseif (`$_.Exception.Message -like "*network*" -or `$_.Exception.Message -like "*RPC*" -or `$_.Exception.Message -like "*1722*") {
+        Write-Host "This appears to be a network connectivity issue." -ForegroundColor Yellow
+        Write-Host "Please check network connection and DNS settings." -ForegroundColor Yellow
+    }
+    elseif (`$_.Exception.Message -like "*already exists*" -or `$_.Exception.Message -like "*2224*") {
+        Write-Host "Computer account may already exist in domain." -ForegroundColor Yellow
+        Write-Host "Try removing the computer from domain first or contact domain admin." -ForegroundColor Yellow
+    }
+    elseif (`$_.Exception.Message -like "*access*" -or `$_.Exception.Message -like "*denied*" -or `$_.Exception.Message -like "*5*") {
+        Write-Host "Access denied - user may not have domain join permissions." -ForegroundColor Yellow
+        Write-Host "Contact domain administrator to grant join permissions." -ForegroundColor Yellow
+    }
+    
+    throw `$_
+}
+"@
 
     return Invoke-ElevatedDomainCommand -Command $command -OperationType "DomainJoin"
 }
