@@ -5418,7 +5418,7 @@ function Invoke-CrowdStrikeDialog {
     # Create CrowdStrike form with modern design
     $crowdStrikeForm = New-Object System.Windows.Forms.Form
     $crowdStrikeForm.Text = "BAOPROVIP - CROWDSTRIKE MANAGEMENT"
-    $crowdStrikeForm.Size = New-Object System.Drawing.Size(700, 550)
+    $crowdStrikeForm.Size = New-Object System.Drawing.Size(690, 550)
     $crowdStrikeForm.MinimumSize = New-Object System.Drawing.Size(700, 550)
     $crowdStrikeForm.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
     $crowdStrikeForm.BackColor = [System.Drawing.Color]::Black
@@ -5446,7 +5446,7 @@ function Invoke-CrowdStrikeDialog {
     # Department selection section
     $deptLabel = New-Object System.Windows.Forms.Label
     $deptLabel.Text = "SELECT DEPARTMENT:"
-    $deptLabel.Location = New-Object System.Drawing.Point(30, 90)
+    $deptLabel.Location = New-Object System.Drawing.Point(10, 90)
     $deptLabel.Size = New-Object System.Drawing.Size(200, 25)
     $deptLabel.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
     $deptLabel.ForeColor = [System.Drawing.Color]::White
@@ -5455,66 +5455,108 @@ function Invoke-CrowdStrikeDialog {
 
     # Department dropdown
     $deptComboBox = New-Object System.Windows.Forms.ComboBox
-    $deptComboBox.Location = New-Object System.Drawing.Point(30, 120)
-    $deptComboBox.Size = New-Object System.Drawing.Size(300, 25)
+    $deptComboBox.Location = New-Object System.Drawing.Point(10, 120)
+    $deptComboBox.Size = New-Object System.Drawing.Size(350, 25)
     $deptComboBox.Font = New-Object System.Drawing.Font("Arial", 10)
     $deptComboBox.BackColor = [System.Drawing.Color]::FromArgb(40, 40, 40)
     $deptComboBox.ForeColor = [System.Drawing.Color]::White
     $deptComboBox.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $deptComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
 
-    # Add departments
+    # Add departments (organized by security level)
     $departments = @(
-        "1. Board-of-Directors",           
-        "2. HR-Admin",                     
-        "3. Legal-Compliance",             
-        "4. Marketing",                    
-        "5. HN-Branch",                    
-        "6. Accounting",                   
-        "7. Fee-Control",                  
-        "8. Data-Exchange",                
-        "9. Service-Operation-Division",   
-        "10. Training",                     
-        "11. Customer-Service",             
-        "12. Account-System-Management",    
-        "13. Quality-of-Service",           
-        "14. Project-Strategy-Division",    
-        "15. Financial-Service-Project",    
-        "16. Bill-Payment-Project",         
-        "17. Business-Development",         
-        "18. Network-Development",         
-        "19. E-Commerce",                   
-        "20. Omni",                        
-        "21. Paycode",                      
-        "22. Digi-Gift",                   
-        "23. Product-Management",           
-        "24. Payoo-X-and-Biz-Solutions",   
-        "25. Web",                          
-        "26. System-Integration",           
-        "27. Core-System",                  
-        "28. Database-Management",          
-        "29. Quality-Control",              
-        "30. Business-Analysis",           
-        "31. Payoo-Plus-Digital-Transformation", 
-        "32. Mobile-App",                         
-        "33. IT-Administration",                   
-        "34. Technical-Operation",          
-        "35. Cyber-Security",               
-        "36. NTT",                          
-        "37. Collaborator"                  
+        "------------ EDR DEPARTMENTS (High Security) --------------",
+        "Board-of-Directors",
+        "Legal-Compliance",
+        "Accounting",
+        "HR-Admin",
+        "Quality-of-Service",
+        "Technical-Operation",
+        "IT-Administration",
+        "Account-System-Management",
+        "Core-System",
+        "Database-Management",
+        "Customer-Service",
+        "Digi-Gift",
+        "Cyber-Security",
+        "Fee-Control",
+        "",
+        "--- DEV DEPARTMENTS (AV default, EDR for senior) ---",
+        "Product-Management",
+        "System-Integration",
+        "Network-Development",
+        "Web",
+        "Mobile-App",
+        "Payoo-X-and-Biz-Solutions",
+        "Payoo-Plus-Digital-Transformation",
+        "",
+        "---------- AV DEPARTMENTS (Standard Security) ------------",
+        "Marketing",
+        "HN-Branch",
+        "Data-Exchange",
+        "Service-Operation-Division",
+        "Training",
+        "Project-Strategy-Division",
+        "Financial-Service-Project",
+        "Bill-Payment-Project",
+        "Business-Development",
+        "E-Commerce",
+        "Omni",
+        "Paycode",
+        "Quality-Control",
+        "Business-Analysis",
+        "NTT",
+        "Collaborator"
     )
 
     foreach ($dept in $departments) {
         $deptComboBox.Items.Add($dept)
     }
+    # Set default to first actual department
     $deptComboBox.SelectedIndex = 0
+
+    # Department change handler for smart recommendations
+    $deptComboBox.Add_SelectedIndexChanged({
+        $selectedDept = $deptComboBox.SelectedItem.ToString()
+
+        # Skip section headers and empty lines
+        if ($selectedDept -like "---*" -or $selectedDept -eq "") {
+            $recommendLabel.Text = "Select department first"
+            $recommendLabel.Location = New-Object System.Drawing.Point(460, 90)
+            $recommendLabel.Size = New-Object System.Drawing.Size(200, 25)
+            $recommendLabel.Font = New-Object System.Drawing.Font("Arial", 12)
+            $recommendLabel.ForeColor = [System.Drawing.Color]::Gray
+            return
+        }
+
+        # Get recommendation based on department
+        $recommendation = Get-DepartmentRecommendation -Department $selectedDept
+        $recommendLabel.Text = "Recommended: $($recommendation.Type)"
+        $recommendLabel.Location = New-Object System.Drawing.Point(460, 90)
+        $recommendLabel.Size = New-Object System.Drawing.Size(200, 25)
+        $recommendLabel.Font = New-Object System.Drawing.Font("Arial", 12)
+        $recommendLabel.ForeColor = $recommendation.Color
+
+        # Auto-select recommended type
+        if ($recommendation.Type -eq "EDR") {
+            $radioEDR.Checked = $true
+        } else {
+            $radioAV.Checked = $true
+        }
+
+
+
+        # Update status text with recommendation reason
+        $statusTextBox.Text = "Department: $selectedDept`nRecommendation: $($recommendation.Type) - $($recommendation.Reason)"
+    })
+
     $crowdStrikeForm.Controls.Add($deptComboBox)
 
     # Installation type section
     $typeLabel = New-Object System.Windows.Forms.Label
-    $typeLabel.Text = "INSTALLATION TYPE:"
-    $typeLabel.Location = New-Object System.Drawing.Point(350, 90)
-    $typeLabel.Size = New-Object System.Drawing.Size(200, 25)
+    $typeLabel.Text = "TYPE:"
+    $typeLabel.Location = New-Object System.Drawing.Point(380, 90)
+    $typeLabel.Size = New-Object System.Drawing.Size(60, 25)
     $typeLabel.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
     $typeLabel.ForeColor = [System.Drawing.Color]::White
     $typeLabel.BackColor = [System.Drawing.Color]::Transparent
@@ -5522,9 +5564,9 @@ function Invoke-CrowdStrikeDialog {
 
     # Installation type radio buttons
     $radioAV = New-Object System.Windows.Forms.RadioButton
-    $radioAV.Text = "AV"
-    $radioAV.Location = New-Object System.Drawing.Point(350, 120)
-    $radioAV.Size = New-Object System.Drawing.Size(150, 25)
+    $radioAV.Text = "AV (Antivirus)"
+    $radioAV.Location = New-Object System.Drawing.Point(380, 120)
+    $radioAV.Size = New-Object System.Drawing.Size(110, 25)
     $radioAV.Font = New-Object System.Drawing.Font("Arial", 10)
     $radioAV.ForeColor = [System.Drawing.Color]::White
     $radioAV.BackColor = [System.Drawing.Color]::Transparent
@@ -5532,58 +5574,123 @@ function Invoke-CrowdStrikeDialog {
     $crowdStrikeForm.Controls.Add($radioAV)
 
     $radioEDR = New-Object System.Windows.Forms.RadioButton
-    $radioEDR.Text = "EDR"
-    $radioEDR.Location = New-Object System.Drawing.Point(350, 150)
+    $radioEDR.Text = "EDR (Enhanced Security)"
+    $radioEDR.Location = New-Object System.Drawing.Point(490, 120)
     $radioEDR.Size = New-Object System.Drawing.Size(200, 25)
     $radioEDR.Font = New-Object System.Drawing.Font("Arial", 10)
     $radioEDR.ForeColor = [System.Drawing.Color]::White
     $radioEDR.BackColor = [System.Drawing.Color]::Transparent
     $crowdStrikeForm.Controls.Add($radioEDR)
 
-    # Action buttons
-    $btnInstall = New-DynamicButton -text "INSTALL CROWDSTRIKE" -x 30 -y 200 -width 200 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0)) -clickAction {
-        $selectedDept = $deptComboBox.SelectedItem.ToString().Split(".")[1].Trim()  # Extract department name from selected item
+    # Smart recommendation label
+    $recommendLabel = New-Object System.Windows.Forms.Label
+    $recommendLabel.Text = "Recommended: EDR"
+    $recommendLabel.Location = New-Object System.Drawing.Point(460, 90)
+    $recommendLabel.Size = New-Object System.Drawing.Size(200, 25)
+    $recommendLabel.Font = New-Object System.Drawing.Font("Arial", 12)
+    $recommendLabel.ForeColor = [System.Drawing.Color]::Orange
+    $recommendLabel.BackColor = [System.Drawing.Color]::Transparent
+    $crowdStrikeForm.Controls.Add($recommendLabel)
+
+
+
+    # Action buttons (centered layout without uninstall)
+    $btnInstall = New-DynamicButton -text "INSTALL CROWDSTRIKE" -x 150 -y 180 -width 180 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0)) -clickAction {
+        $selectedDept = $deptComboBox.SelectedItem.ToString()
+
+        # Filter out section headers and empty lines
+        if ($selectedDept -like "---*" -or $selectedDept -eq "" -or $selectedDept -eq $null) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "Please select a valid department (not a section header).",
+                "Invalid Selection",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            return
+        }
+
         $installType = if ($radioEDR.Checked) { "EDR" } else { "AV" }
-        Invoke-InstallCrowdStrike -statusTextBox $statusTextBox -Department $selectedDept -InstallType $installType
+
+        # Show progress bar during installation
+        $progressBar.Visible = $true
+        $btnInstall.Enabled = $false
+        $btnStatus.Enabled = $false
+
+        try {
+            # Install according to current policy (no position override)
+            Invoke-InstallCrowdStrike -statusTextBox $statusTextBox -Department $selectedDept -InstallType $installType
+        } finally {
+            # Hide progress bar and re-enable buttons
+            $progressBar.Visible = $false
+            $btnInstall.Enabled = $true
+            $btnStatus.Enabled = $true
+        }
     }
     $crowdStrikeForm.Controls.Add($btnInstall)
 
-    $btnStatus = New-DynamicButton -text "CHECK STATUS" -x 250 -y 200 -width 200 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
+    $btnStatus = New-DynamicButton -text "CHECK STATUS" -x 350 -y 180 -width 180 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         Invoke-CheckCrowdStrikeStatus -statusTextBox $statusTextBox
     }
     $crowdStrikeForm.Controls.Add($btnStatus)
 
-    $btnUninstall = New-DynamicButton -text "UNINSTALL" -x 470 -y 200 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(150, 100, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(200, 150, 0)) -pressColor ([System.Drawing.Color]::FromArgb(100, 80, 0)) -clickAction {
-        Invoke-UninstallCrowdStrike -statusTextBox $statusTextBox
-    }
-    $crowdStrikeForm.Controls.Add($btnUninstall)
+    # Progress bar (initially hidden)
+    $progressBar = New-Object System.Windows.Forms.ProgressBar
+    $progressBar.Location = New-Object System.Drawing.Point(30, 240)
+    $progressBar.Size = New-Object System.Drawing.Size(630, 20)
+    $progressBar.Style = [System.Windows.Forms.ProgressBarStyle]::Marquee
+    $progressBar.MarqueeAnimationSpeed = 30
+    $progressBar.Visible = $false
+    $crowdStrikeForm.Controls.Add($progressBar)
 
     # Status text box
     $statusTextBox = New-Object System.Windows.Forms.RichTextBox
-    $statusTextBox.Location = New-Object System.Drawing.Point(30, 270)
+    $statusTextBox.Location = New-Object System.Drawing.Point(10, 270)
     $statusTextBox.Size = New-Object System.Drawing.Size(630, 200)
     $statusTextBox.BackColor = [System.Drawing.Color]::Black
     $statusTextBox.ForeColor = [System.Drawing.Color]::Lime
     $statusTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
     $statusTextBox.ReadOnly = $true
     $statusTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-    $statusTextBox.Text = "Ready to manage CrowdStrike installation..."
+    $statusTextBox.Text = "Ready to manage CrowdStrike installation...`n`nSelect department and installation type, then click INSTALL CROWDSTRIKE to begin."
     $statusTextBox.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Bottom -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $crowdStrikeForm.Controls.Add($statusTextBox)
 
-    # Return button
-    $btnReturn = New-DynamicButton -text "RETURN TO MAIN MENU" -x 250 -y 480 -width 200 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(100, 100, 100)) -hoverColor ([System.Drawing.Color]::FromArgb(150, 150, 150)) -pressColor ([System.Drawing.Color]::FromArgb(80, 80, 80)) -clickAction {
-        $crowdStrikeForm.Close()
-    }
-    $btnReturn.Anchor = [System.Windows.Forms.AnchorStyles]::Bottom -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
-    $crowdStrikeForm.Controls.Add($btnReturn)
 
-    # Add escape handler
-    Add-EscapeHandler -form $crowdStrikeForm
+    # Add escape handler with explicit KeyPreview
+    $crowdStrikeForm.KeyPreview = $true
+    $crowdStrikeForm.Add_KeyDown({
+        param($sender, $e)
+        if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
+            $crowdStrikeForm.Close()
+        }
+    })
 
     # When the form is closed, show the main menu again
     $crowdStrikeForm.Add_FormClosed({
         Show-MainMenu
+    })
+
+    # Trigger initial recommendation for first actual department selection
+    $crowdStrikeForm.Add_Shown({
+        # Trigger the department change event for initial recommendation
+        if ($deptComboBox.Items.Count -gt 1) {
+            $deptComboBox.SelectedIndex = 1  # Select first actual department
+            # Manually trigger the event
+            $selectedDept = $deptComboBox.SelectedItem.ToString()
+            if (-not ($selectedDept -like "---*" -or $selectedDept -eq "")) {
+                $recommendation = Get-DepartmentRecommendation -Department $selectedDept
+                $recommendLabel.Text = "Recommended: $($recommendation.Type)"
+                $recommendLabel.ForeColor = $recommendation.Color
+
+                if ($recommendation.Type -eq "EDR") {
+                    $radioEDR.Checked = $true
+                } else {
+                    $radioAV.Checked = $true
+                }
+
+                $statusTextBox.Text = "Department: $selectedDept`nRecommendation: $($recommendation.Type) - $($recommendation.Reason)`n`nInstallation will follow current policy automatically."
+            }
+        }
     })
 
     # Show the form
@@ -5593,145 +5700,136 @@ function Invoke-CrowdStrikeDialog {
 function Invoke-CheckCrowdStrikeStatus {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
-    Add-Status "  CrowdStrike Installation Status Check" $statusTextBox ([System.Drawing.Color]::Cyan)
-
     try {
-        # 1. Check csagent service status
-        Add-Status "1. Checking csagent service status:" $statusTextBox ([System.Drawing.Color]::White)
+        $statusTextBox.Clear()
+        Add-Status "=== CROWDSTRIKE STATUS CHECK ===" $statusTextBox ([System.Drawing.Color]::Cyan)
+
+        # 1. Service Status (CRITICAL)
+        Add-Status "1. Service Status:" $statusTextBox ([System.Drawing.Color]::White)
         $csagentService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
 
         if ($csagentService) {
-            Add-Status "   CrowdStrike service found" $statusTextBox ([System.Drawing.Color]::Green)
-            Add-Status "   Service Name: $($csagentService.DisplayName)" $statusTextBox ([System.Drawing.Color]::Gray)
-            Add-Status "   Service Status: $($csagentService.Status)" $statusTextBox ([System.Drawing.Color]::Gray)
-            Add-Status "   Start Type: $($csagentService.StartType)" $statusTextBox ([System.Drawing.Color]::Gray)
-
-            if ($csagentService.Status -eq "Running") {
-                Add-Status "   ✓ Service Status: RUNNING - Installation successful!" $statusTextBox ([System.Drawing.Color]::Green)
-            } else {
-                Add-Status "   ⚠ Service Status: $($csagentService.Status) - Service not running" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
+            $statusColor = if ($csagentService.Status -eq "Running") { [System.Drawing.Color]::Green } else { [System.Drawing.Color]::Red }
+            Add-Status "   ✓ CrowdStrike Falcon: $($csagentService.Status)" $statusTextBox $statusColor
         } else {
-            Add-Status "   ✗ CrowdStrike service not found - Installation may have failed" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "   ✗ CrowdStrike not installed!" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "=== RESULT: NOT INSTALLED ===" $statusTextBox ([System.Drawing.Color]::Red)
+            return
         }
 
-        Add-Status "" $statusTextBox
-
-        # 2. Check CrowdStrike processes
-        Add-Status "2. Checking CrowdStrike processes:" $statusTextBox ([System.Drawing.Color]::White)
-
-        $csFalconService = Get-Process -Name "CSFalconService" -ErrorAction SilentlyContinue
-        if ($csFalconService) {
-            Add-Status "   ✓ CSFalconService.exe is running (PID: $($csFalconService.Id))" $statusTextBox ([System.Drawing.Color]::Green)
-        } else {
-            Add-Status "   ⚠ CSFalconService.exe not found" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
-
-        $csFalconContainer = Get-Process -Name "CSFalconContainer" -ErrorAction SilentlyContinue
-        if ($csFalconContainer) {
-            Add-Status "   ✓ CSFalconContainer.exe is running (PID: $($csFalconContainer.Id))" $statusTextBox ([System.Drawing.Color]::Green)
-        } else {
-            Add-Status "   ⚠ CSFalconContainer.exe not found" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
-
-        Add-Status "" $statusTextBox
-
-        # 3. Check installation directory
-        Add-Status "3. Checking installation directory:" $statusTextBox ([System.Drawing.Color]::White)
-
-        $installPaths = @(
-            "${env:ProgramFiles}\CrowdStrike",
-            "${env:ProgramFiles(x86)}\CrowdStrike",
-            "${env:ProgramData}\CrowdStrike"
-        )
-
-        $installFound = $false
-        foreach ($path in $installPaths) {
-            if (Test-Path $path) {
-                Add-Status "   ✓ CrowdStrike installation directory found: $path" $statusTextBox ([System.Drawing.Color]::Green)
-                $installFound = $true
-
-                # Check for Falcon files
-                $falconFiles = Get-ChildItem -Path $path -Filter "*falcon*" -ErrorAction SilentlyContinue
-                if ($falconFiles) {
-                    Add-Status "   ✓ Falcon files detected" $statusTextBox ([System.Drawing.Color]::Green)
-                }
-            }
-        }
-
-        if (-not $installFound) {
-            Add-Status "   ⚠ CrowdStrike installation directory not found" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
-
-        Add-Status "" $statusTextBox
-
-        # 4. Check log files
-        Add-Status "4. Checking log files:" $statusTextBox ([System.Drawing.Color]::White)
-
-        $logPath = "C:\Temp\FalconInstall.log"
-        if (Test-Path $logPath) {
-            Add-Status "   ✓ Installation log found" $statusTextBox ([System.Drawing.Color]::Green)
-            Add-Status "   Location: $logPath" $statusTextBox ([System.Drawing.Color]::Gray)
-
-            # Show last few lines of log
-            try {
-                $lastLines = Get-Content -Path $logPath -Tail 5 -ErrorAction SilentlyContinue
-                if ($lastLines) {
-                    Add-Status "   Last 5 lines of log:" $statusTextBox ([System.Drawing.Color]::White)
-                    foreach ($line in $lastLines) {
-                        Add-Status "     $line" $statusTextBox ([System.Drawing.Color]::Gray)
-                    }
-                }
-            } catch {
-                Add-Status "   Could not read log file" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        } else {
-            Add-Status "   ⚠ Installation log not found" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
-
-        Add-Status "" $statusTextBox
-
-        # 5. Network connectivity test
-        Add-Status "5. Network connectivity test:" $statusTextBox ([System.Drawing.Color]::White)
+        # 2. Department Assignment (IMPORTANT)
+        Add-Status "2. Department Assignment:" $statusTextBox ([System.Drawing.Color]::White)
 
         try {
-            $pingResult = Test-Connection -ComputerName "8.8.8.8" -Count 1 -Quiet -ErrorAction SilentlyContinue
-            if ($pingResult) {
-                Add-Status "   ✓ Internet connectivity available" $statusTextBox ([System.Drawing.Color]::Green)
+            if ($csagentService.Status -eq "Running") {
+                $department = Get-DepartmentFromGroupTag -GroupTag $csagentService.Tag
+                if ($department) {
+                    Add-Status "   ✓ Department: $department" $statusTextBox ([System.Drawing.Color]::Green)
+
+                    # Check policy compliance
+                    $recommendation = Get-DepartmentRecommendation -Department $department
+                    $policyColor = if ($recommendation.Type -eq "EDR") { [System.Drawing.Color]::Orange } else { [System.Drawing.Color]::Cyan }
+                    Add-Status "   ℹ Policy: $($recommendation.Type) - $($recommendation.Reason)" $statusTextBox $policyColor
+                } else {
+                    Add-Status "   ⚠ Unknown department mapping" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
             } else {
-                Add-Status "   ⚠ Internet connectivity issue detected" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "   ⚠ No department assignment found" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "   Device may not be properly deployed" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
         } catch {
-            Add-Status "   ⚠ Could not test network connectivity" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "   ✗ Error checking department: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
-        # 6. Generate summary report
-        Add-Status "========================================" $statusTextBox ([System.Drawing.Color]::Cyan)
-        Add-Status "           SUMMARY REPORT" $statusTextBox ([System.Drawing.Color]::Cyan)
-        Add-Status "========================================" $statusTextBox ([System.Drawing.Color]::Cyan)
+        # 3. Protection Status (CRITICAL)
+        Add-Status "3. Protection Status:" $statusTextBox ([System.Drawing.Color]::White)
 
-        # Determine overall status
-        $serviceOk = $csagentService -and $csagentService.Status -eq "Running"
-        $processOk = $csFalconService -or $csFalconContainer
-        $filesOk = $installFound
+        # Check key processes
+        $criticalProcesses = @("CSFalconService", "CSFalconContainer")
+        $runningProcesses = Get-Process | Where-Object {
+            $criticalProcesses -contains $_.ProcessName
+        } -ErrorAction SilentlyContinue
 
-        if ($serviceOk -and $processOk -and $filesOk) {
-            Add-Status "✓ OVERALL STATUS: INSTALLATION SUCCESSFUL" $statusTextBox ([System.Drawing.Color]::Green)
-            Add-Status "  CrowdStrike Falcon Sensor is properly installed and running" $statusTextBox ([System.Drawing.Color]::Green)
+        if ($runningProcesses) {
+            Add-Status "   ✓ Protection active ($($runningProcesses.Count) processes)" $statusTextBox ([System.Drawing.Color]::Green)
         } else {
-            Add-Status "⚠ OVERALL STATUS: INSTALLATION INCOMPLETE OR FAILED" $statusTextBox ([System.Drawing.Color]::Yellow)
-            Add-Status "  Please check the issues above and consider reinstalling" $statusTextBox ([System.Drawing.Color]::White)
+            Add-Status "   ⚠ Protection processes not detected" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
-        Add-Status "" $statusTextBox
+        # Check installation integrity
+        $installPath = "${env:ProgramFiles}\CrowdStrike"
+        if (Test-Path $installPath) {
+            $keyFiles = @("CSFalconService.exe", "SystemTray")
+            $foundFiles = $keyFiles | Where-Object { Test-Path (Join-Path $installPath $_) }
+            if ($foundFiles.Count -eq $keyFiles.Count) {
+                Add-Status "   ✓ Installation integrity: OK" $statusTextBox ([System.Drawing.Color]::Green)
+            } else {
+                Add-Status "   ⚠ Installation may be incomplete" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } else {
+            Add-Status "   ✗ Installation directory not found" $statusTextBox ([System.Drawing.Color]::Red)
+        }
 
-        # 7. Troubleshooting commands
-        Add-Status "Troubleshooting commands:" $statusTextBox ([System.Drawing.Color]::White)
-        Add-Status "- Restart service: sc.exe stop csagent && sc.exe start csagent" $statusTextBox ([System.Drawing.Color]::Gray)
-        Add-Status "- Check detailed status: sc.exe query csagent" $statusTextBox ([System.Drawing.Color]::Gray)
-        Add-Status "- View installation logs: notepad C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Gray)
-        Add-Status "- Contact IT support if issues persist" $statusTextBox ([System.Drawing.Color]::Gray)
+        # 4. Cloud Connectivity (IMPORTANT)
+        Add-Status "4. Cloud Connectivity:" $statusTextBox ([System.Drawing.Color]::White)
+        try {
+            $testResult = Test-NetConnection -ComputerName "ts01-b.cloudsink.net" -Port 443 -InformationLevel Quiet -ErrorAction SilentlyContinue
+            if ($testResult) {
+                Add-Status "   ✓ CrowdStrike cloud: Connected" $statusTextBox ([System.Drawing.Color]::Green)
+            } else {
+                Add-Status "   ⚠ CrowdStrike cloud: Disconnected" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "   Real-time protection may be limited" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } catch {
+            Add-Status "   ⚠ Could not test connectivity" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
 
+        # 5. Overall Status (SUMMARY)
+        Add-Status "=== OVERALL STATUS ===" $statusTextBox ([System.Drawing.Color]::Cyan)
+
+        $issues = @()
+        $overallStatus = "HEALTHY"
+        $statusColor = [System.Drawing.Color]::Green
+
+        # Critical checks
+        if (-not $csagentService -or $csagentService.Status -ne "Running") {
+            $issues += "Service not running"
+            $overallStatus = "CRITICAL"
+            $statusColor = [System.Drawing.Color]::Red
+        }
+
+        if (-not $runningProcesses) {
+            $issues += "Protection processes missing"
+            if ($overallStatus -ne "CRITICAL") {
+                $overallStatus = "WARNING"
+                $statusColor = [System.Drawing.Color]::Yellow
+            }
+        }
+
+        if (-not $csagentService.Tag) {
+            $issues += "No department assignment"
+            if ($overallStatus -eq "HEALTHY") {
+                $overallStatus = "WARNING"
+                $statusColor = [System.Drawing.Color]::Yellow
+            }
+        }
+
+        Add-Status "Status: $overallStatus" $statusTextBox $statusColor
+
+        if ($overallStatus -eq "HEALTHY") {
+            Add-Status "✓ CrowdStrike is properly installed and protected" $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "Issues found: $($issues -join ', ')" $statusTextBox ([System.Drawing.Color]::Yellow)
+
+            # Quick fixes
+            Add-Status "Quick fixes:" $statusTextBox ([System.Drawing.Color]::White)
+            if ($csagentService -and $csagentService.Status -ne "Running") {
+                Add-Status "- Restart service: sc.exe start csagent" $statusTextBox ([System.Drawing.Color]::Gray)
+            }
+            if (-not $csagentService.Tag) {
+                Add-Status "- Contact IT for proper deployment" $statusTextBox ([System.Drawing.Color]::Gray)
+            }
+        }
     } catch {
         Add-Status "Error checking CrowdStrike status: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
@@ -5745,10 +5843,10 @@ function Invoke-InstallCrowdStrike {
     )
 
     try {
+        $statusTextBox.Clear()
         Add-Status "=== CROWDSTRIKE INSTALLATION STARTED ===" $statusTextBox ([System.Drawing.Color]::Cyan)
         Add-Status "Department: $Department" $statusTextBox ([System.Drawing.Color]::White)
-        Add-Status "Installation Type: $InstallType" $statusTextBox ([System.Drawing.Color]::White)
-        Add-Status "" $statusTextBox
+        Add-Status "Installation Type: $InstallType (Policy-based)" $statusTextBox ([System.Drawing.Color]::White)
 
         # Check if CrowdStrike is already installed
         Add-Status "1. Checking existing installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -5813,7 +5911,6 @@ function Invoke-InstallCrowdStrike {
         )
 
         Add-Status "   Command: powershell.exe $($arguments -join ' ')" $statusTextBox ([System.Drawing.Color]::Gray)
-        Add-Status "" $statusTextBox
 
         # Start installation
         Add-Status "4. Starting CrowdStrike installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -5824,7 +5921,6 @@ function Invoke-InstallCrowdStrike {
         $endTime = Get-Date
         $duration = ($endTime - $startTime).TotalMinutes
 
-        Add-Status "" $statusTextBox
         Add-Status "5. Installation completed!" $statusTextBox ([System.Drawing.Color]::Yellow)
         Add-Status "   Duration: $([math]::Round($duration, 2)) minutes" $statusTextBox ([System.Drawing.Color]::Gray)
         Add-Status "   Exit Code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Gray)
@@ -5840,7 +5936,6 @@ function Invoke-InstallCrowdStrike {
             if ($newService -and $newService.Status -eq "Running") {
                 Add-Status "   ✓ CrowdStrike service is running!" $statusTextBox ([System.Drawing.Color]::Green)
                 Add-Status "   Service Name: $($newService.DisplayName)" $statusTextBox ([System.Drawing.Color]::Gray)
-                Add-Status "" $statusTextBox
                 Add-Status "=== INSTALLATION SUCCESSFUL ===" $statusTextBox ([System.Drawing.Color]::Green)
             } else {
                 Add-Status "   ⚠ Service verification failed" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -5856,94 +5951,217 @@ function Invoke-InstallCrowdStrike {
         Add-Status "Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
+function Get-DepartmentRecommendation {
+    param ([string]$Department)
 
-function Invoke-UninstallCrowdStrike {
-    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+    # EDR Departments
+    $edrDepartments = @(
+        "Board-of-Directors", "Legal-Compliance", "Accounting", "HR-Admin",
+        "Quality-of-Service", "Technical-Operation", "IT-Administration",
+        "Account-System-Management", "Core-System", "Database-Management",
+        "Customer-Service", "Digi-Gift", "Cyber-Security", "Fee-Control"
+    )
 
+    # DEV Departments (AV default, EDR for senior)
+    $devDepartments = @(
+        "Product-Management", "System-Integration", "Network-Development",
+        "Web", "Mobile-App", "Payoo-X-and-Biz-Solutions",
+        "Payoo-Plus-Digital-Transformation"
+    )
+
+    if ($edrDepartments -contains $Department) {
+        return @{
+            Type = "EDR"
+            Color = [System.Drawing.Color]::Orange
+            Reason = "High security department"
+        }
+    }
+    elseif ($devDepartments -contains $Department) {
+        return @{
+            Type = "AV"
+            Color = [System.Drawing.Color]::Cyan
+            Reason = "DEV department (EDR for senior positions)"
+        }
+    }
+    else {
+        return @{
+            Type = "AV"
+            Color = [System.Drawing.Color]::Lime
+            Reason = "Standard department"
+        }
+    }
+}
+
+function Get-CrowdStrikeGroupTags {
     try {
-        Add-Status "=== CROWDSTRIKE UNINSTALLATION STARTED ===" $statusTextBox ([System.Drawing.Color]::Cyan)
-
-        # Check if CrowdStrike is installed
-        Add-Status "1. Checking CrowdStrike installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
-        $csagentService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
-
-        if (-not $csagentService) {
-            Add-Status "   ⚠ CrowdStrike is not installed" $statusTextBox ([System.Drawing.Color]::Yellow)
-            return
-        }
-
-        Add-Status "   ✓ CrowdStrike installation found" $statusTextBox ([System.Drawing.Color]::Green)
-        Add-Status "   Service Status: $($csagentService.Status)" $statusTextBox ([System.Drawing.Color]::Gray)
-
-        # Confirm uninstallation
-        $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-            "Are you sure you want to uninstall CrowdStrike? This will remove security protection from this computer.",
-            "Confirm Uninstallation",
-            [System.Windows.Forms.MessageBoxButtons]::YesNo,
-            [System.Windows.Forms.MessageBoxIcon]::Warning
+        # Method 1: Check Registry for Group Tags
+        $registryPaths = @(
+            "HKLM:\SOFTWARE\CrowdStrike",
+            "HKLM:\SOFTWARE\WOW6432Node\CrowdStrike",
+            "HKLM:\SYSTEM\CurrentControlSet\Services\csagent\Parameters",
+            "HKLM:\SYSTEM\CurrentControlSet\Services\csagent",
+            "HKLM:\SOFTWARE\CrowdStrike\{9b03c1d9-3138-44ed-9fae-d9f4c034b88d}\{16e0423f-7058-48c9-a204-725362b67639}\Default"
         )
 
-        if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
-            Add-Status "Uninstallation cancelled by user." $statusTextBox ([System.Drawing.Color]::Yellow)
-            return
-        }
+        foreach ($regPath in $registryPaths) {
+            if (Test-Path $regPath) {
+                try {
+                    $properties = Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue
+                    if ($properties) {
+                        # Check for various possible property names
+                        $possibleTagProperties = @("GroupingTags", "Tags", "GroupTags", "CID", "CustomerID")
+                        foreach ($propName in $possibleTagProperties) {
+                            if ($properties.$propName) {
+                                return $properties.$propName
+                            }
+                        }
 
-        # Look for uninstaller
-        Add-Status "2. Locating CrowdStrike uninstaller..." $statusTextBox ([System.Drawing.Color]::Yellow)
-
-        $uninstallerPaths = @(
-            "${env:ProgramFiles}\CrowdStrike\FalconSensor_Windows.exe",
-            "${env:ProgramFiles(x86)}\CrowdStrike\FalconSensor_Windows.exe",
-            "${env:ProgramData}\CrowdStrike\FalconSensor_Windows.exe"
-        )
-
-        $uninstallerPath = $null
-        foreach ($path in $uninstallerPaths) {
-            if (Test-Path $path) {
-                $uninstallerPath = $path
-                break
+                        # Check all properties for tag-like values
+                        $properties.PSObject.Properties | ForEach-Object {
+                            if ($_.Name -like "*Tag*" -or $_.Name -like "*Group*") {
+                                if ($_.Value -and $_.Value -ne "") {
+                                    return $_.Value
+                                }
+                            }
+                        }
+                    }
+                } catch {
+                    # Continue to next path
+                }
             }
         }
 
-        if (-not $uninstallerPath) {
-            Add-Status "   ✗ CrowdStrike uninstaller not found!" $statusTextBox ([System.Drawing.Color]::Red)
-            Add-Status "   Please uninstall manually from Control Panel" $statusTextBox ([System.Drawing.Color]::Yellow)
-            return
+        # Method 2: Check Falcon Command Line (if available)
+        $falconPaths = @(
+            "${env:ProgramFiles}\CrowdStrike\falconctl.exe",
+            "${env:ProgramFiles(x86)}\CrowdStrike\falconctl.exe",
+            "${env:ProgramData}\CrowdStrike\falconctl.exe"
+        )
+
+        foreach ($falconPath in $falconPaths) {
+            if (Test-Path $falconPath) {
+                try {
+                    # Try different falcon commands
+                    $commands = @(
+                        "-g --tags",
+                        "-g --grouping-tags",
+                        "--get-tags",
+                        "-g"
+                    )
+
+                    foreach ($cmd in $commands) {
+                        try {
+                            $falconOutput = & $falconPath $cmd.Split() 2>$null
+                            if ($falconOutput) {
+                                # Look for tags in output
+                                $tagLine = $falconOutput | Where-Object { $_ -match "(Tags|Group)" }
+                                if ($tagLine -and $tagLine -match ":\s*(.+)") {
+                                    return $matches[1].Trim()
+                                }
+                            }
+                        } catch {
+                            # Continue to next command
+                        }
+                    }
+                } catch {
+                    # Continue to next path
+                }
+            }
         }
 
-        Add-Status "   ✓ Uninstaller found: $uninstallerPath" $statusTextBox ([System.Drawing.Color]::Green)
-
-        # Start uninstallation
-        Add-Status "3. Starting uninstallation..." $statusTextBox ([System.Drawing.Color]::Yellow)
-        Add-Status "   This may take several minutes. Please wait..." $statusTextBox ([System.Drawing.Color]::Cyan)
-
-        $startTime = Get-Date
-        $process = Start-Process -FilePath $uninstallerPath -ArgumentList "/uninstall /quiet" -Wait -PassThru -WindowStyle Hidden
-        $endTime = Get-Date
-        $duration = ($endTime - $startTime).TotalMinutes
-
-        Add-Status "" $statusTextBox
-        Add-Status "4. Uninstallation completed!" $statusTextBox ([System.Drawing.Color]::Yellow)
-        Add-Status "   Duration: $([math]::Round($duration, 2)) minutes" $statusTextBox ([System.Drawing.Color]::Gray)
-        Add-Status "   Exit Code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Gray)
-
-        # Verify uninstallation
-        Add-Status "5. Verifying uninstallation..." $statusTextBox ([System.Drawing.Color]::Yellow)
-        Start-Sleep -Seconds 3
-
-        $serviceCheck = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
-        if (-not $serviceCheck) {
-            Add-Status "   ✓ CrowdStrike service removed successfully!" $statusTextBox ([System.Drawing.Color]::Green)
-            Add-Status "" $statusTextBox
-            Add-Status "=== UNINSTALLATION SUCCESSFUL ===" $statusTextBox ([System.Drawing.Color]::Green)
-        } else {
-            Add-Status "   ⚠ Service still present - uninstallation may be incomplete" $statusTextBox ([System.Drawing.Color]::Yellow)
-            Add-Status "   A system restart may be required" $statusTextBox ([System.Drawing.Color]::Yellow)
+        # Method 3: Check Installation Log for Group Tags
+        $logPath = "C:\Temp\FalconInstall.log"
+        if (Test-Path $logPath) {
+            try {
+                $logContent = Get-Content -Path $logPath -ErrorAction SilentlyContinue
+                # Get the most recent GROUPING_TAGS entry
+                $groupTagLines = $logContent | Where-Object { $_ -match "GROUPING_TAGS" }
+                if ($groupTagLines) {
+                    $lastGroupTagLine = $groupTagLines | Select-Object -Last 1
+                    if ($lastGroupTagLine -match 'GROUPING_TAGS="([^"]+)"') {
+                        return $matches[1]
+                    }
+                }
+            } catch {
+                # Continue
+            }
         }
 
+        # Method 4: Check Windows Event Log
+        try {
+            $events = Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='CrowdStrike'} -MaxEvents 50 -ErrorAction SilentlyContinue
+            foreach ($event in $events) {
+                if ($event.Message -match "GroupingTags.*?([A-Za-z0-9\-]+)") {
+                    return $matches[1]
+                }
+            }
+        } catch {
+            # Continue
+        }
+
+        return $null
     } catch {
-        Add-Status "Error during CrowdStrike uninstallation: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        return $null
     }
+}
+
+function Get-DepartmentFromGroupTag {
+    param ([string]$GroupTag)
+
+    # Map group tags to departments based on our department list
+    $departmentMapping = @{
+        "Board-of-Directors" = "Board-of-Directors"
+        "HR-Admin" = "HR-Admin"
+        "Legal-Compliance" = "Legal-Compliance"
+        "Marketing" = "Marketing"
+        "HN-Branch" = "HN-Branch"
+        "Accounting" = "Accounting"
+        "Fee-Control" = "Fee-Control"
+        "Data-Exchange" = "Data-Exchange"
+        "Service-Operation-Division" = "Service-Operation-Division"
+        "Training" = "Training"
+        "Customer-Service" = "Customer-Service"
+        "Account-System-Management" = "Account-System-Management"
+        "Quality-of-Service" = "Quality-of-Service"
+        "Project-Strategy-Division" = "Project-Strategy-Division"
+        "Financial-Service-Project" = "Financial-Service-Project"
+        "Bill-Payment-Project" = "Bill-Payment-Project"
+        "Business-Development" = "Business-Development"
+        "Network-Development" = "Network-Development"
+        "E-Commerce" = "E-Commerce"
+        "Omni" = "Omni"
+        "Paycode" = "Paycode"
+        "Digi-Gift" = "Digi-Gift"
+        "Product-Management" = "Product-Management"
+        "Payoo-X-and-Biz-Solutions" = "Payoo-X-and-Biz-Solutions"
+        "Web" = "Web"
+        "System-Integration" = "System-Integration"
+        "Core-System" = "Core-System"
+        "Database-Management" = "Database-Management"
+        "Quality-Control" = "Quality-Control"
+        "Business-Analysis" = "Business-Analysis"
+        "Payoo-Plus-Digital-Transformation" = "Payoo-Plus-Digital-Transformation"
+        "Mobile-App" = "Mobile-App"
+        "IT-Administration" = "IT-Administration"
+        "Technical-Operation" = "Technical-Operation"
+        "Cyber-Security" = "Cyber-Security"
+        "NTT" = "NTT"
+        "Collaborator" = "Collaborator"
+    }
+
+    # Direct match
+    if ($departmentMapping.ContainsKey($GroupTag)) {
+        return $departmentMapping[$GroupTag]
+    }
+
+    # Fuzzy match (in case of slight variations)
+    foreach ($key in $departmentMapping.Keys) {
+        if ($GroupTag -like "*$key*" -or $key -like "*$GroupTag*") {
+            return $departmentMapping[$key]
+        }
+    }
+
+    return $GroupTag  # Return original if no mapping found
 }
 
 # Các nút menu
