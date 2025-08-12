@@ -5492,13 +5492,13 @@ function Show-DomainManagementForm {
     $joinForm.ShowDialog()
 }
 
-# [10] CrowStrike Functions
+# [10] CrowdStrike Functions
 function Invoke-CrowdStrikeDialog {
     Hide-MainMenu
 
-    # Create CrowStrike form
+    # Create CrowdStrike form
     $crowdStrikeForm = New-Object System.Windows.Forms.Form
-    $crowdStrikeForm.Text = "CrowStrike Management"
+    $crowdStrikeForm.Text = "CrowdStrike Management"
     $crowdStrikeForm.Size = New-Object System.Drawing.Size(500, 400)
     $crowdStrikeForm.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
     $crowdStrikeForm.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
@@ -5526,13 +5526,13 @@ function Invoke-CrowdStrikeDialog {
     $statusTextBox.ReadOnly = $true
     $crowdStrikeForm.Controls.Add($statusTextBox)
 
-    # Uninstall CrowStrike button
-    $btnUninstall = New-DynamicButton -text "Uninstall CrowStrike" -x 20 -y 70 -width 220 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0)) -clickAction {
-        Invoke-UninstallCrowdStrike -statusTextBox $statusTextBox
+    # Install CrowdStrike button
+    $btnInstall = New-DynamicButton -text "Install CrowdStrike" -x 20 -y 70 -width 220 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0)) -clickAction {
+        Invoke-InstallCrowdStrike -statusTextBox $statusTextBox
     }
-    $crowdStrikeForm.Controls.Add($btnUninstall)
+    $crowdStrikeForm.Controls.Add($btnInstall)
 
-    # Check CrowStrike Status button
+    # Check CrowdStrike Status button
     $btnStatus = New-DynamicButton -text "Check Status" -x 260 -y 70 -width 220 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         Invoke-CheckCrowdStrikeStatus -statusTextBox $statusTextBox
     }
@@ -5713,7 +5713,7 @@ $menuButtons = @(
     @{text = '[4] Volume'; action = { Invoke-VolumeManagementDialog } },
     @{text = '[9] Domain'; action = { Show-DomainManagementForm } },
     @{text = '[5] Activate'; action = { Invoke-ActivationDialog } },
-    @{text = '[0] CrowStrike'; action = { Invoke-CrowdStrikeDialog } }
+    @{text = '[10] CrowdStrike'; action = { Invoke-CrowdStrikeDialog } }
 )
 
 # Các tham số cho các nút menu
