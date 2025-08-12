@@ -5054,59 +5054,6 @@ function Test-WorkgroupInputs {
     }
 }
 
-# function Invoke-ElevatedDomainCommand {
-#     param(
-#         [string]$Command,
-#         [string]$OperationType
-#     )
-
-#     try {
-#         # Create process start info for elevated execution
-#         $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
-#         $processStartInfo.FileName = "powershell.exe"
-#         $processStartInfo.Arguments = "-Command Start-Process powershell.exe -ArgumentList '-Command $Command' -Verb RunAs"
-#         $processStartInfo.UseShellExecute = $true
-#         $processStartInfo.Verb = "runas"
-
-#         # Start the elevated process
-#         $process = [System.Diagnostics.Process]::Start($processStartInfo)
-
-#         if ($null -eq $process) {
-#             throw "Failed to start elevated process"
-#         }
-
-#         # Show appropriate success message
-#         $successMessages = @{
-#             'DomainJoin'    = "Domain join command has been initiated. If prompted, please allow the elevation request. Your computer will restart to apply the changes."
-#             'WorkgroupJoin' = "Workgroup join command has been initiated. If prompted, please allow the elevation request. Your computer will restart to apply the changes."
-#         }
-
-#         $message = $successMessages[$OperationType]
-#         if ([string]::IsNullOrEmpty($message)) {
-#             $message = "Command has been initiated. Your computer will restart to apply the changes."
-#         }
-
-#         [System.Windows.Forms.MessageBox]::Show(
-#             $message,
-#             $OperationType,
-#             [System.Windows.Forms.MessageBoxButtons]::OK,
-#             [System.Windows.Forms.MessageBoxIcon]::Information
-#         )
-
-#         return $true
-#     }
-#     catch {
-#         Write-Error "Failed to execute elevated domain command: $_"
-#         [System.Windows.Forms.MessageBox]::Show(
-#             "Error processing $OperationType operation: $_`n`nNote: This operation requires administrative privileges.",
-#             "Error",
-#             [System.Windows.Forms.MessageBoxButtons]::OK,
-#             [System.Windows.Forms.MessageBoxIcon]::Error
-#         )
-#         return $false
-#     }
-# }
-
 function Invoke-ElevatedDomainCommand {
     param(
         [string]$Command,
@@ -5218,34 +5165,6 @@ catch {
         return $false
     }
 }
-
-# function Invoke-DomainJoinOperation {
-#     param(
-#         [string]$DomainName,
-#         [string]$Username,
-#         [string]$Password
-#     )
-
-#     # Validate inputs
-#     $validation = Test-DomainJoinInputs -DomainName $DomainName -Username $Username -Password $Password
-#     if (-not $validation.IsValid) {
-#         [System.Windows.Forms.MessageBox]::Show(
-#             $validation.ErrorMessage,
-#             "Validation Error",
-#             [System.Windows.Forms.MessageBoxButtons]::OK,
-#             [System.Windows.Forms.MessageBoxIcon]::Error
-#         )
-#         return $false
-#     }
-
-#     # Escape special characters in password for command line
-#     $escapedPassword = $Password -replace "'", "''"
-
-#     # Build domain join command
-#     $command = "Add-Computer -DomainName '$DomainName' -Credential (New-Object System.Management.Automation.PSCredential ('$Username', (ConvertTo-SecureString '$escapedPassword' -AsPlainText -Force))) -Restart -Force"
-
-#     return Invoke-ElevatedDomainCommand -Command $command -OperationType "DomainJoin"
-# }
 
 function Invoke-DomainJoinOperation {
     param(
