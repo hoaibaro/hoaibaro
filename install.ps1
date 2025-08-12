@@ -44,7 +44,7 @@ function Add-EscapeHandler {
     param(
         [System.Windows.Forms.Form]$form
     )
-    
+
     # Add KeyDown event handler for Esc key
     $form.Add_KeyDown({
         param($sender, $e)
@@ -57,7 +57,7 @@ function Add-EscapeHandler {
     $form.KeyPreview = $true
 }
 
-# Dynamic Button 
+# Dynamic Button
 function New-DynamicButton {
     param (
         [string]$text,
@@ -214,7 +214,7 @@ function Add-TitleAnimation {
         try {
             $data = $this.Tag
             $label = $data.Label
-            
+
             # Check if label still exists and is not disposed
             if ($label -and -not $label.IsDisposed) {
                 # Toggle between colors using ARGB comparison for reliability
@@ -223,7 +223,7 @@ function Add-TitleAnimation {
                 } else {
                     $label.ForeColor = $data.Color1
                 }
-                
+
                 # Force UI update
                 $label.Refresh()
                 [System.Windows.Forms.Application]::DoEvents()
@@ -334,11 +334,11 @@ function Invoke-RunAllOperations {
         $wifiResult = Invoke-WiFiAutoConnection $statusTextBox
         if ($wifiResult) {
             Add-Status "WiFi connection completed!" $statusTextBox
-            
+
             # STEP 0.5: Start Windows Updates in background
             Add-Status "STEP 0.5: Starting Windows Updates (Background)..." $statusTextBox
             $progressBar.Value = 8
-            
+
             $updateResult = Invoke-WindowsUpdateCheck $statusTextBox
             if ($updateResult) {
                 Add-Status "Windows Update process started successfully!" $statusTextBox ([System.Drawing.Color]::Green)
@@ -347,7 +347,7 @@ function Invoke-RunAllOperations {
             else {
                 Add-Status "Windows Update start failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-            
+
             Add-Status "STEP 0 completed - continuing with other operations..." $statusTextBox ([System.Drawing.Color]::Cyan)
         }
         else {
@@ -529,7 +529,7 @@ function Invoke-RunAllOperations {
 }
 
 # STEP 0: WiFi AUTO-CONNECTION FUNCTION
-function Invoke-WiFiAutoConnection {    
+function Invoke-WiFiAutoConnection {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # Check WLAN service
@@ -540,7 +540,7 @@ function Invoke-WiFiAutoConnection {
                 Add-Status "No WiFi capability detected - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Yellow)
                 return $true
             }
-            
+
             if ($wlanService.Status -ne "Running") {
                 Add-Status "Starting WiFi service..." $statusTextBox
                 Start-Service -Name "WlanSvc" -ErrorAction Stop
@@ -556,12 +556,12 @@ function Invoke-WiFiAutoConnection {
         Add-Status "Detecting WiFi adapters..." $statusTextBox
         try {
             $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -like "*wireless*" -or $_.InterfaceDescription -like "*wifi*" -or $_.InterfaceDescription -like "*802.11*" }
-            
+
             if (-not $wifiAdapters) {
                 Add-Status "No WiFi adapters found - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Yellow)
                 return $true
             }
-            
+
             Add-Status "Found $($wifiAdapters.Count) WiFi adapter(s)" $statusTextBox ([System.Drawing.Color]::Green)
         }
         catch {
@@ -572,14 +572,14 @@ function Invoke-WiFiAutoConnection {
         # Check current WiFi connection
         $targetSSID = "VietUnion_5.0GHz"
         Add-Status "Checking current WiFi connection..." $statusTextBox
-        
+
         try {
             $currentConnection = netsh wlan show interfaces
-            
+
             # Parse current connection info
             $isConnected = $false
             $currentSSID = ""
-            
+
             foreach ($line in $currentConnection) {
                 if ($line -match "^\s*State\s*:\s*connected\s*$") {
                     $isConnected = $true
@@ -588,7 +588,7 @@ function Invoke-WiFiAutoConnection {
                     $currentSSID = $matches[1].Trim()
                 }
             }
-            
+
             # Check if already connected to target network
             if ($isConnected -and $currentSSID -eq $targetSSID) {
                 Add-Status "Already connected to $targetSSID - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Green)
@@ -615,7 +615,7 @@ function Invoke-WiFiAutoConnection {
 
         try {
             $SSIDHEX = ($SSID.ToCharArray() | ForEach-Object { '{0:X2}' -f ([int]$_) }) -join ''
-            
+
             $profileXML = @"
 <?xml version="1.0"?>
 <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
@@ -658,7 +658,7 @@ function Invoke-WiFiAutoConnection {
         try {
             # Remove existing profile first (correct command)
             $null = netsh wlan delete profile name="$SSID" 2>$null
-            
+
             # Add new profile
             $addResult = netsh wlan add profile filename="$profileFile"
             if ($LASTEXITCODE -eq 0) {
@@ -678,13 +678,13 @@ function Invoke-WiFiAutoConnection {
         Add-Status "Connecting to WiFi network..." $statusTextBox
         try {
             $connectResult = netsh wlan connect name="$SSID"
-            
+
             if ($LASTEXITCODE -eq 0) {
                 Add-Status "WiFi connection initiated" $statusTextBox ([System.Drawing.Color]::Green)
-                
+
                 # Wait and verify connection
                 Start-Sleep -Seconds 5
-                
+
                 $verifyResult = netsh wlan show interfaces
                 if ($verifyResult -like "*$SSID*" -and $verifyResult -like "*connected*") {
                     Add-Status "WiFi connected successfully to $SSID!" $statusTextBox ([System.Drawing.Color]::Green)
@@ -721,7 +721,7 @@ function Invoke-WindowsUpdateCheck {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
 
     Add-Status "Starting Windows Update process..." $statusTextBox
-    
+
     try {
         # Quick service check
         $wuService = Get-Service -Name "wuauserv" -ErrorAction SilentlyContinue
@@ -743,7 +743,7 @@ function Invoke-WindowsUpdateCheck {
             Start-Process -FilePath "USOClient.exe" -ArgumentList "ScanInstallWait" -WindowStyle Hidden -ErrorAction Stop
             Start-Process -FilePath "USOClient.exe" -ArgumentList "StartDownload" -WindowStyle Hidden -ErrorAction SilentlyContinue
             Start-Process -FilePath "USOClient.exe" -ArgumentList "StartInstall" -WindowStyle Hidden -ErrorAction SilentlyContinue
-            
+
             Add-Status "Windows Update triggered successfully" $statusTextBox ([System.Drawing.Color]::Green)
             return $true
         }
@@ -752,7 +752,7 @@ function Invoke-WindowsUpdateCheck {
             try {
                 Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -WindowStyle Hidden -ErrorAction Stop
                 Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow" -WindowStyle Hidden -ErrorAction SilentlyContinue
-                
+
                 Add-Status "Windows Update triggered via wuauclt" $statusTextBox ([System.Drawing.Color]::Green)
                 return $true
             }
@@ -770,24 +770,24 @@ function Invoke-WindowsUpdateCheck {
 
 function Start-WindowsUpdateBackground {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-    
+
     Add-Status "Starting Windows Update in background..." $statusTextBox ([System.Drawing.Color]::Cyan)
-    
+
     try {
         # Create a background runspace for updates
         $runspace = [runspacefactory]::CreateRunspace()
         $runspace.Open()
-        
+
         # Create PowerShell instance
         $powershell = [powershell]::Create()
         $powershell.Runspace = $runspace
-        
+
         # Add script block for background update
         $scriptBlock = {
             try {
                 # Enable TLS 1.2
                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                
+
                 # Try multiple update methods
                 # Method 1: USOClient
                 try {
@@ -799,7 +799,7 @@ function Start-WindowsUpdateBackground {
                 catch {
                     # Continue to next method
                 }
-                
+
                 # Method 2: PSWindowsUpdate
                 try {
                     Install-Module -Name PSWindowsUpdate -Force -Scope CurrentUser -ErrorAction Stop
@@ -816,7 +816,7 @@ function Start-WindowsUpdateBackground {
                 catch {
                     # Continue to next method
                 }
-                
+
                 # Method 3: wuauclt
                 try {
                     $null = Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -Wait -WindowStyle Hidden -ErrorAction Stop
@@ -831,22 +831,22 @@ function Start-WindowsUpdateBackground {
                 return "Background update error: $($_.Exception.Message)"
             }
         }
-        
+
         $powershell.AddScript($scriptBlock)
-        
+
         # Start async execution
         $asyncResult = $powershell.BeginInvoke()
-        
+
         Add-Status "Background Windows Update process started" $statusTextBox ([System.Drawing.Color]::Green)
         Add-Status "Updates will continue in background while other operations proceed" $statusTextBox ([System.Drawing.Color]::Cyan)
-        
+
         # Store references for cleanup (optional)
         $global:UpdateRunspace = @{
             PowerShell = $powershell
             Runspace = $runspace
             AsyncResult = $asyncResult
         }
-        
+
         return $true
     }
     catch {
@@ -876,22 +876,22 @@ function Invoke-RenamebyDevice {
         $renameForm.MaximizeBox = $false
         $renameForm.MinimizeBox = $false
 
-        # 
+        #
         $renameForm.KeyPreview = $true
         $renameForm.Add_KeyDown({
                 param($sender, $e)
                 if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
-                    # ESC 
+                    # ESC
                     $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
                     $renameForm.Close()
                 }
                 elseif ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) {
-                    # Enter 
+                    # Enter
                     $okButton.PerformClick()
                 }
             })
 
-        # 
+        #
         $currentNameLabel = New-Object System.Windows.Forms.Label
         $currentNameLabel.Text = "Current Computer Name: $currentName"
         $currentNameLabel.Location = New-Object System.Drawing.Point(20, 20)
@@ -910,7 +910,7 @@ function Invoke-RenamebyDevice {
             $prefix = "HOL"
         }
 
-        # 
+        #
         $instructionLabel = New-Object System.Windows.Forms.Label
         $instructionLabel.Text = "Enter new name (will be prefixed with $prefix):"
         $instructionLabel.Location = New-Object System.Drawing.Point(20, 60)
@@ -920,14 +920,14 @@ function Invoke-RenamebyDevice {
         $instructionLabel.BackColor = [System.Drawing.Color]::Transparent
         $renameForm.Controls.Add($instructionLabel)
 
-        # 
+        #
         $nameTextBox = New-Object System.Windows.Forms.RichTextBox
         $nameTextBox.Location = New-Object System.Drawing.Point(20, 90)
         $nameTextBox.Size = New-Object System.Drawing.Size(300, 25)
         $nameTextBox.Font = New-Object System.Drawing.Font("Arial", 10)
         $renameForm.Controls.Add($nameTextBox)
 
-        # 
+        #
         $nameTextBox.Add_KeyDown({
                 param($sender, $e)
                 if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) {
@@ -935,7 +935,7 @@ function Invoke-RenamebyDevice {
                 }
             })
 
-        # 
+        #
         $previewLabel = New-Object System.Windows.Forms.Label
         $previewLabel.Text = "New name will be: $prefix"
         $previewLabel.Location = New-Object System.Drawing.Point(20, 125)
@@ -945,7 +945,7 @@ function Invoke-RenamebyDevice {
         $previewLabel.BackColor = [System.Drawing.Color]::Transparent
         $renameForm.Controls.Add($previewLabel)
 
-        # 
+        #
         $nameTextBox.Add_TextChanged({
                 $newPreview = $prefix + $nameTextBox.Text.Trim()
                 $previewLabel.Text = "New name will be: $newPreview"
@@ -1063,7 +1063,7 @@ function Invoke-FileCleanup {
         "$env:USERPROFILE\AppData\Local\Temp\*"
     )
 
-    # 
+    #
     $tempPaths | ForEach-Object {
         try {
             Remove-Item -Path $_ -Recurse -Force -ErrorAction SilentlyContinue
@@ -1468,7 +1468,7 @@ function Copy-SoftwareFiles {
                 }
             }
             else {
-                Add-Status "Desktop Agent is already copied. Skipping..." $statusTextBox    
+                Add-Status "Desktop Agent is already copied. Skipping..." $statusTextBox
             }
         }
         elseif ($deviceType -eq "Laptop") {
@@ -1538,7 +1538,7 @@ function Install-Software {
         # 1. Check and uninstall OneDrive if present
         if (Test-OneDriveInstalled) {
             $result = Uninstall-OneDriveComplete -statusTextBox $statusTextBox
-            
+
             if ($result) {
                 Add-Status "OneDrive: Has been uninstalled!" $statusTextBox
             } else {
@@ -1675,7 +1675,7 @@ function Install-Software {
                 $foxitInstalled = $true
                 break
             }
-        }   
+        }
 
         if (-not $foxitInstalled) {
             # TÃ¬m file installer vá»›i nhiá»u pattern
@@ -1760,7 +1760,7 @@ function Install-Software {
                         Start-Process -FilePath $zoomInstaller -ArgumentList "/silent" -Wait
                         Add-Status "Zoom installed successfully!" $statusTextBox
                     }
-                    catch { 
+                    catch {
                         Add-Status "ERROR: Zoom installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
                     }
                 }
@@ -1809,10 +1809,10 @@ function Test-OneDriveInstalled {
         "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
         "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*"
     )
-    
+
     foreach ($keyPath in $uninstallKeys) {
         try {
-            $programs = Get-ItemProperty $keyPath -ErrorAction SilentlyContinue | Where-Object { 
+            $programs = Get-ItemProperty $keyPath -ErrorAction SilentlyContinue | Where-Object {
                 $_.DisplayName -like "*OneDrive*" -or $_.DisplayName -like "*Microsoft OneDrive*"
             }
             if ($programs) {
@@ -1823,20 +1823,20 @@ function Test-OneDriveInstalled {
             # Continue checking other paths
         }
     }
-    
+
     # Method 2: Check via file system
     $oneDrivePaths = @(
         "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe",
         "$env:PROGRAMFILES\Microsoft OneDrive\OneDrive.exe",
         "$env:PROGRAMFILES(x86)\Microsoft OneDrive\OneDrive.exe"
     )
-    
+
     foreach ($path in $oneDrivePaths) {
         if (Test-Path $path) {
             return $true
         }
     }
-    
+
     # Method 3: Check via Get-Package
     try {
         $package = Get-Package | Where-Object { $_.Name -like "*OneDrive*" }
@@ -1847,25 +1847,25 @@ function Test-OneDriveInstalled {
     catch {
         # Package method not available
     }
-    
+
     return $false
 }
 
 function Uninstall-OneDriveComplete {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
-    
+
     try {
         # First, verify OneDrive is actually installed
         if (-not (Test-OneDriveInstalled)) {
             Add-Status "OneDrive:     Not found in system. Skipping..." $statusTextBox
             return $true
         }
-        
+
         Add-Status "OneDrive detected. Starting uninstallation..." $statusTextBox
-        
+
         # Step 1: Kill all OneDrive processes first
         $oneDriveProcesses = @("OneDrive", "OneDriveSetup", "FileCoAuth", "OneDriveStandaloneUpdater", "OneDriveUpdaterService")
-        
+
         foreach ($processName in $oneDriveProcesses) {
             try {
                 $processes = Get-Process -Name $processName -ErrorAction SilentlyContinue
@@ -1880,7 +1880,7 @@ function Uninstall-OneDriveComplete {
                 # Silent process termination
             }
         }
-        
+
         # Step 2: Try registry-based uninstall with verification
         $uninstallSuccess = $false
         $registryPaths = @(
@@ -1888,27 +1888,27 @@ function Uninstall-OneDriveComplete {
             "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
             "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
         )
-        
+
         foreach ($regPath in $registryPaths) {
             if ($uninstallSuccess) { break }
 
             try {
                 $subKeys = Get-ChildItem -Path $regPath -ErrorAction SilentlyContinue
-                
+
                 foreach ($key in $subKeys) {
                     $program = Get-ItemProperty -Path $key.PSPath -ErrorAction SilentlyContinue
-                    
+
                     if ($program.DisplayName -like "*OneDrive*" -and $program.UninstallString) {
                         $uninstallString = $program.UninstallString
-                        
+
                         # Try different uninstall approaches
                         $uninstallCommands = @()
-                        
+
                         # Add quiet uninstall if available
                         if ($program.QuietUninstallString) {
                             $uninstallCommands += $program.QuietUninstallString
                         }
-                        
+
                         # Parse regular uninstall string and add silent parameters
                         if ($uninstallString -match '"([^"]+)"(.*)') {
                             $exe = $matches[1]
@@ -1917,12 +1917,12 @@ function Uninstall-OneDriveComplete {
                             $uninstallCommands += "`"$exe`" $args /S"
                             $uninstallCommands += "`"$exe`" $args /silent"
                         }
-                        
+
                         # Try each uninstall command
                         foreach ($cmd in $uninstallCommands) {
                             try {
                                 $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$cmd`"" -Wait -PassThru -WindowStyle Hidden
-                                
+
                                 if ($process.ExitCode -eq 0 -or $process.ExitCode -eq 3010) {
                                     $uninstallSuccess = $true
                                     break
@@ -1935,7 +1935,7 @@ function Uninstall-OneDriveComplete {
                                 Add-Status "Command failed: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
                             }
                         }
-                        
+
                         if ($uninstallSuccess) { break }
                     }
                 }
@@ -1944,14 +1944,14 @@ function Uninstall-OneDriveComplete {
                 Add-Status "Registry access error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
             }
         }
-        
+
         # Step 3: Wait and verify uninstall
         if ($uninstallSuccess) {
             Start-Sleep -Seconds 5
-            
+
             # Check if OneDrive is still installed
             $stillInstalled = Test-OneDriveInstalled
-            
+
             if ($stillInstalled) {
                 Add-Status "OneDrive still detected after uninstall attempt" $statusTextBox ([System.Drawing.Color]::Yellow)
                 $uninstallSuccess = $false
@@ -1960,7 +1960,7 @@ function Uninstall-OneDriveComplete {
                 return $true
             }
         }
-        
+
         # Step 4: Try OneDriveSetup.exe method
         if (-not $uninstallSuccess) {
             $setupPaths = @(
@@ -1968,25 +1968,25 @@ function Uninstall-OneDriveComplete {
                 "$env:SYSTEMROOT\System32\OneDriveSetup.exe",
                 "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDriveSetup.exe"
             )
-            
+
             foreach ($setupPath in $setupPaths) {
                 if (Test-Path $setupPath) {
                     try {
                         Add-Status "Using: $setupPath" $statusTextBox
-                        
+
                         # Try multiple uninstall parameters
                         $setupCommands = @(
                             "/uninstall /allusers",
                             "/uninstall",
                             "/uninstall /quiet"
                         )
-                        
+
                         foreach ($args in $setupCommands) {
                             $process = Start-Process -FilePath $setupPath -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
-                            
+
                             if ($process.ExitCode -eq 0) {
                                 Start-Sleep -Seconds 3
-                                
+
                                 if (-not (Test-OneDriveInstalled)) {
                                     return $true
                                 }
@@ -1999,11 +1999,11 @@ function Uninstall-OneDriveComplete {
                 }
             }
         }
-        
+
         # Step 5: Final verification and cleanup
         if (Test-OneDriveInstalled) {
             Add-Status "OneDrive still present. Manual intervention may be required." $statusTextBox ([System.Drawing.Color]::Yellow)
-            
+
             # Try to open Control Panel for manual uninstall
             try {
                 Start-Process -FilePath "appwiz.cpl" -WindowStyle Normal
@@ -2017,12 +2017,12 @@ function Uninstall-OneDriveComplete {
             catch {
                 Add-Status "Could not open Control Panel" $statusTextBox ([System.Drawing.Color]::Red)
             }
-            
+
             return $false
         }
         else {
             Add-Status "OneDrive has been uninstalled." $statusTextBox
-            
+
             # Clean up remaining registry entries
             try {
                 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "OneDrive" -ErrorAction SilentlyContinue
@@ -2030,10 +2030,10 @@ function Uninstall-OneDriveComplete {
             catch {
                 # Silent cleanup
             }
-            
+
             return $true
         }
-        
+
     }
     catch {
         Add-Status "Critical error in OneDrive removal: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
@@ -2066,7 +2066,7 @@ function Show-InstallSoftwareDialog {
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $deviceTypeForm.Controls.Add($titleLabel)
-    
+
     Add-TitleAnimation -titleLabel $titleLabel
 
     # Status text box
@@ -2420,7 +2420,7 @@ function Invoke-VolumeManagementDialog {
                 $selectedDrive = $driveListBox.SelectedItem.ToString()
                 if ($selectedDrive.Length -gt 0) {
                     $driveLetter = $selectedDrive.Substring(0, 1)
-                    
+
                     # Update for Change Letter button
                     if ($contentPanel.Controls.Count -gt 0 -and $contentPanel.Controls[0].Text -eq "Change Drive Letter") {
                         # Find the GroupBox in the change letter panel
@@ -2447,12 +2447,12 @@ function Invoke-VolumeManagementDialog {
                         if ($script:extendSourceDriveTextBox -and $script:extendTargetDriveTextBox) {
                             $currentSource = $script:extendSourceDriveTextBox.Text.Trim()
                             $currentTarget = $script:extendTargetDriveTextBox.Text.Trim()
-                            
-                            # Logic mới: 
+
+                            # Logic mới:
                             # 1. Nếu source trống -> fill source (trừ ổ C)
                             # 2. Nếu source có rồi và khác với drive được chọn -> fill target (cho phép C)
                             # 3. Nếu cả 2 đều có rồi -> thay đổi target
-                            
+
                             if ([string]::IsNullOrEmpty($currentSource)) {
                                 # Case 1: Source trống -> fill source (KHÔNG cho phép C)
                                 if ($driveLetter -eq "C" -or $driveLetter -eq "c") {
@@ -2742,7 +2742,7 @@ assign letter=$newLetter
         $contentPanel.Controls.Clear()
 
         # Create title
-        New-RenameVolumeTitle -parentPanel $contentPanel 
+        New-RenameVolumeTitle -parentPanel $contentPanel
 
         # Create GroupBox with all controls inside
         $renameControls = New-RenameVolumeGroupBox -parentPanel $contentPanel -driveListBox $driveListBox
@@ -3460,7 +3460,7 @@ function New-ExtendVolumeGroupBox {
     $script:extendTargetDriveTextBox.Add_GotFocus({ $this.SelectAll() })
     $script:extendTargetDriveTextBox.Add_TextChanged({
             $currentText = $this.Text.ToUpper()
-            
+
             # Kiểm tra trùng với source
             if ($script:extendSourceDriveTextBox -and $currentText -eq $script:extendSourceDriveTextBox.Text.Trim()) {
                 Add-Status "Target không thể trùng với Source Drive!" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -3695,20 +3695,20 @@ exit /b 0
 
         # Start the process
         $process = [System.Diagnostics.Process]::Start($psi)
-        
+
         if ($process) {
             Add-Status "Batch process started. Waiting for completion..." $statusTextBox
-            
+
             # Wait for process to complete
             $process.WaitForExit()
             $exitCode = $process.ExitCode
-            
+
             Add-Status "Batch process completed with exit code: $exitCode" $statusTextBox
-            
+
             # Check results
             if (Test-Path "merge_log.txt") {
                 $logContent = Get-Content "merge_log.txt" -Raw
-                
+
                 if ($logContent -match "MERGE_SUCCESS") {
                     Add-Status "Drive $sourceDrive has been deleted and drive $targetDrive has been extended." $statusTextBox
                     Update-DriveList
@@ -4010,7 +4010,7 @@ function Invoke-ActivationDialog {
     }
     $activateForm.Controls.Add($btnWin10Home)
 
-    Add-EscapeHandler -form $activateForm 
+    Add-EscapeHandler -form $activateForm
 
     # When the form is closed, show the main menu again
     $activateForm.Add_FormClosed({
@@ -4122,7 +4122,7 @@ function Invoke-FeaturesDialog {
             }
             catch {
                 Add-Status "ERROR: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                $startButton.Text = "Error Occurred" 
+                $startButton.Text = "Error Occurred"
                 $startButton.BackColor = [System.Drawing.Color]::FromArgb(150, 0, 0)
             }
         })
@@ -4446,29 +4446,29 @@ function Invoke-RenameDialog {
     $renameButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $renameButton.Add_Click({
             $newName = $newNameTextBox.Text.Trim()
-        
+
             # Disable button để tránh click nhiều lần
             $renameButton.Enabled = $false
-        
+
             # Clear status trước khi bắt đầu
             $statusTextBox.Clear()
-        
+
             # Validation cơ bản
             if ([string]::IsNullOrWhiteSpace($newName)) {
                 Add-Status "Error: Please enter a new device name!" $statusTextBox ([System.Drawing.Color]::Red)
                 $renameButton.Enabled = $true
                 return
             }
-        
+
             # Lấy tên máy hiện tại
             $currentName = $env:COMPUTERNAME
-        
+
             if ($newName -eq $currentName) {
                 Add-Status "Warning: New name is the same as the current name. No action taken." $statusTextBox ([System.Drawing.Color]::Yellow)
                 $renameButton.Enabled = $true
                 return
             }
-        
+
             # Xác nhận với user
             $confirmResult = [System.Windows.Forms.MessageBox]::Show(
                 "Are you sure you want to rename this device from '$currentName' to '$newName'?`n`nThis operation requires a restart.",
@@ -4476,16 +4476,16 @@ function Invoke-RenameDialog {
                 [System.Windows.Forms.MessageBoxButtons]::YesNo,
                 [System.Windows.Forms.MessageBoxIcon]::Question
             )
-        
+
             if ($confirmResult -eq [System.Windows.Forms.DialogResult]::Yes) {
                 Add-Status "Renaming device from '$currentName' to '$newName'..." $statusTextBox
-            
+
                 try {
                     # Sử dụng Rename-Computer trực tiếp
                     Rename-Computer -NewName $newName -Force -ErrorAction Stop
                     Add-Status "Device rename completed successfully!" $statusTextBox
                     Add-Status "Please restart your device for changes to take effect." $statusTextBox
-                
+
                     # Hỏi user có muốn restart ngay không
                     $restartResult = [System.Windows.Forms.MessageBox]::Show(
                         "Do you want to restart your device now?",
@@ -4493,7 +4493,7 @@ function Invoke-RenameDialog {
                         [System.Windows.Forms.MessageBoxButtons]::YesNo,
                         [System.Windows.Forms.MessageBoxIcon]::Question
                     )
-                
+
                     if ($restartResult -eq [System.Windows.Forms.DialogResult]::Yes) {
                         Add-Status "Restarting device..." $statusTextBox
                         Start-Sleep -Seconds 2
@@ -4507,7 +4507,7 @@ function Invoke-RenameDialog {
             else {
                 Add-Status "Rename operation cancelled by user." $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-        
+
             # Re-enable button
             $renameButton.Enabled = $true
         })
@@ -4719,7 +4719,7 @@ function Show-SetPasswordForm {
     # Set button event
     $setButton.Add_Click({
             $dialogResult.Action = "set"
-            
+
             # Get password from textbox or handle special cases
             $selectedPreset = $presetComboBox.SelectedItem.ToString()
             if ($selectedPreset -eq "Custom (enter below)") {
@@ -4728,7 +4728,7 @@ function Show-SetPasswordForm {
             else {
                 $dialogResult.Password = $selectedPreset
             }
-            
+
             # Actually set the password here
             $success = Set-UserPassword -user $currentUser -password $dialogResult.Password
             if ($success) {
@@ -4742,7 +4742,7 @@ function Show-SetPasswordForm {
             else {
                 [System.Windows.Forms.MessageBox]::Show("Error setting password. This operation may require administrative privileges.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
             }
-            
+
             $form.Close()
         })
 
@@ -4755,7 +4755,7 @@ function Show-SetPasswordForm {
     $form.Add_FormClosed({
         Show-MainMenu
     })
-    
+
     # Show the form
     $form.ShowDialog()
     return $dialogResult
@@ -4802,7 +4802,7 @@ function Invoke-SetPasswordDialog {
         [bool]$showMenuAfter = $false
     )
 
-    $result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox 
+    $result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox
 
     if ($result.Action -eq "set") {
         $success = Set-UserPassword -user $currentUser -password $result.Password
@@ -4827,8 +4827,8 @@ function Invoke-SetPasswordDialog {
             [System.Windows.Forms.MessageBox]::Show("Error removing password. This operation may require administrative privileges.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
         }
     }
-    if ($showMenuAfter -and -not $script:form.Visible) { 
-        Show-MainMenu 
+    if ($showMenuAfter -and -not $script:form.Visible) {
+        Show-MainMenu
     }
 }
 
@@ -5063,16 +5063,16 @@ function Invoke-ElevatedDomainCommand {
     try {
         # Create a temporary PowerShell script file
         $tempScript = [System.IO.Path]::GetTempFileName() + ".ps1"
-        
+
         # Write the command to the script file with proper error handling (NO PASSWORD DISPLAY)
         $scriptContent = @"
 try {
     Write-Host "Starting $OperationType operation..." -ForegroundColor Green
     Write-Host "Executing domain join command..." -ForegroundColor Yellow
-    
+
     # Execute the command (password is hidden in the command itself)
     Invoke-Expression $Command
-    
+
     Write-Host "$OperationType completed successfully!" -ForegroundColor Green
     Write-Host "Press any key to continue..."
     `$null = `$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -5086,9 +5086,9 @@ catch {
     exit 1
 }
 "@
-        
+
         Set-Content -Path $tempScript -Value $scriptContent -Encoding UTF8
-        
+
         # Create process start info for elevated execution
         $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processStartInfo.FileName = "powershell.exe"
@@ -5099,7 +5099,7 @@ catch {
 
         # Start the elevated process and wait for completion
         $process = [System.Diagnostics.Process]::Start($processStartInfo)
-        
+
         if ($null -eq $process) {
             throw "Failed to start elevated process - User may have cancelled UAC prompt"
         }
@@ -5107,12 +5107,12 @@ catch {
         # Wait for the process to complete (with timeout)
         $timeout = 120000 # 2 minutes
         $completed = $process.WaitForExit($timeout)
-        
+
         # Clean up temp file
         if (Test-Path $tempScript) {
             Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
         }
-        
+
         if (-not $completed) {
             # Process timed out
             try { $process.Kill() } catch { }
@@ -5126,7 +5126,7 @@ catch {
         }
 
         $exitCode = $process.ExitCode
-        
+
         if ($exitCode -eq 0) {
             # Success - show restart confirmation
             $restartResult = [System.Windows.Forms.MessageBox]::Show(
@@ -5135,12 +5135,12 @@ catch {
                 [System.Windows.Forms.MessageBoxButtons]::YesNo,
                 [System.Windows.Forms.MessageBoxIcon]::Question
             )
-            
+
             if ($restartResult -eq [System.Windows.Forms.DialogResult]::Yes) {
                 # Force restart
                 Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 10 /c `"Restarting to complete $OperationType`"" -WindowStyle Hidden
             }
-            
+
             return $true
         }
         else {
@@ -5196,7 +5196,7 @@ function Invoke-DomainJoinOperation {
                 [System.Windows.Forms.MessageBoxButtons]::YesNo,
                 [System.Windows.Forms.MessageBoxIcon]::Warning
             )
-            
+
             if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
                 return $false
             }
@@ -5267,7 +5267,7 @@ function Show-DomainManagementForm {
 
     Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
 
-    # Current computer name label 
+    # Current computer name label
     $boldFont = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
     $currentNameBoldLabel = New-DomainManagementLabel -Text $computerInfo.ComputerName -X 170 -Y 70 -Width 320 -Height 30 -FontSize 12 -FontStyle ([System.Drawing.FontStyle]::Bold)
     $currentNameBoldLabel.Font = $boldFont
@@ -5415,54 +5415,170 @@ function Show-DomainManagementForm {
 function Invoke-CrowdStrikeDialog {
     Hide-MainMenu
 
-    # Create CrowdStrike form
+    # Create CrowdStrike form with modern design
     $crowdStrikeForm = New-Object System.Windows.Forms.Form
-    $crowdStrikeForm.Text = "CrowdStrike Management"
-    $crowdStrikeForm.Size = New-Object System.Drawing.Size(500, 400)
+    $crowdStrikeForm.Text = "BAOPROVIP - CROWDSTRIKE MANAGEMENT"
+    $crowdStrikeForm.Size = New-Object System.Drawing.Size(700, 550)
+    $crowdStrikeForm.MinimumSize = New-Object System.Drawing.Size(700, 550)
     $crowdStrikeForm.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
-    $crowdStrikeForm.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
-    $crowdStrikeForm.ForeColor = [System.Drawing.Color]::White
-    $crowdStrikeForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
-    $crowdStrikeForm.MaximizeBox = $false
+    $crowdStrikeForm.BackColor = [System.Drawing.Color]::Black
+    $crowdStrikeForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
+    $crowdStrikeForm.MaximizeBox = $true
 
-    # Title label
+    # Apply gradient background using global function
+    Add-GradientBackground -form $crowdStrikeForm
+
+    # Title label with animation
     $titleLabel = New-Object System.Windows.Forms.Label
-    $titleLabel.Text = "CrowdStrike Management"
-    $titleLabel.Location = New-Object System.Drawing.Point(20, 20)
-    $titleLabel.Size = New-Object System.Drawing.Size(460, 30)
-    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
-    $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(255, 140, 0)
+    $titleLabel.Text = "CROWDSTRIKE SECURITY MANAGEMENT"
+    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 18, [System.Drawing.FontStyle]::Bold)
+    $titleLabel.ForeColor = [System.Drawing.Color]::Lime
     $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+    $titleLabel.Size = New-Object System.Drawing.Size($crowdStrikeForm.ClientSize.Width, 50)
+    $titleLabel.Location = New-Object System.Drawing.Point(0, 20)
+    $titleLabel.BackColor = [System.Drawing.Color]::Transparent
+    $titleLabel.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $crowdStrikeForm.Controls.Add($titleLabel)
 
-    # Status text box
-    $statusTextBox = New-Object System.Windows.Forms.RichTextBox
-    $statusTextBox.Location = New-Object System.Drawing.Point(20, 200)
-    $statusTextBox.Size = New-Object System.Drawing.Size(460, 120)
-    $statusTextBox.BackColor = [System.Drawing.Color]::Black
-    $statusTextBox.ForeColor = [System.Drawing.Color]::White
-    $statusTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
-    $statusTextBox.ReadOnly = $true
-    $crowdStrikeForm.Controls.Add($statusTextBox)
+    # Add title animation
+    Add-TitleAnimation -titleLabel $titleLabel -interval 600 -color1 ([System.Drawing.Color]::Lime) -color2 ([System.Drawing.Color]::FromArgb(255, 140, 0))
 
-    # Install CrowdStrike button
-    $btnInstall = New-DynamicButton -text "Install CrowdStrike" -x 20 -y 70 -width 220 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0)) -clickAction {
-        Invoke-InstallCrowdStrike -statusTextBox $statusTextBox
+    # Department selection section
+    $deptLabel = New-Object System.Windows.Forms.Label
+    $deptLabel.Text = "SELECT DEPARTMENT:"
+    $deptLabel.Location = New-Object System.Drawing.Point(30, 90)
+    $deptLabel.Size = New-Object System.Drawing.Size(200, 25)
+    $deptLabel.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
+    $deptLabel.ForeColor = [System.Drawing.Color]::White
+    $deptLabel.BackColor = [System.Drawing.Color]::Transparent
+    $crowdStrikeForm.Controls.Add($deptLabel)
+
+    # Department dropdown
+    $deptComboBox = New-Object System.Windows.Forms.ComboBox
+    $deptComboBox.Location = New-Object System.Drawing.Point(30, 120)
+    $deptComboBox.Size = New-Object System.Drawing.Size(300, 25)
+    $deptComboBox.Font = New-Object System.Drawing.Font("Arial", 10)
+    $deptComboBox.BackColor = [System.Drawing.Color]::FromArgb(40, 40, 40)
+    $deptComboBox.ForeColor = [System.Drawing.Color]::White
+    $deptComboBox.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $deptComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+
+    # Add departments
+    $departments = @(
+        "1. Board-of-Directors",           
+        "2. HR-Admin",                     
+        "3. Legal-Compliance",             
+        "4. Marketing",                    
+        "5. HN-Branch",                    
+        "6. Accounting",                   
+        "7. Fee-Control",                  
+        "8. Data-Exchange",                
+        "9. Service-Operation-Division",   
+        "10. Training",                     
+        "11. Customer-Service",             
+        "12. Account-System-Management",    
+        "13. Quality-of-Service",           
+        "14. Project-Strategy-Division",    
+        "15. Financial-Service-Project",    
+        "16. Bill-Payment-Project",         
+        "17. Business-Development",         
+        "18. Network-Development",         
+        "19. E-Commerce",                   
+        "20. Omni",                        
+        "21. Paycode",                      
+        "22. Digi-Gift",                   
+        "23. Product-Management",           
+        "24. Payoo-X-and-Biz-Solutions",   
+        "25. Web",                          
+        "26. System-Integration",           
+        "27. Core-System",                  
+        "28. Database-Management",          
+        "29. Quality-Control",              
+        "30. Business-Analysis",           
+        "31. Payoo-Plus-Digital-Transformation", 
+        "32. Mobile-App",                         
+        "33. IT-Administration",                   
+        "34. Technical-Operation",          
+        "35. Cyber-Security",               
+        "36. NTT",                          
+        "37. Collaborator"                  
+    )
+
+    foreach ($dept in $departments) {
+        $deptComboBox.Items.Add($dept)
+    }
+    $deptComboBox.SelectedIndex = 0
+    $crowdStrikeForm.Controls.Add($deptComboBox)
+
+    # Installation type section
+    $typeLabel = New-Object System.Windows.Forms.Label
+    $typeLabel.Text = "INSTALLATION TYPE:"
+    $typeLabel.Location = New-Object System.Drawing.Point(350, 90)
+    $typeLabel.Size = New-Object System.Drawing.Size(200, 25)
+    $typeLabel.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
+    $typeLabel.ForeColor = [System.Drawing.Color]::White
+    $typeLabel.BackColor = [System.Drawing.Color]::Transparent
+    $crowdStrikeForm.Controls.Add($typeLabel)
+
+    # Installation type radio buttons
+    $radioAV = New-Object System.Windows.Forms.RadioButton
+    $radioAV.Text = "AV"
+    $radioAV.Location = New-Object System.Drawing.Point(350, 120)
+    $radioAV.Size = New-Object System.Drawing.Size(150, 25)
+    $radioAV.Font = New-Object System.Drawing.Font("Arial", 10)
+    $radioAV.ForeColor = [System.Drawing.Color]::White
+    $radioAV.BackColor = [System.Drawing.Color]::Transparent
+    $radioAV.Checked = $true
+    $crowdStrikeForm.Controls.Add($radioAV)
+
+    $radioEDR = New-Object System.Windows.Forms.RadioButton
+    $radioEDR.Text = "EDR"
+    $radioEDR.Location = New-Object System.Drawing.Point(350, 150)
+    $radioEDR.Size = New-Object System.Drawing.Size(200, 25)
+    $radioEDR.Font = New-Object System.Drawing.Font("Arial", 10)
+    $radioEDR.ForeColor = [System.Drawing.Color]::White
+    $radioEDR.BackColor = [System.Drawing.Color]::Transparent
+    $crowdStrikeForm.Controls.Add($radioEDR)
+
+    # Action buttons
+    $btnInstall = New-DynamicButton -text "INSTALL CROWDSTRIKE" -x 30 -y 200 -width 200 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0)) -clickAction {
+        $selectedDept = $deptComboBox.SelectedItem.ToString().Split(".")[1].Trim()  # Extract department name from selected item
+        $installType = if ($radioEDR.Checked) { "EDR" } else { "AV" }
+        Invoke-InstallCrowdStrike -statusTextBox $statusTextBox -Department $selectedDept -InstallType $installType
     }
     $crowdStrikeForm.Controls.Add($btnInstall)
 
-    # Check CrowdStrike Status button
-    $btnStatus = New-DynamicButton -text "Check Status" -x 260 -y 70 -width 220 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
+    $btnStatus = New-DynamicButton -text "CHECK STATUS" -x 250 -y 200 -width 200 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         Invoke-CheckCrowdStrikeStatus -statusTextBox $statusTextBox
     }
     $crowdStrikeForm.Controls.Add($btnStatus)
 
+    $btnUninstall = New-DynamicButton -text "UNINSTALL" -x 470 -y 200 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(150, 100, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(200, 150, 0)) -pressColor ([System.Drawing.Color]::FromArgb(100, 80, 0)) -clickAction {
+        Invoke-UninstallCrowdStrike -statusTextBox $statusTextBox
+    }
+    $crowdStrikeForm.Controls.Add($btnUninstall)
+
+    # Status text box
+    $statusTextBox = New-Object System.Windows.Forms.RichTextBox
+    $statusTextBox.Location = New-Object System.Drawing.Point(30, 270)
+    $statusTextBox.Size = New-Object System.Drawing.Size(630, 200)
+    $statusTextBox.BackColor = [System.Drawing.Color]::Black
+    $statusTextBox.ForeColor = [System.Drawing.Color]::Lime
+    $statusTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
+    $statusTextBox.ReadOnly = $true
+    $statusTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+    $statusTextBox.Text = "Ready to manage CrowdStrike installation..."
+    $statusTextBox.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Bottom -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+    $crowdStrikeForm.Controls.Add($statusTextBox)
+
     # Return button
-    $btnReturn = New-DynamicButton -text "Return" -x 190 -y 140 -width 120 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(100, 100, 100)) -hoverColor ([System.Drawing.Color]::FromArgb(150, 150, 150)) -pressColor ([System.Drawing.Color]::FromArgb(80, 80, 80)) -clickAction {
+    $btnReturn = New-DynamicButton -text "RETURN TO MAIN MENU" -x 250 -y 480 -width 200 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(100, 100, 100)) -hoverColor ([System.Drawing.Color]::FromArgb(150, 150, 150)) -pressColor ([System.Drawing.Color]::FromArgb(80, 80, 80)) -clickAction {
         $crowdStrikeForm.Close()
     }
+    $btnReturn.Anchor = [System.Windows.Forms.AnchorStyles]::Bottom -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $crowdStrikeForm.Controls.Add($btnReturn)
 
+    # Add escape handler
     Add-EscapeHandler -form $crowdStrikeForm
 
     # When the form is closed, show the main menu again
@@ -5476,20 +5592,20 @@ function Invoke-CrowdStrikeDialog {
 
 function Invoke-CheckCrowdStrikeStatus {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-    
+
     Add-Status "  CrowdStrike Installation Status Check" $statusTextBox ([System.Drawing.Color]::Cyan)
-    
+
     try {
         # 1. Check csagent service status
         Add-Status "1. Checking csagent service status:" $statusTextBox ([System.Drawing.Color]::White)
         $csagentService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
-        
+
         if ($csagentService) {
             Add-Status "   CrowdStrike service found" $statusTextBox ([System.Drawing.Color]::Green)
             Add-Status "   Service Name: $($csagentService.DisplayName)" $statusTextBox ([System.Drawing.Color]::Gray)
             Add-Status "   Service Status: $($csagentService.Status)" $statusTextBox ([System.Drawing.Color]::Gray)
             Add-Status "   Start Type: $($csagentService.StartType)" $statusTextBox ([System.Drawing.Color]::Gray)
-            
+
             if ($csagentService.Status -eq "Running") {
                 Add-Status "   ✓ Service Status: RUNNING - Installation successful!" $statusTextBox ([System.Drawing.Color]::Green)
             } else {
@@ -5498,43 +5614,43 @@ function Invoke-CheckCrowdStrikeStatus {
         } else {
             Add-Status "   ✗ CrowdStrike service not found - Installation may have failed" $statusTextBox ([System.Drawing.Color]::Red)
         }
-        
+
         Add-Status "" $statusTextBox
-        
+
         # 2. Check CrowdStrike processes
         Add-Status "2. Checking CrowdStrike processes:" $statusTextBox ([System.Drawing.Color]::White)
-        
+
         $csFalconService = Get-Process -Name "CSFalconService" -ErrorAction SilentlyContinue
         if ($csFalconService) {
             Add-Status "   ✓ CSFalconService.exe is running (PID: $($csFalconService.Id))" $statusTextBox ([System.Drawing.Color]::Green)
         } else {
             Add-Status "   ⚠ CSFalconService.exe not found" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-        
+
         $csFalconContainer = Get-Process -Name "CSFalconContainer" -ErrorAction SilentlyContinue
         if ($csFalconContainer) {
             Add-Status "   ✓ CSFalconContainer.exe is running (PID: $($csFalconContainer.Id))" $statusTextBox ([System.Drawing.Color]::Green)
         } else {
             Add-Status "   ⚠ CSFalconContainer.exe not found" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-        
+
         Add-Status "" $statusTextBox
-        
+
         # 3. Check installation directory
         Add-Status "3. Checking installation directory:" $statusTextBox ([System.Drawing.Color]::White)
-        
+
         $installPaths = @(
             "${env:ProgramFiles}\CrowdStrike",
             "${env:ProgramFiles(x86)}\CrowdStrike",
             "${env:ProgramData}\CrowdStrike"
         )
-        
+
         $installFound = $false
         foreach ($path in $installPaths) {
             if (Test-Path $path) {
                 Add-Status "   ✓ CrowdStrike installation directory found: $path" $statusTextBox ([System.Drawing.Color]::Green)
                 $installFound = $true
-                
+
                 # Check for Falcon files
                 $falconFiles = Get-ChildItem -Path $path -Filter "*falcon*" -ErrorAction SilentlyContinue
                 if ($falconFiles) {
@@ -5542,21 +5658,21 @@ function Invoke-CheckCrowdStrikeStatus {
                 }
             }
         }
-        
+
         if (-not $installFound) {
             Add-Status "   ⚠ CrowdStrike installation directory not found" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-        
+
         Add-Status "" $statusTextBox
-        
+
         # 4. Check log files
         Add-Status "4. Checking log files:" $statusTextBox ([System.Drawing.Color]::White)
-        
+
         $logPath = "C:\Temp\FalconInstall.log"
         if (Test-Path $logPath) {
             Add-Status "   ✓ Installation log found" $statusTextBox ([System.Drawing.Color]::Green)
             Add-Status "   Location: $logPath" $statusTextBox ([System.Drawing.Color]::Gray)
-            
+
             # Show last few lines of log
             try {
                 $lastLines = Get-Content -Path $logPath -Tail 5 -ErrorAction SilentlyContinue
@@ -5572,12 +5688,12 @@ function Invoke-CheckCrowdStrikeStatus {
         } else {
             Add-Status "   ⚠ Installation log not found" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-        
+
         Add-Status "" $statusTextBox
-        
+
         # 5. Network connectivity test
         Add-Status "5. Network connectivity test:" $statusTextBox ([System.Drawing.Color]::White)
-        
+
         try {
             $pingResult = Test-Connection -ComputerName "8.8.8.8" -Count 1 -Quiet -ErrorAction SilentlyContinue
             if ($pingResult) {
@@ -5588,17 +5704,17 @@ function Invoke-CheckCrowdStrikeStatus {
         } catch {
             Add-Status "   ⚠ Could not test network connectivity" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-        
+
         # 6. Generate summary report
         Add-Status "========================================" $statusTextBox ([System.Drawing.Color]::Cyan)
         Add-Status "           SUMMARY REPORT" $statusTextBox ([System.Drawing.Color]::Cyan)
         Add-Status "========================================" $statusTextBox ([System.Drawing.Color]::Cyan)
-        
+
         # Determine overall status
         $serviceOk = $csagentService -and $csagentService.Status -eq "Running"
         $processOk = $csFalconService -or $csFalconContainer
         $filesOk = $installFound
-        
+
         if ($serviceOk -and $processOk -and $filesOk) {
             Add-Status "✓ OVERALL STATUS: INSTALLATION SUCCESSFUL" $statusTextBox ([System.Drawing.Color]::Green)
             Add-Status "  CrowdStrike Falcon Sensor is properly installed and running" $statusTextBox ([System.Drawing.Color]::Green)
@@ -5606,18 +5722,227 @@ function Invoke-CheckCrowdStrikeStatus {
             Add-Status "⚠ OVERALL STATUS: INSTALLATION INCOMPLETE OR FAILED" $statusTextBox ([System.Drawing.Color]::Yellow)
             Add-Status "  Please check the issues above and consider reinstalling" $statusTextBox ([System.Drawing.Color]::White)
         }
-        
+
         Add-Status "" $statusTextBox
-        
+
         # 7. Troubleshooting commands
         Add-Status "Troubleshooting commands:" $statusTextBox ([System.Drawing.Color]::White)
         Add-Status "- Restart service: sc.exe stop csagent && sc.exe start csagent" $statusTextBox ([System.Drawing.Color]::Gray)
         Add-Status "- Check detailed status: sc.exe query csagent" $statusTextBox ([System.Drawing.Color]::Gray)
         Add-Status "- View installation logs: notepad C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Gray)
         Add-Status "- Contact IT support if issues persist" $statusTextBox ([System.Drawing.Color]::Gray)
-        
+
     } catch {
         Add-Status "Error checking CrowdStrike status: $_" $statusTextBox ([System.Drawing.Color]::Red)
+    }
+}
+
+function Invoke-InstallCrowdStrike {
+    param (
+        [System.Windows.Forms.RichTextBox]$statusTextBox,
+        [string]$Department,
+        [string]$InstallType
+    )
+
+    try {
+        Add-Status "=== CROWDSTRIKE INSTALLATION STARTED ===" $statusTextBox ([System.Drawing.Color]::Cyan)
+        Add-Status "Department: $Department" $statusTextBox ([System.Drawing.Color]::White)
+        Add-Status "Installation Type: $InstallType" $statusTextBox ([System.Drawing.Color]::White)
+        Add-Status "" $statusTextBox
+
+        # Check if CrowdStrike is already installed
+        Add-Status "1. Checking existing installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        $csagentService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
+
+        if ($csagentService) {
+            Add-Status "   ⚠ CrowdStrike is already installed!" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "   Service Status: $($csagentService.Status)" $statusTextBox ([System.Drawing.Color]::Gray)
+
+            $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+                "CrowdStrike is already installed. Do you want to reinstall?",
+                "CrowdStrike Already Installed",
+                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                [System.Windows.Forms.MessageBoxIcon]::Question
+            )
+
+            if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
+                Add-Status "Installation cancelled by user." $statusTextBox ([System.Drawing.Color]::Yellow)
+                return
+            }
+
+            Add-Status "   Proceeding with reinstallation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        } else {
+            Add-Status "   ✓ No existing installation found" $statusTextBox ([System.Drawing.Color]::Green)
+        }
+
+        # Check for installer script
+        Add-Status "2. Locating CrowdStrike installer..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        $scriptPath = Join-Path $PSScriptRoot "..\CrowdStrike\core\auto_installer_integrated.ps1"
+
+        if (-not (Test-Path $scriptPath)) {
+            Add-Status "   ✗ CrowdStrike installer script not found!" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "   Expected path: $scriptPath" $statusTextBox ([System.Drawing.Color]::Gray)
+            Add-Status "   Please ensure CrowdStrike installer is properly installed." $statusTextBox ([System.Drawing.Color]::Red)
+            return
+        }
+
+        Add-Status "   ✓ Installer script found" $statusTextBox ([System.Drawing.Color]::Green)
+        Add-Status "   Path: $scriptPath" $statusTextBox ([System.Drawing.Color]::Gray)
+
+        # Check for installer executable
+        $installerDir = Join-Path $PSScriptRoot "..\CrowdStrike\core"
+        $installerPath = Join-Path $installerDir "FalconSensor_Windows.exe"
+
+        if (-not (Test-Path $installerPath)) {
+            Add-Status "   ✗ CrowdStrike installer executable not found!" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "   Expected path: $installerPath" $statusTextBox ([System.Drawing.Color]::Gray)
+            Add-Status "   Please ensure FalconSensor_Windows.exe is in the core directory." $statusTextBox ([System.Drawing.Color]::Red)
+            return
+        }
+
+        Add-Status "   ✓ Installer executable found" $statusTextBox ([System.Drawing.Color]::Green)
+
+        # Prepare installation command
+        Add-Status "3. Preparing installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        $arguments = @(
+            "-ExecutionPolicy", "Bypass",
+            "-File", "`"$scriptPath`"",
+            "-Department", "`"$Department`"",
+            "-ForceInstallType", "`"$InstallType`"",
+            "-Silent"
+        )
+
+        Add-Status "   Command: powershell.exe $($arguments -join ' ')" $statusTextBox ([System.Drawing.Color]::Gray)
+        Add-Status "" $statusTextBox
+
+        # Start installation
+        Add-Status "4. Starting CrowdStrike installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        Add-Status "   This may take several minutes. Please wait..." $statusTextBox ([System.Drawing.Color]::Cyan)
+
+        $startTime = Get-Date
+        $process = Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+        $endTime = Get-Date
+        $duration = ($endTime - $startTime).TotalMinutes
+
+        Add-Status "" $statusTextBox
+        Add-Status "5. Installation completed!" $statusTextBox ([System.Drawing.Color]::Yellow)
+        Add-Status "   Duration: $([math]::Round($duration, 2)) minutes" $statusTextBox ([System.Drawing.Color]::Gray)
+        Add-Status "   Exit Code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Gray)
+
+        if ($process.ExitCode -eq 0) {
+            Add-Status "   ✓ Installation completed successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+
+            # Verify installation
+            Add-Status "6. Verifying installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+            Start-Sleep -Seconds 3
+
+            $newService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
+            if ($newService -and $newService.Status -eq "Running") {
+                Add-Status "   ✓ CrowdStrike service is running!" $statusTextBox ([System.Drawing.Color]::Green)
+                Add-Status "   Service Name: $($newService.DisplayName)" $statusTextBox ([System.Drawing.Color]::Gray)
+                Add-Status "" $statusTextBox
+                Add-Status "=== INSTALLATION SUCCESSFUL ===" $statusTextBox ([System.Drawing.Color]::Green)
+            } else {
+                Add-Status "   ⚠ Service verification failed" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "   The installation may need time to complete" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } else {
+            Add-Status "   ✗ Installation failed!" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "   Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+
+    } catch {
+        Add-Status "Error during CrowdStrike installation: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
+    }
+}
+
+function Invoke-UninstallCrowdStrike {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+
+    try {
+        Add-Status "=== CROWDSTRIKE UNINSTALLATION STARTED ===" $statusTextBox ([System.Drawing.Color]::Cyan)
+
+        # Check if CrowdStrike is installed
+        Add-Status "1. Checking CrowdStrike installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        $csagentService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
+
+        if (-not $csagentService) {
+            Add-Status "   ⚠ CrowdStrike is not installed" $statusTextBox ([System.Drawing.Color]::Yellow)
+            return
+        }
+
+        Add-Status "   ✓ CrowdStrike installation found" $statusTextBox ([System.Drawing.Color]::Green)
+        Add-Status "   Service Status: $($csagentService.Status)" $statusTextBox ([System.Drawing.Color]::Gray)
+
+        # Confirm uninstallation
+        $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+            "Are you sure you want to uninstall CrowdStrike? This will remove security protection from this computer.",
+            "Confirm Uninstallation",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+
+        if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
+            Add-Status "Uninstallation cancelled by user." $statusTextBox ([System.Drawing.Color]::Yellow)
+            return
+        }
+
+        # Look for uninstaller
+        Add-Status "2. Locating CrowdStrike uninstaller..." $statusTextBox ([System.Drawing.Color]::Yellow)
+
+        $uninstallerPaths = @(
+            "${env:ProgramFiles}\CrowdStrike\FalconSensor_Windows.exe",
+            "${env:ProgramFiles(x86)}\CrowdStrike\FalconSensor_Windows.exe",
+            "${env:ProgramData}\CrowdStrike\FalconSensor_Windows.exe"
+        )
+
+        $uninstallerPath = $null
+        foreach ($path in $uninstallerPaths) {
+            if (Test-Path $path) {
+                $uninstallerPath = $path
+                break
+            }
+        }
+
+        if (-not $uninstallerPath) {
+            Add-Status "   ✗ CrowdStrike uninstaller not found!" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "   Please uninstall manually from Control Panel" $statusTextBox ([System.Drawing.Color]::Yellow)
+            return
+        }
+
+        Add-Status "   ✓ Uninstaller found: $uninstallerPath" $statusTextBox ([System.Drawing.Color]::Green)
+
+        # Start uninstallation
+        Add-Status "3. Starting uninstallation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        Add-Status "   This may take several minutes. Please wait..." $statusTextBox ([System.Drawing.Color]::Cyan)
+
+        $startTime = Get-Date
+        $process = Start-Process -FilePath $uninstallerPath -ArgumentList "/uninstall /quiet" -Wait -PassThru -WindowStyle Hidden
+        $endTime = Get-Date
+        $duration = ($endTime - $startTime).TotalMinutes
+
+        Add-Status "" $statusTextBox
+        Add-Status "4. Uninstallation completed!" $statusTextBox ([System.Drawing.Color]::Yellow)
+        Add-Status "   Duration: $([math]::Round($duration, 2)) minutes" $statusTextBox ([System.Drawing.Color]::Gray)
+        Add-Status "   Exit Code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Gray)
+
+        # Verify uninstallation
+        Add-Status "5. Verifying uninstallation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        Start-Sleep -Seconds 3
+
+        $serviceCheck = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
+        if (-not $serviceCheck) {
+            Add-Status "   ✓ CrowdStrike service removed successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+            Add-Status "" $statusTextBox
+            Add-Status "=== UNINSTALLATION SUCCESSFUL ===" $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "   ⚠ Service still present - uninstallation may be incomplete" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "   A system restart may be required" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+
+    } catch {
+        Add-Status "Error during CrowdStrike uninstallation: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
 
