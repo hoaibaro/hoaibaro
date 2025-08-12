@@ -1090,8 +1090,6 @@ function Invoke-FileCleanup {
 
 function Invoke-StartupOptimization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-    
-    # Disable startup programs
     $startupPrograms = @("Microsoft Teams", "Microsoft Co-Pilot", "Microsoft Edge")
     $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 
@@ -1105,61 +1103,6 @@ function Invoke-StartupOptimization {
         catch {
             Add-Status "Warning: Could not disable startup program $_" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-    }
-    
-    # Create shortcuts on desktop
-    Add-Status "Creating shortcuts on desktop..." $statusTextBox
-    Invoke-CreateShortcuts $statusTextBox
-}
-
-function Invoke-CreateShortcuts {
-    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-    
-    try {
-        $desktopPath = [Environment]::GetFolderPath("Desktop")
-        $shell = New-Object -ComObject WScript.Shell
-        
-        # Credential Manager shortcut (Control Panel version)
-        $credentialsShortcut = $shell.CreateShortcut("$desktopPath\Credential Manager.lnk")
-        $credentialsShortcut.TargetPath = "rundll32.exe"
-        $credentialsShortcut.Arguments = "shell32.dll,Control_RunDLL vaultcpl.cpl"
-        $credentialsShortcut.Description = "Credential Manager"
-        $credentialsShortcut.IconLocation = "vaultcpl.cpl,0"
-        $credentialsShortcut.Save()
-        Add-Status "Created Credential Manager shortcut" $statusTextBox ([System.Drawing.Color]::Green)
-
-
-        # Internet Options shortcut
-        $internetShortcut = $shell.CreateShortcut("$desktopPath\Internet Options.lnk")
-        $internetShortcut.TargetPath = "rundll32.exe"
-        $internetShortcut.Arguments = "shell32.dll,Control_RunDLL inetcpl.cpl"
-        $internetShortcut.Description = "Internet Properties"
-        $internetShortcut.IconLocation = "inetcpl.cpl,0"
-        $internetShortcut.Save()
-        Add-Status "Created Internet Options shortcut" $statusTextBox ([System.Drawing.Color]::Green)
-        
-        # Network Connections shortcut
-        $networkShortcut = $shell.CreateShortcut("$desktopPath\Network Connections.lnk")
-        $networkShortcut.TargetPath = "rundll32.exe"
-        $networkShortcut.Arguments = "shell32.dll,Control_RunDLL ncpa.cpl"
-        $networkShortcut.Description = "Network Connections"
-        $networkShortcut.IconLocation = "ncpa.cpl,0"
-        $networkShortcut.Save()
-        Add-Status "Created Network Connections shortcut" $statusTextBox ([System.Drawing.Color]::Green)
-        
-        # System Properties shortcut
-        $systemShortcut = $shell.CreateShortcut("$desktopPath\System Properties.lnk")
-        $systemShortcut.TargetPath = "rundll32.exe"
-        $systemShortcut.Arguments = "shell32.dll,Control_RunDLL sysdm.cpl"
-        $systemShortcut.Description = "System Properties"
-        $systemShortcut.IconLocation = "sysdm.cpl,0"
-        $systemShortcut.Save()
-        Add-Status "Created System Properties shortcut" $statusTextBox ([System.Drawing.Color]::Green)
-        
-        Add-Status "All shortcuts created successfully!" $statusTextBox ([System.Drawing.Color]::Green)
-    }
-    catch {
-        Add-Status "Warning: Could not create some Control Panel shortcuts: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
 
@@ -5010,7 +4953,7 @@ function Set-DomainFormLayout {
             $FormControls.UsernameTextBox.Visible = $true
             # Set username - reset to default if empty
             if ([string]::IsNullOrWhiteSpace($FormControls.UsernameTextBox.Text)) {
-                $FormControls.UsernameTextBox.Text = "-hdk-hieudang"  # Correct username with hyphens (no spaces)
+                $FormControls.UsernameTextBox.Text = "-hdk-hieudang"
             }
             $FormControls.PasswordLabel.Visible = $true
             $FormControls.PasswordTextBox.Visible = $true
@@ -5110,6 +5053,59 @@ function Test-WorkgroupInputs {
         ErrorMessage = ""
     }
 }
+
+# function Invoke-ElevatedDomainCommand {
+#     param(
+#         [string]$Command,
+#         [string]$OperationType
+#     )
+
+#     try {
+#         # Create process start info for elevated execution
+#         $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
+#         $processStartInfo.FileName = "powershell.exe"
+#         $processStartInfo.Arguments = "-Command Start-Process powershell.exe -ArgumentList '-Command $Command' -Verb RunAs"
+#         $processStartInfo.UseShellExecute = $true
+#         $processStartInfo.Verb = "runas"
+
+#         # Start the elevated process
+#         $process = [System.Diagnostics.Process]::Start($processStartInfo)
+
+#         if ($null -eq $process) {
+#             throw "Failed to start elevated process"
+#         }
+
+#         # Show appropriate success message
+#         $successMessages = @{
+#             'DomainJoin'    = "Domain join command has been initiated. If prompted, please allow the elevation request. Your computer will restart to apply the changes."
+#             'WorkgroupJoin' = "Workgroup join command has been initiated. If prompted, please allow the elevation request. Your computer will restart to apply the changes."
+#         }
+
+#         $message = $successMessages[$OperationType]
+#         if ([string]::IsNullOrEmpty($message)) {
+#             $message = "Command has been initiated. Your computer will restart to apply the changes."
+#         }
+
+#         [System.Windows.Forms.MessageBox]::Show(
+#             $message,
+#             $OperationType,
+#             [System.Windows.Forms.MessageBoxButtons]::OK,
+#             [System.Windows.Forms.MessageBoxIcon]::Information
+#         )
+
+#         return $true
+#     }
+#     catch {
+#         Write-Error "Failed to execute elevated domain command: $_"
+#         [System.Windows.Forms.MessageBox]::Show(
+#             "Error processing $OperationType operation: $_`n`nNote: This operation requires administrative privileges.",
+#             "Error",
+#             [System.Windows.Forms.MessageBoxButtons]::OK,
+#             [System.Windows.Forms.MessageBoxIcon]::Error
+#         )
+#         return $false
+#     }
+# }
 
 function Invoke-ElevatedDomainCommand {
     param(
@@ -5222,6 +5218,35 @@ catch {
         return $false
     }
 }
+
+# function Invoke-DomainJoinOperation {
+#     param(
+#         [string]$DomainName,
+#         [string]$Username,
+#         [string]$Password
+#     )
+
+#     # Validate inputs
+#     $validation = Test-DomainJoinInputs -DomainName $DomainName -Username $Username -Password $Password
+#     if (-not $validation.IsValid) {
+#         [System.Windows.Forms.MessageBox]::Show(
+#             $validation.ErrorMessage,
+#             "Validation Error",
+#             [System.Windows.Forms.MessageBoxButtons]::OK,
+#             [System.Windows.Forms.MessageBoxIcon]::Error
+#         )
+#         return $false
+#     }
+
+#     # Escape special characters in password for command line
+#     $escapedPassword = $Password -replace "'", "''"
+
+#     # Build domain join command
+#     $command = "Add-Computer -DomainName '$DomainName' -Credential (New-Object System.Management.Automation.PSCredential ('$Username', (ConvertTo-SecureString '$escapedPassword' -AsPlainText -Force))) -Restart -Force"
+
+#     return Invoke-ElevatedDomainCommand -Command $command -OperationType "DomainJoin"
+# }
+
 function Invoke-DomainJoinOperation {
     param(
         [string]$DomainName,
@@ -5241,24 +5266,13 @@ function Invoke-DomainJoinOperation {
         return $false
     }
 
-    # Format username properly for domain join (handle special characters)
-    $formattedUsername = $Username.Trim()
-    if (-not $formattedUsername.Contains('@') -and -not $formattedUsername.Contains('\')) {
-        # If username doesn't contain @ or \, add domain prefix
-        $formattedUsername = "$DomainName\$formattedUsername"
-    }
-
-    # Test domain connectivity first
+    # Test domain connectivity first (like sysdm.cpl does)
     try {
         Write-Host "Testing domain connectivity to $DomainName..."
-        
-        # Test multiple ports like sysdm.cpl does
-        $ldapTest = Test-NetConnection -ComputerName $DomainName -Port 389 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
-        $kerberosTest = Test-NetConnection -ComputerName $DomainName -Port 88 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
-        
-        if (-not $ldapTest -and -not $kerberosTest) {
+        $testConnection = Test-NetConnection -ComputerName $DomainName -Port 389 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+        if (-not $testConnection) {
             $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-                "Cannot reach domain '$DomainName' on standard ports (389/88).`n`nThis may indicate:`n- Domain name is incorrect`n- Network connectivity issues`n- DNS resolution problems`n`nDo you want to continue anyway?",
+                "Cannot reach domain '$DomainName' on port 389 (LDAP).`n`nThis may indicate:`n- Domain name is incorrect`n- Network connectivity issues`n- DNS resolution problems`n`nDo you want to continue anyway?",
                 "Domain Connectivity Warning",
                 [System.Windows.Forms.MessageBoxButtons]::YesNo,
                 [System.Windows.Forms.MessageBoxIcon]::Warning
@@ -5273,72 +5287,11 @@ function Invoke-DomainJoinOperation {
         Write-Warning "Could not test domain connectivity: $_"
     }
 
-    # Show confirmation dialog with details
-    $confirmMessage = @"
-Domain Join Details:
-Domain: $DomainName
-Username: $formattedUsername
-Computer: $env:COMPUTERNAME
-
-Do you want to proceed with domain join?
-"@
-
-    $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-        $confirmMessage,
-        "Confirm Domain Join",
-        [System.Windows.Forms.MessageBoxButtons]::YesNo,
-        [System.Windows.Forms.MessageBoxIcon]::Question
-    )
-    
-    if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
-        return $false
-    }
-
-    # Escape special characters in password AND username properly
+    # Escape special characters in password properly
     $escapedPassword = $Password -replace "'", "''" -replace '"', '""' -replace '`', '``' -replace '\$', '`$'
-    $escapedUsername = $formattedUsername -replace "'", "''" -replace '"', '""' -replace '`', '``' -replace '\$', '`$'
 
-    # Build domain join command with proper escaping for special characters
-    $command = @"
-try {
-    Write-Host "Creating credential object..." -ForegroundColor Yellow
-    `$securePassword = ConvertTo-SecureString '$escapedPassword' -AsPlainText -Force
-    `$credential = New-Object System.Management.Automation.PSCredential('$escapedUsername', `$securePassword)
-    
-    Write-Host "Attempting to join domain '$DomainName'..." -ForegroundColor Yellow
-    Write-Host "Using username: $escapedUsername" -ForegroundColor Yellow
-    
-    Add-Computer -DomainName '$DomainName' -Credential `$credential -Force -Verbose -ErrorAction Stop
-    
-    Write-Host "Domain join completed successfully!" -ForegroundColor Green
-} catch {
-    Write-Host "Domain join failed with error:" -ForegroundColor Red
-    Write-Host `$_.Exception.Message -ForegroundColor Red
-    
-    # Check for common error patterns
-    if (`$_.Exception.Message -like "*logon failure*" -or `$_.Exception.Message -like "*authentication*" -or `$_.Exception.Message -like "*1326*") {
-        Write-Host "This appears to be a credential issue. Please verify:" -ForegroundColor Yellow
-        Write-Host "- Username: $escapedUsername" -ForegroundColor Yellow
-        Write-Host "- Password is correct" -ForegroundColor Yellow
-        Write-Host "- Account has domain join permissions" -ForegroundColor Yellow
-        Write-Host "- Account is not locked or disabled" -ForegroundColor Yellow
-    }
-    elseif (`$_.Exception.Message -like "*network*" -or `$_.Exception.Message -like "*RPC*" -or `$_.Exception.Message -like "*1722*") {
-        Write-Host "This appears to be a network connectivity issue." -ForegroundColor Yellow
-        Write-Host "Please check network connection and DNS settings." -ForegroundColor Yellow
-    }
-    elseif (`$_.Exception.Message -like "*already exists*" -or `$_.Exception.Message -like "*2224*") {
-        Write-Host "Computer account may already exist in domain." -ForegroundColor Yellow
-        Write-Host "Try removing the computer from domain first or contact domain admin." -ForegroundColor Yellow
-    }
-    elseif (`$_.Exception.Message -like "*access*" -or `$_.Exception.Message -like "*denied*" -or `$_.Exception.Message -like "*5*") {
-        Write-Host "Access denied - user may not have domain join permissions." -ForegroundColor Yellow
-        Write-Host "Contact domain administrator to grant join permissions." -ForegroundColor Yellow
-    }
-    
-    throw `$_
-}
-"@
+    # Build domain join command (PASSWORD IS HIDDEN IN SECURESTRING)
+    $command = "`$securePassword = ConvertTo-SecureString '$escapedPassword' -AsPlainText -Force; `$credential = New-Object System.Management.Automation.PSCredential('$Username', `$securePassword); Add-Computer -DomainName '$DomainName' -Credential `$credential -Force -Verbose"
 
     return Invoke-ElevatedDomainCommand -Command $command -OperationType "DomainJoin"
 }
@@ -5539,6 +5492,216 @@ function Show-DomainManagementForm {
     $joinForm.ShowDialog()
 }
 
+# [10] CrowStrike Functions
+function Invoke-CrowdStrikeDialog {
+    Hide-MainMenu
+
+    # Create CrowStrike form
+    $crowdStrikeForm = New-Object System.Windows.Forms.Form
+    $crowdStrikeForm.Text = "CrowStrike Management"
+    $crowdStrikeForm.Size = New-Object System.Drawing.Size(500, 400)
+    $crowdStrikeForm.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
+    $crowdStrikeForm.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
+    $crowdStrikeForm.ForeColor = [System.Drawing.Color]::White
+    $crowdStrikeForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+    $crowdStrikeForm.MaximizeBox = $false
+
+    # Title label
+    $titleLabel = New-Object System.Windows.Forms.Label
+    $titleLabel.Text = "CrowdStrike Management"
+    $titleLabel.Location = New-Object System.Drawing.Point(20, 20)
+    $titleLabel.Size = New-Object System.Drawing.Size(460, 30)
+    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
+    $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(255, 140, 0)
+    $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+    $crowdStrikeForm.Controls.Add($titleLabel)
+
+    # Status text box
+    $statusTextBox = New-Object System.Windows.Forms.RichTextBox
+    $statusTextBox.Location = New-Object System.Drawing.Point(20, 200)
+    $statusTextBox.Size = New-Object System.Drawing.Size(460, 120)
+    $statusTextBox.BackColor = [System.Drawing.Color]::Black
+    $statusTextBox.ForeColor = [System.Drawing.Color]::White
+    $statusTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
+    $statusTextBox.ReadOnly = $true
+    $crowdStrikeForm.Controls.Add($statusTextBox)
+
+    # Uninstall CrowStrike button
+    $btnUninstall = New-DynamicButton -text "Uninstall CrowStrike" -x 20 -y 70 -width 220 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0)) -clickAction {
+        Invoke-UninstallCrowdStrike -statusTextBox $statusTextBox
+    }
+    $crowdStrikeForm.Controls.Add($btnUninstall)
+
+    # Check CrowStrike Status button
+    $btnStatus = New-DynamicButton -text "Check Status" -x 260 -y 70 -width 220 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
+        Invoke-CheckCrowdStrikeStatus -statusTextBox $statusTextBox
+    }
+    $crowdStrikeForm.Controls.Add($btnStatus)
+
+    # Return button
+    $btnReturn = New-DynamicButton -text "Return" -x 190 -y 140 -width 120 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(100, 100, 100)) -hoverColor ([System.Drawing.Color]::FromArgb(150, 150, 150)) -pressColor ([System.Drawing.Color]::FromArgb(80, 80, 80)) -clickAction {
+        $crowdStrikeForm.Close()
+    }
+    $crowdStrikeForm.Controls.Add($btnReturn)
+
+    Add-EscapeHandler -form $crowdStrikeForm
+
+    # When the form is closed, show the main menu again
+    $crowdStrikeForm.Add_FormClosed({
+        Show-MainMenu
+    })
+
+    # Show the form
+    $crowdStrikeForm.ShowDialog()
+}
+
+function Invoke-CheckCrowdStrikeStatus {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+    
+    Add-Status "  CrowdStrike Installation Status Check" $statusTextBox ([System.Drawing.Color]::Cyan)
+    
+    try {
+        # 1. Check csagent service status
+        Add-Status "1. Checking csagent service status:" $statusTextBox ([System.Drawing.Color]::White)
+        $csagentService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
+        
+        if ($csagentService) {
+            Add-Status "   CrowdStrike service found" $statusTextBox ([System.Drawing.Color]::Green)
+            Add-Status "   Service Name: $($csagentService.DisplayName)" $statusTextBox ([System.Drawing.Color]::Gray)
+            Add-Status "   Service Status: $($csagentService.Status)" $statusTextBox ([System.Drawing.Color]::Gray)
+            Add-Status "   Start Type: $($csagentService.StartType)" $statusTextBox ([System.Drawing.Color]::Gray)
+            
+            if ($csagentService.Status -eq "Running") {
+                Add-Status "   ✓ Service Status: RUNNING - Installation successful!" $statusTextBox ([System.Drawing.Color]::Green)
+            } else {
+                Add-Status "   ⚠ Service Status: $($csagentService.Status) - Service not running" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } else {
+            Add-Status "   ✗ CrowdStrike service not found - Installation may have failed" $statusTextBox ([System.Drawing.Color]::Red)
+        }
+        
+        Add-Status "" $statusTextBox
+        
+        # 2. Check CrowdStrike processes
+        Add-Status "2. Checking CrowdStrike processes:" $statusTextBox ([System.Drawing.Color]::White)
+        
+        $csFalconService = Get-Process -Name "CSFalconService" -ErrorAction SilentlyContinue
+        if ($csFalconService) {
+            Add-Status "   ✓ CSFalconService.exe is running (PID: $($csFalconService.Id))" $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "   ⚠ CSFalconService.exe not found" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        
+        $csFalconContainer = Get-Process -Name "CSFalconContainer" -ErrorAction SilentlyContinue
+        if ($csFalconContainer) {
+            Add-Status "   ✓ CSFalconContainer.exe is running (PID: $($csFalconContainer.Id))" $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "   ⚠ CSFalconContainer.exe not found" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        
+        Add-Status "" $statusTextBox
+        
+        # 3. Check installation directory
+        Add-Status "3. Checking installation directory:" $statusTextBox ([System.Drawing.Color]::White)
+        
+        $installPaths = @(
+            "${env:ProgramFiles}\CrowdStrike",
+            "${env:ProgramFiles(x86)}\CrowdStrike",
+            "${env:ProgramData}\CrowdStrike"
+        )
+        
+        $installFound = $false
+        foreach ($path in $installPaths) {
+            if (Test-Path $path) {
+                Add-Status "   ✓ CrowdStrike installation directory found: $path" $statusTextBox ([System.Drawing.Color]::Green)
+                $installFound = $true
+                
+                # Check for Falcon files
+                $falconFiles = Get-ChildItem -Path $path -Filter "*falcon*" -ErrorAction SilentlyContinue
+                if ($falconFiles) {
+                    Add-Status "   ✓ Falcon files detected" $statusTextBox ([System.Drawing.Color]::Green)
+                }
+            }
+        }
+        
+        if (-not $installFound) {
+            Add-Status "   ⚠ CrowdStrike installation directory not found" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        
+        Add-Status "" $statusTextBox
+        
+        # 4. Check log files
+        Add-Status "4. Checking log files:" $statusTextBox ([System.Drawing.Color]::White)
+        
+        $logPath = "C:\Temp\FalconInstall.log"
+        if (Test-Path $logPath) {
+            Add-Status "   ✓ Installation log found" $statusTextBox ([System.Drawing.Color]::Green)
+            Add-Status "   Location: $logPath" $statusTextBox ([System.Drawing.Color]::Gray)
+            
+            # Show last few lines of log
+            try {
+                $lastLines = Get-Content -Path $logPath -Tail 5 -ErrorAction SilentlyContinue
+                if ($lastLines) {
+                    Add-Status "   Last 5 lines of log:" $statusTextBox ([System.Drawing.Color]::White)
+                    foreach ($line in $lastLines) {
+                        Add-Status "     $line" $statusTextBox ([System.Drawing.Color]::Gray)
+                    }
+                }
+            } catch {
+                Add-Status "   Could not read log file" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } else {
+            Add-Status "   ⚠ Installation log not found" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        
+        Add-Status "" $statusTextBox
+        
+        # 5. Network connectivity test
+        Add-Status "5. Network connectivity test:" $statusTextBox ([System.Drawing.Color]::White)
+        
+        try {
+            $pingResult = Test-Connection -ComputerName "8.8.8.8" -Count 1 -Quiet -ErrorAction SilentlyContinue
+            if ($pingResult) {
+                Add-Status "   ✓ Internet connectivity available" $statusTextBox ([System.Drawing.Color]::Green)
+            } else {
+                Add-Status "   ⚠ Internet connectivity issue detected" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } catch {
+            Add-Status "   ⚠ Could not test network connectivity" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        
+        # 6. Generate summary report
+        Add-Status "========================================" $statusTextBox ([System.Drawing.Color]::Cyan)
+        Add-Status "           SUMMARY REPORT" $statusTextBox ([System.Drawing.Color]::Cyan)
+        Add-Status "========================================" $statusTextBox ([System.Drawing.Color]::Cyan)
+        
+        # Determine overall status
+        $serviceOk = $csagentService -and $csagentService.Status -eq "Running"
+        $processOk = $csFalconService -or $csFalconContainer
+        $filesOk = $installFound
+        
+        if ($serviceOk -and $processOk -and $filesOk) {
+            Add-Status "✓ OVERALL STATUS: INSTALLATION SUCCESSFUL" $statusTextBox ([System.Drawing.Color]::Green)
+            Add-Status "  CrowdStrike Falcon Sensor is properly installed and running" $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "⚠ OVERALL STATUS: INSTALLATION INCOMPLETE OR FAILED" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "  Please check the issues above and consider reinstalling" $statusTextBox ([System.Drawing.Color]::White)
+        }
+        
+        Add-Status "" $statusTextBox
+        
+        # 7. Troubleshooting commands
+        Add-Status "Troubleshooting commands:" $statusTextBox ([System.Drawing.Color]::White)
+        Add-Status "- Restart service: sc.exe stop csagent && sc.exe start csagent" $statusTextBox ([System.Drawing.Color]::Gray)
+        Add-Status "- Check detailed status: sc.exe query csagent" $statusTextBox ([System.Drawing.Color]::Gray)
+        Add-Status "- View installation logs: notepad C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Gray)
+        Add-Status "- Contact IT support if issues persist" $statusTextBox ([System.Drawing.Color]::Gray)
+        
+    } catch {
+        Add-Status "Error checking CrowdStrike status: $_" $statusTextBox ([System.Drawing.Color]::Red)
+    }
+}
+
 # Các nút menu
 $menuButtons = @(
     @{text = '[1] Run All'; action = { Invoke-RunAllOperations -mainForm $script:form } },
@@ -5550,7 +5713,7 @@ $menuButtons = @(
     @{text = '[4] Volume'; action = { Invoke-VolumeManagementDialog } },
     @{text = '[9] Domain'; action = { Show-DomainManagementForm } },
     @{text = '[5] Activate'; action = { Invoke-ActivationDialog } },
-    @{text = '[0] Exit'; action = { $script:form.Close() } }
+    @{text = '[0] CrowStrike'; action = { Invoke-CrowdStrikeDialog } }
 )
 
 # Các tham số cho các nút menu
@@ -5563,8 +5726,8 @@ $buttonControls = @()
 # Tạo các nút menu
 for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
     # Nút bên trái
-    if ($menuButtons[$i].text -eq '[0] Exit') {
-        $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0))
+    if ($menuButtons[$i].text -eq '[0] CrowStrike') {
+        $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action -normalColor ([System.Drawing.Color]::FromArgb(255, 140, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 165, 0)) -pressColor ([System.Drawing.Color]::FromArgb(200, 100, 0))
     }
     else {
         $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action
@@ -5574,8 +5737,8 @@ for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
     $buttonControls += $btnL
     # Nút bên phải
     if ($i + 1 -lt $menuButtons.Count) {
-        if ($menuButtons[$i + 1].text -eq '[0] Exit') {
-            $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0))
+        if ($menuButtons[$i + 1].text -eq '[0] CrowStrike') {
+            $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action -normalColor ([System.Drawing.Color]::FromArgb(255, 140, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 165, 0)) -pressColor ([System.Drawing.Color]::FromArgb(200, 100, 0))
         }
         else {
             $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action
