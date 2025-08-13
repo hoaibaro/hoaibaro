@@ -39,24 +39,6 @@ function Show-MainMenu {
     $script:form.Show()
 }
 
-# GLOBAL ESC TO CLOSE FORM
-function Add-EscapeHandler {
-    param(
-        [System.Windows.Forms.Form]$form
-    )
-
-    # Add KeyDown event handler for Esc key
-    $form.Add_KeyDown({
-        param($sender, $e)
-        if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
-            $form.Close()
-        }
-    })
-
-    # Enable key events
-    $form.KeyPreview = $true
-}
-
 # Dynamic Button
 function New-DynamicButton {
     param (
@@ -93,8 +75,14 @@ function New-DynamicButton {
 }
 
 # Load Windows Forms Funtions
-Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
-Add-Type -AssemblyName System.Drawing -ErrorAction Stop
+try {
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+    Add-Type -AssemblyName System.Drawing -ErrorAction Stop
+}
+catch {
+    Write-Host "Error loading Windows Forms and Drawing assemblies." -ForegroundColor Red
+    exit 1
+}
 
 # Global function to add gradient background to any form
 function Add-GradientBackground {
@@ -313,7 +301,7 @@ function Invoke-RunAllOperations {
     $statusForm.Controls.Add($statusTextBox)
 
     # Add title animation
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::Lime) -color2 ([System.Drawing.Color]::FromArgb(0, 220, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Progress bar
     $progressBar = New-Object System.Windows.Forms.ProgressBar
@@ -406,6 +394,9 @@ function Invoke-RunAllOperations {
             $deviceForm.Close()
         }
         $deviceForm.Controls.Add($btnLaptop)
+
+        $deviceForm.KeyPreview = $true
+        $deviceForm.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $deviceForm.Close() } })
 
         # Show device selection form and get result
         $result = $deviceForm.ShowDialog()
@@ -2128,7 +2119,12 @@ function Show-InstallSoftwareDialog {
     $deviceTypeForm.Controls.Add($btnLaptop)
 
     # Add escape handler to close the form
-    Add-EscapeHandler -form $deviceTypeForm
+    $deviceTypeForm.KeyPreview = $true
+    $deviceTypeForm.Add_KeyDown({
+        if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
+            $deviceTypeForm.Close()
+        }
+    })
 
     # When form closes, show main menu
     $deviceTypeForm.Add_FormClosed({
@@ -2272,7 +2268,7 @@ function Invoke-PowerOptionsDialog {
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $titleLabel.Padding = New-Object System.Windows.Forms.Padding(5)
 
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     $powerForm.Controls.Add($titleLabel)
 
@@ -4010,7 +4006,8 @@ function Invoke-ActivationDialog {
     }
     $activateForm.Controls.Add($btnWin10Home)
 
-    Add-EscapeHandler -form $activateForm
+    $activateForm.KeyPreview = $true
+    $activateForm.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $activateForm.Close() } })
 
     # When the form is closed, show the main menu again
     $activateForm.Add_FormClosed({
@@ -4068,7 +4065,7 @@ function Invoke-FeaturesDialog {
     $featuresForm.Controls.Add($titleLabel)
 
     # Add animation to the title
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Status textbox
     $statusTextBox = New-Object System.Windows.Forms.RichTextBox
@@ -4566,7 +4563,7 @@ function Show-SetPasswordForm {
     $titleLabel.Location = New-Object System.Drawing.Point(0, 20)
     $form.Controls.Add($titleLabel)
 
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # User label
     $userLabel = New-Object System.Windows.Forms.Label
@@ -5265,7 +5262,7 @@ function Show-DomainManagementForm {
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $joinForm.Controls.Add($titleLabel)
 
-    Add-TitleAnimation -titleLabel $titleLabel -interval 500 -color1 ([System.Drawing.Color]::FromArgb(0, 255, 0)) -color2 ([System.Drawing.Color]::FromArgb(0, 200, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Current computer name label
     $boldFont = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
@@ -5418,8 +5415,8 @@ function Invoke-CrowdStrikeDialog {
     # Create CrowdStrike form with modern design
     $crowdStrikeForm = New-Object System.Windows.Forms.Form
     $crowdStrikeForm.Text = "BAOPROVIP - CROWDSTRIKE MANAGEMENT"
-    $crowdStrikeForm.Size = New-Object System.Drawing.Size(690, 550)
-    $crowdStrikeForm.MinimumSize = New-Object System.Drawing.Size(700, 550)
+    $crowdStrikeForm.Size = New-Object System.Drawing.Size(665, 550)
+    $crowdStrikeForm.MinimumSize = New-Object System.Drawing.Size(665, 550)
     $crowdStrikeForm.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
     $crowdStrikeForm.BackColor = [System.Drawing.Color]::Black
     $crowdStrikeForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
@@ -5441,7 +5438,7 @@ function Invoke-CrowdStrikeDialog {
     $crowdStrikeForm.Controls.Add($titleLabel)
 
     # Add title animation
-    Add-TitleAnimation -titleLabel $titleLabel -interval 600 -color1 ([System.Drawing.Color]::Lime) -color2 ([System.Drawing.Color]::FromArgb(255, 140, 0))
+    Add-TitleAnimation -titleLabel $titleLabel
 
     # Department selection section
     $deptLabel = New-Object System.Windows.Forms.Label
@@ -5456,7 +5453,7 @@ function Invoke-CrowdStrikeDialog {
     # Department dropdown
     $deptComboBox = New-Object System.Windows.Forms.ComboBox
     $deptComboBox.Location = New-Object System.Drawing.Point(10, 120)
-    $deptComboBox.Size = New-Object System.Drawing.Size(350, 25)
+    $deptComboBox.Size = New-Object System.Drawing.Size(310, 25)
     $deptComboBox.Font = New-Object System.Drawing.Font("Arial", 10)
     $deptComboBox.BackColor = [System.Drawing.Color]::FromArgb(40, 40, 40)
     $deptComboBox.ForeColor = [System.Drawing.Color]::White
@@ -5465,7 +5462,8 @@ function Invoke-CrowdStrikeDialog {
 
     # Add departments (organized by security level)
     $departments = @(
-        "------------ EDR DEPARTMENTS (High Security) --------------",
+        "",
+        "------------ EDR (High Security) --------------",
         "Board-of-Directors",
         "Legal-Compliance",
         "Accounting",
@@ -5481,7 +5479,7 @@ function Invoke-CrowdStrikeDialog {
         "Cyber-Security",
         "Fee-Control",
         "",
-        "--- DEV DEPARTMENTS (AV default, EDR for senior) ---",
+        "----- DEV (AV default, EDR for senior up) -----",
         "Product-Management",
         "System-Integration",
         "Network-Development",
@@ -5490,7 +5488,7 @@ function Invoke-CrowdStrikeDialog {
         "Payoo-X-and-Biz-Solutions",
         "Payoo-Plus-Digital-Transformation",
         "",
-        "---------- AV DEPARTMENTS (Standard Security) ------------",
+        "---------- AV (Standard Security) ------------",
         "Marketing",
         "HN-Branch",
         "Data-Exchange",
@@ -5509,11 +5507,10 @@ function Invoke-CrowdStrikeDialog {
         "Collaborator"
     )
 
-    foreach ($dept in $departments) {
-        $deptComboBox.Items.Add($dept)
-    }
+    foreach ($dept in $departments) { $deptComboBox.Items.Add($dept) }
+
     # Set default to first actual department
-    $deptComboBox.SelectedIndex = 0
+    $deptComboBox.SelectedIndex = 1
 
     # Department change handler for smart recommendations
     $deptComboBox.Add_SelectedIndexChanged({
@@ -5544,8 +5541,6 @@ function Invoke-CrowdStrikeDialog {
             $radioAV.Checked = $true
         }
 
-
-
         # Update status text with recommendation reason
         $statusTextBox.Text = "Department: $selectedDept`nRecommendation: $($recommendation.Type) - $($recommendation.Reason)"
     })
@@ -5555,7 +5550,7 @@ function Invoke-CrowdStrikeDialog {
     # Installation type section
     $typeLabel = New-Object System.Windows.Forms.Label
     $typeLabel.Text = "TYPE:"
-    $typeLabel.Location = New-Object System.Drawing.Point(380, 90)
+    $typeLabel.Location = New-Object System.Drawing.Point(330, 90)
     $typeLabel.Size = New-Object System.Drawing.Size(60, 25)
     $typeLabel.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
     $typeLabel.ForeColor = [System.Drawing.Color]::White
@@ -5565,8 +5560,8 @@ function Invoke-CrowdStrikeDialog {
     # Installation type radio buttons
     $radioAV = New-Object System.Windows.Forms.RadioButton
     $radioAV.Text = "AV (Antivirus)"
-    $radioAV.Location = New-Object System.Drawing.Point(380, 120)
-    $radioAV.Size = New-Object System.Drawing.Size(110, 25)
+    $radioAV.Location = New-Object System.Drawing.Point(330, 120)
+    $radioAV.Size = New-Object System.Drawing.Size(120, 25)
     $radioAV.Font = New-Object System.Drawing.Font("Arial", 10)
     $radioAV.ForeColor = [System.Drawing.Color]::White
     $radioAV.BackColor = [System.Drawing.Color]::Transparent
@@ -5575,11 +5570,12 @@ function Invoke-CrowdStrikeDialog {
 
     $radioEDR = New-Object System.Windows.Forms.RadioButton
     $radioEDR.Text = "EDR (Enhanced Security)"
-    $radioEDR.Location = New-Object System.Drawing.Point(490, 120)
+    $radioEDR.Location = New-Object System.Drawing.Point(470, 120)
     $radioEDR.Size = New-Object System.Drawing.Size(200, 25)
     $radioEDR.Font = New-Object System.Drawing.Font("Arial", 10)
     $radioEDR.ForeColor = [System.Drawing.Color]::White
     $radioEDR.BackColor = [System.Drawing.Color]::Transparent
+    $radioEDR.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Right
     $crowdStrikeForm.Controls.Add($radioEDR)
 
     # Smart recommendation label
@@ -5593,9 +5589,8 @@ function Invoke-CrowdStrikeDialog {
     $crowdStrikeForm.Controls.Add($recommendLabel)
 
 
-
     # Action buttons (centered layout without uninstall)
-    $btnInstall = New-DynamicButton -text "INSTALL CROWDSTRIKE" -x 150 -y 180 -width 180 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0)) -clickAction {
+    $btnInstall = New-DynamicButton -text "Install" -x 10 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         $selectedDept = $deptComboBox.SelectedItem.ToString()
 
         # Filter out section headers and empty lines
@@ -5611,41 +5606,37 @@ function Invoke-CrowdStrikeDialog {
 
         $installType = if ($radioEDR.Checked) { "EDR" } else { "AV" }
 
-        # Show progress bar during installation
-        $progressBar.Visible = $true
-        $btnInstall.Enabled = $false
-        $btnStatus.Enabled = $false
-
         try {
-            # Install according to current policy (no position override)
             Invoke-InstallCrowdStrike -statusTextBox $statusTextBox -Department $selectedDept -InstallType $installType
-        } finally {
-            # Hide progress bar and re-enable buttons
-            $progressBar.Visible = $false
-            $btnInstall.Enabled = $true
-            $btnStatus.Enabled = $true
+        }
+        catch {
+            Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
     }
     $crowdStrikeForm.Controls.Add($btnInstall)
 
-    $btnStatus = New-DynamicButton -text "CHECK STATUS" -x 350 -y 180 -width 180 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
+    # Status button
+    $btnStatus = New-DynamicButton -text "Status" -x 170 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0))  -clickAction {
         Invoke-CheckCrowdStrikeStatus -statusTextBox $statusTextBox
     }
     $crowdStrikeForm.Controls.Add($btnStatus)
 
-    # Progress bar (initially hidden)
-    $progressBar = New-Object System.Windows.Forms.ProgressBar
-    $progressBar.Location = New-Object System.Drawing.Point(30, 240)
-    $progressBar.Size = New-Object System.Drawing.Size(630, 20)
-    $progressBar.Style = [System.Windows.Forms.ProgressBarStyle]::Marquee
-    $progressBar.MarqueeAnimationSpeed = 30
-    $progressBar.Visible = $false
-    $crowdStrikeForm.Controls.Add($progressBar)
+    # Change GroupTag button
+    $btnCrowdStrikeTag = New-DynamicButton -text "Change GroupTag" -x 330 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
+        Invoke-CrowdStrikeTagDialog -Departments (@($deptComboBox.Items | ForEach-Object { $_.ToString() }))
+    }
+    $crowdStrikeForm.Controls.Add($btnCrowdStrikeTag)
+
+    # Uninstall button (requires token)
+    $btnUninstall = New-DynamicButton -text "Uninstall" -x 490 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
+        Invoke-CrowdStrikeUninstallDialog -statusTextBox $statusTextBox
+    }
+    $crowdStrikeForm.Controls.Add($btnUninstall)
 
     # Status text box
     $statusTextBox = New-Object System.Windows.Forms.RichTextBox
-    $statusTextBox.Location = New-Object System.Drawing.Point(10, 270)
-    $statusTextBox.Size = New-Object System.Drawing.Size(630, 200)
+    $statusTextBox.Location = New-Object System.Drawing.Point(10, 280)
+    $statusTextBox.Size = New-Object System.Drawing.Size(635, 220)
     $statusTextBox.BackColor = [System.Drawing.Color]::Black
     $statusTextBox.ForeColor = [System.Drawing.Color]::Lime
     $statusTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
@@ -5655,20 +5646,12 @@ function Invoke-CrowdStrikeDialog {
     $statusTextBox.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Bottom -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $crowdStrikeForm.Controls.Add($statusTextBox)
 
-
     # Add escape handler with explicit KeyPreview
     $crowdStrikeForm.KeyPreview = $true
-    $crowdStrikeForm.Add_KeyDown({
-        param($sender, $e)
-        if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
-            $crowdStrikeForm.Close()
-        }
-    })
+    $crowdStrikeForm.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $crowdStrikeForm.Close() } })
 
     # When the form is closed, show the main menu again
-    $crowdStrikeForm.Add_FormClosed({
-        Show-MainMenu
-    })
+    $crowdStrikeForm.Add_FormClosed({ Show-MainMenu })
 
     # Trigger initial recommendation for first actual department selection
     $crowdStrikeForm.Add_Shown({
@@ -5695,144 +5678,6 @@ function Invoke-CrowdStrikeDialog {
 
     # Show the form
     $crowdStrikeForm.ShowDialog()
-}
-
-function Invoke-CheckCrowdStrikeStatus {
-    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
-
-    try {
-        $statusTextBox.Clear()
-        Add-Status "=== CROWDSTRIKE STATUS CHECK ===" $statusTextBox ([System.Drawing.Color]::Cyan)
-
-        # 1. Service Status (CRITICAL)
-        Add-Status "1. Service Status:" $statusTextBox ([System.Drawing.Color]::White)
-        $csagentService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
-
-        if ($csagentService) {
-            $statusColor = if ($csagentService.Status -eq "Running") { [System.Drawing.Color]::Green } else { [System.Drawing.Color]::Red }
-            Add-Status "   ✓ CrowdStrike Falcon: $($csagentService.Status)" $statusTextBox $statusColor
-        } else {
-            Add-Status "   ✗ CrowdStrike not installed!" $statusTextBox ([System.Drawing.Color]::Red)
-            Add-Status "=== RESULT: NOT INSTALLED ===" $statusTextBox ([System.Drawing.Color]::Red)
-            return
-        }
-
-        # 2. Department Assignment (IMPORTANT)
-        Add-Status "2. Department Assignment:" $statusTextBox ([System.Drawing.Color]::White)
-
-        try {
-            if ($csagentService.Status -eq "Running") {
-                $department = Get-DepartmentFromGroupTag -GroupTag $csagentService.Tag
-                if ($department) {
-                    Add-Status "   ✓ Department: $department" $statusTextBox ([System.Drawing.Color]::Green)
-
-                    # Check policy compliance
-                    $recommendation = Get-DepartmentRecommendation -Department $department
-                    $policyColor = if ($recommendation.Type -eq "EDR") { [System.Drawing.Color]::Orange } else { [System.Drawing.Color]::Cyan }
-                    Add-Status "   ℹ Policy: $($recommendation.Type) - $($recommendation.Reason)" $statusTextBox $policyColor
-                } else {
-                    Add-Status "   ⚠ Unknown department mapping" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
-            } else {
-                Add-Status "   ⚠ No department assignment found" $statusTextBox ([System.Drawing.Color]::Yellow)
-                Add-Status "   Device may not be properly deployed" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        } catch {
-            Add-Status "   ✗ Error checking department: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        }
-
-        # 3. Protection Status (CRITICAL)
-        Add-Status "3. Protection Status:" $statusTextBox ([System.Drawing.Color]::White)
-
-        # Check key processes
-        $criticalProcesses = @("CSFalconService", "CSFalconContainer")
-        $runningProcesses = Get-Process | Where-Object {
-            $criticalProcesses -contains $_.ProcessName
-        } -ErrorAction SilentlyContinue
-
-        if ($runningProcesses) {
-            Add-Status "   ✓ Protection active ($($runningProcesses.Count) processes)" $statusTextBox ([System.Drawing.Color]::Green)
-        } else {
-            Add-Status "   ⚠ Protection processes not detected" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
-
-        # Check installation integrity
-        $installPath = "${env:ProgramFiles}\CrowdStrike"
-        if (Test-Path $installPath) {
-            $keyFiles = @("CSFalconService.exe", "SystemTray")
-            $foundFiles = $keyFiles | Where-Object { Test-Path (Join-Path $installPath $_) }
-            if ($foundFiles.Count -eq $keyFiles.Count) {
-                Add-Status "   ✓ Installation integrity: OK" $statusTextBox ([System.Drawing.Color]::Green)
-            } else {
-                Add-Status "   ⚠ Installation may be incomplete" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        } else {
-            Add-Status "   ✗ Installation directory not found" $statusTextBox ([System.Drawing.Color]::Red)
-        }
-
-        # 4. Cloud Connectivity (IMPORTANT)
-        Add-Status "4. Cloud Connectivity:" $statusTextBox ([System.Drawing.Color]::White)
-        try {
-            $testResult = Test-NetConnection -ComputerName "ts01-b.cloudsink.net" -Port 443 -InformationLevel Quiet -ErrorAction SilentlyContinue
-            if ($testResult) {
-                Add-Status "   ✓ CrowdStrike cloud: Connected" $statusTextBox ([System.Drawing.Color]::Green)
-            } else {
-                Add-Status "   ⚠ CrowdStrike cloud: Disconnected" $statusTextBox ([System.Drawing.Color]::Yellow)
-                Add-Status "   Real-time protection may be limited" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        } catch {
-            Add-Status "   ⚠ Could not test connectivity" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
-
-        # 5. Overall Status (SUMMARY)
-        Add-Status "=== OVERALL STATUS ===" $statusTextBox ([System.Drawing.Color]::Cyan)
-
-        $issues = @()
-        $overallStatus = "HEALTHY"
-        $statusColor = [System.Drawing.Color]::Green
-
-        # Critical checks
-        if (-not $csagentService -or $csagentService.Status -ne "Running") {
-            $issues += "Service not running"
-            $overallStatus = "CRITICAL"
-            $statusColor = [System.Drawing.Color]::Red
-        }
-
-        if (-not $runningProcesses) {
-            $issues += "Protection processes missing"
-            if ($overallStatus -ne "CRITICAL") {
-                $overallStatus = "WARNING"
-                $statusColor = [System.Drawing.Color]::Yellow
-            }
-        }
-
-        if (-not $csagentService.Tag) {
-            $issues += "No department assignment"
-            if ($overallStatus -eq "HEALTHY") {
-                $overallStatus = "WARNING"
-                $statusColor = [System.Drawing.Color]::Yellow
-            }
-        }
-
-        Add-Status "Status: $overallStatus" $statusTextBox $statusColor
-
-        if ($overallStatus -eq "HEALTHY") {
-            Add-Status "✓ CrowdStrike is properly installed and protected" $statusTextBox ([System.Drawing.Color]::Green)
-        } else {
-            Add-Status "Issues found: $($issues -join ', ')" $statusTextBox ([System.Drawing.Color]::Yellow)
-
-            # Quick fixes
-            Add-Status "Quick fixes:" $statusTextBox ([System.Drawing.Color]::White)
-            if ($csagentService -and $csagentService.Status -ne "Running") {
-                Add-Status "- Restart service: sc.exe start csagent" $statusTextBox ([System.Drawing.Color]::Gray)
-            }
-            if (-not $csagentService.Tag) {
-                Add-Status "- Contact IT for proper deployment" $statusTextBox ([System.Drawing.Color]::Gray)
-            }
-        }
-    } catch {
-        Add-Status "Error checking CrowdStrike status: $_" $statusTextBox ([System.Drawing.Color]::Red)
-    }
 }
 
 function Invoke-InstallCrowdStrike {
@@ -5951,6 +5796,367 @@ function Invoke-InstallCrowdStrike {
         Add-Status "Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
+
+function Invoke-CheckCrowdStrikeStatus {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+
+    try {
+        $statusTextBox.Clear()
+        Add-Status "CROWDSTRIKE STATUS CHECK" $statusTextBox ([System.Drawing.Color]::Cyan)
+
+        # 1. Service Status (CRITICAL)
+        Add-Status "1. Service Status:" $statusTextBox ([System.Drawing.Color]::White)
+        $csagentService = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
+
+        if ($csagentService) {
+            $statusColor = if ($csagentService.Status -eq "Running") { [System.Drawing.Color]::Green } else { [System.Drawing.Color]::Red }
+            Add-Status "   ✓ CrowdStrike Falcon: $($csagentService.Status)" $statusTextBox $statusColor
+        } else {
+            Add-Status "   ✗ CrowdStrike not installed!" $statusTextBox ([System.Drawing.Color]::Red)
+            return
+        }
+
+        # 2. Department Assignment (IMPORTANT)
+        Add-Status "2. Department Assignment:" $statusTextBox ([System.Drawing.Color]::White)
+
+        try {
+            if ($csagentService.Status -eq "Running") {
+                $department = Get-DepartmentFromGroupTag -GroupTag $csagentService.Tag
+                if ($department) {
+                    Add-Status "   ✓ Department: $department" $statusTextBox ([System.Drawing.Color]::Green)
+
+                    # Check policy compliance
+                    $recommendation = Get-DepartmentRecommendation -Department $department
+                    $policyColor = if ($recommendation.Type -eq "EDR") { [System.Drawing.Color]::Orange } else { [System.Drawing.Color]::Cyan }
+                    Add-Status "   Policy: $($recommendation.Type) - $($recommendation.Reason)" $statusTextBox $policyColor
+                } else {
+                    Add-Status "   ⚠ Unknown department mapping" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            } else {
+                Add-Status "   ⚠ No department assignment found" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "   Device may not be properly deployed" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } catch {
+            Add-Status "   ✗ Error checking department: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        }
+
+        # 3. Protection Status (CRITICAL)
+        Add-Status "3. Protection Status:" $statusTextBox ([System.Drawing.Color]::White)
+
+        # Check key processes
+        $criticalProcesses = @("CSFalconService", "CSFalconContainer")
+        $runningProcesses = Get-Process | Where-Object {
+            $criticalProcesses -contains $_.ProcessName
+        } -ErrorAction SilentlyContinue
+
+        if ($runningProcesses) {
+            Add-Status "   ✓ Protection active ($($runningProcesses.Count) processes)" $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "   ⚠ Protection processes not detected" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+
+        # Check installation integrity
+        $installPath = "${env:ProgramFiles}\CrowdStrike"
+        if (Test-Path $installPath) {
+            $keyFiles = @("CSFalconService.exe", "SystemTray")
+            $foundFiles = $keyFiles | Where-Object { Test-Path (Join-Path $installPath $_) }
+            if ($foundFiles.Count -eq $keyFiles.Count) {
+                Add-Status "   ✓ Installation integrity: OK" $statusTextBox ([System.Drawing.Color]::Green)
+            } else {
+                Add-Status "   ⚠ Installation may be incomplete" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } else {
+            Add-Status "   ✗ Installation directory not found" $statusTextBox ([System.Drawing.Color]::Red)
+        }
+
+        # 4. Cloud Connectivity (IMPORTANT)
+        Add-Status "4. Cloud Connectivity:" $statusTextBox ([System.Drawing.Color]::White)
+        try {
+            $testResult = Test-NetConnection -ComputerName "ts01-b.cloudsink.net" -Port 443 -InformationLevel Quiet -ErrorAction SilentlyContinue
+            if ($testResult) {
+                Add-Status "   ✓ CrowdStrike cloud: Connected" $statusTextBox ([System.Drawing.Color]::Green)
+            } else {
+                Add-Status "   ⚠ CrowdStrike cloud: Disconnected" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } catch {
+            Add-Status "   ⚠ Could not test connectivity" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+
+        # 5. Overall Status (SUMMARY)
+        $issues = @()
+        $overallStatus = "HEALTHY"
+        $statusColor = [System.Drawing.Color]::Green
+
+        # Critical checks
+        if (-not $csagentService -or $csagentService.Status -ne "Running") {
+            $issues += "Service not running"
+            $overallStatus = "CRITICAL"
+            $statusColor = [System.Drawing.Color]::Red
+        }
+
+        if (-not $runningProcesses) {
+            $issues += "Protection processes missing"
+            if ($overallStatus -ne "CRITICAL") {
+                $overallStatus = "WARNING"
+                $statusColor = [System.Drawing.Color]::Yellow
+            }
+        }
+
+        if (-not $csagentService.Tag) {
+            $issues += "No department assignment"
+            if ($overallStatus -eq "HEALTHY") {
+                $overallStatus = "WARNING"
+                $statusColor = [System.Drawing.Color]::Yellow
+            }
+        }
+
+        Add-Status "Status: $overallStatus" $statusTextBox $statusColor
+
+        if ($overallStatus -eq "HEALTHY") {
+            Add-Status "✓ CrowdStrike is properly installed and protected" $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "Issues found: $issues" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+    } catch {
+        Add-Status "Error checking CrowdStrike status: $_" $statusTextBox ([System.Drawing.Color]::Red)
+    }
+}
+
+# function Invoke-CheckCrowdStrikeStatus {
+#     param([System.Windows.Forms.RichTextBox]$statusTextBox)
+
+#     try { $statusTextBox.Clear() } catch {}
+
+#     # Kiểm tra service
+#     $svc = Get-Service -Name "csagent" -ErrorAction SilentlyContinue
+#     if ($null -eq $svc) {
+#         Add-Status "CrowdStrike service (csagent) not found." $statusTextBox ([System.Drawing.Color]::Red)
+#     } else {
+#         Add-Status ("Service: " + $svc.DisplayName + " - " + $svc.Status) $statusTextBox `
+#             ($(if ($svc.Status -eq 'Running') {[System.Drawing.Color]::Green} else {[System.Drawing.Color]::Yellow}))
+#     }
+# }
+
+function Set-CrowdStrikeGroupingTag {
+    param(
+        [Parameter(Mandatory=$true)][string]$Tag,
+        [Parameter(Mandatory=$true)][string]$Token,
+        [System.Windows.Forms.RichTextBox]$StatusTextBox
+    )
+
+    try {
+        # Ensure we’re elevated
+        $identity  = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+        if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+            if ($StatusTextBox) { Add-Status "ERROR: This operation requires Administrator privileges." $StatusTextBox ([System.Drawing.Color]::Red) }
+            return $false
+        }
+
+        # CSSensorSettings path
+        $exePath = "C:\Program Files\CrowdStrike\CSSensorSettings.exe"
+        if (-not (Test-Path $exePath)) {
+            if ($StatusTextBox) { Add-Status "ERROR: CSSensorSettings.exe not found at '$exePath'." $StatusTextBox ([System.Drawing.Color]::Red) }
+            return $false
+        }
+
+        if ($StatusTextBox) { Add-Status "Running: CSSensorSettings.exe set --grouping-tags `"$Tag`"" $StatusTextBox }
+
+        # Prepare process with redirected stdio so we can feed the maintenance token
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $exePath
+        $psi.Arguments = "set --grouping-tags `"$Tag`""
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardInput = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.CreateNoWindow = $true
+        # Do NOT set Verb=runas when UseShellExecute=$false
+
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo = $psi
+
+        $null = $proc.Start()
+
+        # Feed maintenance token (followed by newline)
+        $proc.StandardInput.WriteLine($Token)
+        $proc.StandardInput.Flush()
+        $proc.StandardInput.Close()
+
+        # Read output/error
+        $stdOut = $proc.StandardOutput.ReadToEnd()
+        $stdErr = $proc.StandardError.ReadToEnd()
+
+        $proc.WaitForExit()
+        $exitCode = $proc.ExitCode
+
+        if ($stdOut) { if ($StatusTextBox) { Add-Status ($stdOut.Trim()) $StatusTextBox } }
+        if ($stdErr) { if ($StatusTextBox) { Add-Status ("[stderr] " + $stdErr.Trim()) $StatusTextBox ([System.Drawing.Color]::Yellow) } }
+
+        if ($exitCode -eq 0) {
+            if ($StatusTextBox) { Add-Status "CrowdStrike grouping tag updated successfully." $StatusTextBox }
+            return $true
+        } else {
+            if ($StatusTextBox) { Add-Status "ERROR: CSSensorSettings exited with code $exitCode." $StatusTextBox ([System.Drawing.Color]::Red) }
+            return $false
+        }
+    }
+    catch {
+        if ($StatusTextBox) { Add-Status ("ERROR: " + $_.Exception.Message) $StatusTextBox ([System.Drawing.Color]::Red) }
+        return $false
+    }
+}
+
+function Invoke-CrowdStrikeTagDialog {  
+    param([string[]]$Departments)
+
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "CrowdStrike Grouping Tag"
+    $form.Size = New-Object System.Drawing.Size(520, 360)
+    $form.StartPosition = "CenterScreen"
+    $form.BackColor = [System.Drawing.Color]::Black
+    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+    $form.MaximizeBox = $false
+    $form.MinimizeBox = $false
+
+    try { Add-GradientBackground -form $form } catch {}
+
+    $titleLabel = New-Object System.Windows.Forms.Label
+    $titleLabel.Text = "CROWDSTRIKE TAG UPDATE"
+    $titleLabel.Location = New-Object System.Drawing.Point(0, 15)
+    $titleLabel.Size = New-Object System.Drawing.Size(500, 30)
+    $titleLabel.ForeColor = [System.Drawing.Color]::Lime
+    $titleLabel.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
+    $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+    $titleLabel.BackColor = [System.Drawing.Color]::Transparent
+    $form.Controls.Add($titleLabel)
+
+    try { Add-TitleAnimation -titleLabel $titleLabel } catch {}
+
+    # Department label + dropdown
+    $lblDept = New-Object System.Windows.Forms.Label
+    $lblDept.Text = "Department:"
+    $lblDept.Location = New-Object System.Drawing.Point(20, 60)
+    $lblDept.Size = New-Object System.Drawing.Size(120, 22)
+    $lblDept.ForeColor = [System.Drawing.Color]::White
+    $lblDept.BackColor = [System.Drawing.Color]::Transparent
+    $form.Controls.Add($lblDept)
+
+    $deptCombo = New-Object System.Windows.Forms.ComboBox
+    $deptCombo.Location = New-Object System.Drawing.Point(150, 58)
+    $deptCombo.Size = New-Object System.Drawing.Size(320, 25)
+    $deptCombo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+    $form.Controls.Add($deptCombo)
+
+    # Populate from provided Departments (filter out headers and empty)
+    if ($Departments -and $Departments.Count -gt 0) {
+        foreach ($d in $Departments) {
+            if ($d -and ($d -notlike '---*')) { [void]$deptCombo.Items.Add($d) }
+        }
+    }
+    # Fallback: in case no list passed, at least avoid empty dropdown
+    if ($deptCombo.Items.Count -eq 0) {
+        [void]$deptCombo.Items.Add("General")
+    }
+    $deptCombo.SelectedIndex = 0
+
+    # Token label + textbox
+    $lblToken = New-Object System.Windows.Forms.Label
+    $lblToken.Text = "Maintenance Token:"
+    $lblToken.Location = New-Object System.Drawing.Point(20, 95)
+    $lblToken.Size = New-Object System.Drawing.Size(120, 22)
+    $lblToken.ForeColor = [System.Drawing.Color]::White
+    $lblToken.BackColor = [System.Drawing.Color]::Transparent
+    $form.Controls.Add($lblToken)
+
+    $txtToken = New-Object System.Windows.Forms.TextBox
+    $txtToken.Location = New-Object System.Drawing.Point(150, 93)
+    $txtToken.Size = New-Object System.Drawing.Size(320, 25)
+    $txtToken.BackColor = [System.Drawing.Color]::Black
+    $txtToken.ForeColor = [System.Drawing.Color]::Lime
+    $txtToken.Font = New-Object System.Drawing.Font("Consolas", 10)
+    $txtToken.UseSystemPasswordChar = $true
+    $form.Controls.Add($txtToken)
+
+    # Show token checkbox
+    $chkShow = New-Object System.Windows.Forms.CheckBox
+    $chkShow.Text = "Show token"
+    $chkShow.Location = New-Object System.Drawing.Point(150, 123)
+    $chkShow.AutoSize = $true
+    $chkShow.ForeColor = [System.Drawing.Color]::White
+    $chkShow.BackColor = [System.Drawing.Color]::Transparent
+    $chkShow.Add_CheckedChanged({
+        $txtToken.UseSystemPasswordChar = -not $chkShow.Checked
+    })
+    $form.Controls.Add($chkShow)
+
+    # Status box
+    $status = New-Object System.Windows.Forms.RichTextBox
+    $status.Multiline = $true
+    $status.ScrollBars = "Vertical"
+    $status.Location = New-Object System.Drawing.Point(20, 155)
+    $status.Size = New-Object System.Drawing.Size(450, 120)
+    $status.BackColor = [System.Drawing.Color]::Black
+    $status.ForeColor = [System.Drawing.Color]::Lime
+    $status.Font = New-Object System.Drawing.Font("Consolas", 9)
+    $status.ReadOnly = $true
+    $status.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+    $status.Text = "Enter a tag and maintenance token, then click Apply..."
+    $form.Controls.Add($status)
+
+    # Buttons
+    $btnApply = New-Object System.Windows.Forms.Button
+    $btnApply.Text = "Apply"
+    $btnApply.Location = New-Object System.Drawing.Point(150, 285)
+    $btnApply.Size = New-Object System.Drawing.Size(150, 30)
+    $btnApply.BackColor = [System.Drawing.Color]::FromArgb(0, 180, 0)
+    $btnApply.ForeColor = [System.Drawing.Color]::White
+    $btnApply.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $btnApply.Add_Click({
+        $selectedDept = if ($deptCombo.SelectedItem) { $deptCombo.SelectedItem.ToString().Trim() } else { "" }
+        $tok = $txtToken.Text
+        $status.Clear()
+
+        if (-not $selectedDept) { Add-Status "Please select a department." $status ([System.Drawing.Color]::Yellow); return }
+        if ($selectedDept -like '---*') { Add-Status "Please select a valid department (not a section header)." $status ([System.Drawing.Color]::Yellow); return }
+        if (-not $tok) { Add-Status "Please enter maintenance token." $status ([System.Drawing.Color]::Yellow); return }
+
+        # Use department as the grouping tag
+        $tag = $selectedDept
+        Add-Status "Applying tag '$tag'..." $status
+        try {
+            $ok = Set-CrowdStrikeGroupingTag -Tag $tag -Token $tok -StatusTextBox $status
+            if ($ok) {
+                Add-Status "Completed." $status
+            } else {
+                Add-Status "Failed to update tag." $status ([System.Drawing.Color]::Red)
+            }
+        } catch {
+            Add-Status ("ERROR: " + $_.Exception.Message) $status ([System.Drawing.Color]::Red)
+        }
+    })
+    $form.Controls.Add($btnApply)
+
+    $btnClose = New-Object System.Windows.Forms.Button
+    $btnClose.Text = "Close"
+    $btnClose.Location = New-Object System.Drawing.Point(320, 285)
+    $btnClose.Size = New-Object System.Drawing.Size(150, 30)
+    $btnClose.BackColor = [System.Drawing.Color]::FromArgb(150, 0, 0)
+    $btnClose.ForeColor = [System.Drawing.Color]::White
+    $btnClose.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $btnClose.Add_Click({ $form.Close() })
+    $form.Controls.Add($btnClose)
+
+    $form.KeyPreview = $true
+    $form.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $form.Close() } })
+    $form.Add_FormClosed({ try { Show-MainMenu } catch {} })
+
+    $form.AcceptButton = $btnApply
+    $form.CancelButton = $btnClose
+
+    $form.ShowDialog() | Out-Null
+}
+
 function Get-DepartmentRecommendation {
     param ([string]$Department)
 
@@ -5989,119 +6195,6 @@ function Get-DepartmentRecommendation {
             Color = [System.Drawing.Color]::Lime
             Reason = "Standard department"
         }
-    }
-}
-
-function Get-CrowdStrikeGroupTags {
-    try {
-        # Method 1: Check Registry for Group Tags
-        $registryPaths = @(
-            "HKLM:\SOFTWARE\CrowdStrike",
-            "HKLM:\SOFTWARE\WOW6432Node\CrowdStrike",
-            "HKLM:\SYSTEM\CurrentControlSet\Services\csagent\Parameters",
-            "HKLM:\SYSTEM\CurrentControlSet\Services\csagent",
-            "HKLM:\SOFTWARE\CrowdStrike\{9b03c1d9-3138-44ed-9fae-d9f4c034b88d}\{16e0423f-7058-48c9-a204-725362b67639}\Default"
-        )
-
-        foreach ($regPath in $registryPaths) {
-            if (Test-Path $regPath) {
-                try {
-                    $properties = Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue
-                    if ($properties) {
-                        # Check for various possible property names
-                        $possibleTagProperties = @("GroupingTags", "Tags", "GroupTags", "CID", "CustomerID")
-                        foreach ($propName in $possibleTagProperties) {
-                            if ($properties.$propName) {
-                                return $properties.$propName
-                            }
-                        }
-
-                        # Check all properties for tag-like values
-                        $properties.PSObject.Properties | ForEach-Object {
-                            if ($_.Name -like "*Tag*" -or $_.Name -like "*Group*") {
-                                if ($_.Value -and $_.Value -ne "") {
-                                    return $_.Value
-                                }
-                            }
-                        }
-                    }
-                } catch {
-                    # Continue to next path
-                }
-            }
-        }
-
-        # Method 2: Check Falcon Command Line (if available)
-        $falconPaths = @(
-            "${env:ProgramFiles}\CrowdStrike\falconctl.exe",
-            "${env:ProgramFiles(x86)}\CrowdStrike\falconctl.exe",
-            "${env:ProgramData}\CrowdStrike\falconctl.exe"
-        )
-
-        foreach ($falconPath in $falconPaths) {
-            if (Test-Path $falconPath) {
-                try {
-                    # Try different falcon commands
-                    $commands = @(
-                        "-g --tags",
-                        "-g --grouping-tags",
-                        "--get-tags",
-                        "-g"
-                    )
-
-                    foreach ($cmd in $commands) {
-                        try {
-                            $falconOutput = & $falconPath $cmd.Split() 2>$null
-                            if ($falconOutput) {
-                                # Look for tags in output
-                                $tagLine = $falconOutput | Where-Object { $_ -match "(Tags|Group)" }
-                                if ($tagLine -and $tagLine -match ":\s*(.+)") {
-                                    return $matches[1].Trim()
-                                }
-                            }
-                        } catch {
-                            # Continue to next command
-                        }
-                    }
-                } catch {
-                    # Continue to next path
-                }
-            }
-        }
-
-        # Method 3: Check Installation Log for Group Tags
-        $logPath = "C:\Temp\FalconInstall.log"
-        if (Test-Path $logPath) {
-            try {
-                $logContent = Get-Content -Path $logPath -ErrorAction SilentlyContinue
-                # Get the most recent GROUPING_TAGS entry
-                $groupTagLines = $logContent | Where-Object { $_ -match "GROUPING_TAGS" }
-                if ($groupTagLines) {
-                    $lastGroupTagLine = $groupTagLines | Select-Object -Last 1
-                    if ($lastGroupTagLine -match 'GROUPING_TAGS="([^"]+)"') {
-                        return $matches[1]
-                    }
-                }
-            } catch {
-                # Continue
-            }
-        }
-
-        # Method 4: Check Windows Event Log
-        try {
-            $events = Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='CrowdStrike'} -MaxEvents 50 -ErrorAction SilentlyContinue
-            foreach ($event in $events) {
-                if ($event.Message -match "GroupingTags.*?([A-Za-z0-9\-]+)") {
-                    return $matches[1]
-                }
-            }
-        } catch {
-            # Continue
-        }
-
-        return $null
-    } catch {
-        return $null
     }
 }
 
@@ -6162,6 +6255,261 @@ function Get-DepartmentFromGroupTag {
     }
 
     return $GroupTag  # Return original if no mapping found
+}
+
+function Get-CrowdStrikeProductCode {
+    try {
+        $uninstallRoots = @(
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+        )
+
+        foreach ($root in $uninstallRoots) {
+            if (-not (Test-Path $root)) { continue }
+            Get-ChildItem $root -ErrorAction SilentlyContinue | ForEach-Object {
+                try {
+                    $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+                    if (-not $p) { return }
+                    $name = "$($p.DisplayName) $($p.DisplayVersion)"
+                    if ($name -match '(?i)crowdstrike.*(windows|falcon).*sensor') {
+                        # Ưu tiên lấy GUID từ UninstallString
+                        $uninst = $p.UninstallString
+                        if ($uninst -and ($uninst -match '\{[0-9A-Fa-f\-]{36}\}')) {
+                            return $Matches[0]
+                        }
+                        # Nếu key name chính là GUID
+                        if ($_.PSChildName -match '^\{[0-9A-Fa-f\-]{36}\}$') {
+                            return $_.PSChildName
+                        }
+                    }
+                } catch {}
+            }
+        }
+    } catch {}
+    return $null
+}
+
+function Get-CrowdStrikeUninstallString {
+    try {
+        $roots = @(
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+        )
+        foreach ($root in $roots) {
+            if (-not (Test-Path $root)) { continue }
+            foreach ($k in Get-ChildItem $root -ErrorAction SilentlyContinue) {
+                try {
+                    $p = Get-ItemProperty $k.PSPath -ErrorAction SilentlyContinue
+                    if (-not $p) { continue }
+                    $name = "$($p.DisplayName) $($p.DisplayVersion)"
+                    if ($name -match '(?i)crowdstrike.*(windows|falcon).*sensor') {
+                        if ($p.UninstallString) { return $p.UninstallString }
+                    }
+                } catch {}
+            }
+        }
+    } catch {}
+    return $null
+}
+
+function Uninstall-CrowdStrikeSensor {
+    param(
+        [Parameter(Mandatory=$true)][string]$Token,
+        [Parameter(Mandatory=$true)][System.Windows.Forms.RichTextBox]$statusTextBox
+    )
+
+    if (-not $Token.Trim()) {
+        Add-Status "Maintenance token is required." $statusTextBox ([System.Drawing.Color]::Red)
+        return
+    }
+
+    # Chọn msiexec 64-bit
+    $msi64 = Join-Path $env:WINDIR 'Sysnative\msiexec.exe'
+    if (-not (Test-Path $msi64)) {
+        $msi64 = Join-Path $env:WINDIR 'System32\msiexec.exe'
+    }
+
+    # Ghi log để debug (tự động vào %TEMP%)
+    $logFile = Join-Path $env:TEMP ("cs_uninstall_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))
+
+    $args = "/x $productCode /qn /norestart MAINTENANCE_TOKEN=$Token /L*v `"$logFile`""
+    Add-Status "Uninstalling via: $msi64 $args" $statusTextBox ([System.Drawing.Color]::Gray)
+
+    $p = Start-Process -FilePath $msi64 -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
+
+    if ($p.ExitCode -eq 0) {
+        Add-Status "Uninstall completed successfully." $statusTextBox ([System.Drawing.Color]::Green)
+    } else {
+        Add-Status "Uninstall finished with exit code $($p.ExitCode). Log: $logFile" $statusTextBox ([System.Drawing.Color]::Yellow)
+
+        # Fallback nếu 1605: chạy đúng UninstallString từ registry
+        if ($p.ExitCode -eq 1605) {
+            $u = Get-CrowdStrikeUninstallString
+            if ($u) {
+                # Đảm bảo dùng /X (gỡ) và chèn token + log
+                $u2 = $u -replace '(?i)\s+/I\s+', ' /X '  # đổi /I thành /X nếu có
+                if ($u2 -notmatch '(?i)\s+/X\s+') { $u2 = "$u2 /X" }
+                if ($u2 -notmatch '(?i)/L\*V') { $u2 = "$u2 /L*v `"$logFile`"" }
+                if ($u2 -notmatch '(?i)MAINTENANCE_TOKEN=') { $u2 = "$u2 MAINTENANCE_TOKEN=$Token" }
+
+                Add-Status "Retry via UninstallString: $u2" $statusTextBox ([System.Drawing.Color]::Gray)
+                $p2 = Start-Process -FilePath $msi64 -ArgumentList $u2 -Wait -PassThru -WindowStyle Hidden
+
+                if ($p2.ExitCode -eq 0) {
+                    Add-Status "Uninstall completed successfully (fallback)." $statusTextBox ([System.Drawing.Color]::Green)
+                } else {
+                    Add-Status "Fallback exit code: $($p2.ExitCode). Log: $logFile" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            } else {
+                Add-Status "No UninstallString found in registry for fallback." $statusTextBox ([System.Drawing.Color]::Red)
+            }
+        }
+    }
+
+    # Try uninstall via msiexec
+    try {
+        Add-Status "Resolving CrowdStrike ProductCode..." $statusTextBox ([System.Drawing.Color]::Gray)
+        $productCode = Get-CrowdStrikeProductCode
+        if (-not $productCode) {
+            Add-Status "Could not find CrowdStrike Windows Sensor in Uninstall registry." $statusTextBox ([System.Drawing.Color]::Red)
+            return
+        }
+        Add-Status "ProductCode: $productCode" $statusTextBox ([System.Drawing.Color]::Gray)
+
+        # Cố gắng dừng service trước khi gỡ
+        try {
+            $svc = Get-Service -Name csagent -ErrorAction SilentlyContinue
+            if ($svc -and $svc.Status -eq 'Running') {
+                Add-Status "Stopping service csagent..." $statusTextBox ([System.Drawing.Color]::Gray)
+                Stop-Service -Name csagent -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 2
+            }
+        } catch {}
+
+        $args = "/x $productCode /qn /norestart MAINTENANCE_TOKEN=$Token"
+        Add-Status "Uninstalling via msiexec $args" $statusTextBox ([System.Drawing.Color]::Gray)
+        $p = Start-Process -FilePath "msiexec.exe" -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
+
+        if ($p.ExitCode -eq 0) {
+            Add-Status "Uninstall completed successfully." $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "Uninstall finished with exit code $($p.ExitCode)." $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+
+        # Xác nhận
+        $svc2 = Get-Service -Name csagent -ErrorAction SilentlyContinue
+        if ($null -eq $svc2) {
+            Add-Status "csagent service removed." $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "csagent service still present (status: $($svc2.Status))." $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+    } catch {
+        Add-Status ("Uninstall error: " + $_.Exception.Message) $statusTextBox ([System.Drawing.Color]::Red)
+    }
+}
+
+function Uninstall-CrowdStrikeSensor {
+    param(
+        [Parameter(Mandatory=$true)][string]$Token,
+        [Parameter(Mandatory=$true)][System.Windows.Forms.RichTextBox]$statusTextBox
+    )
+
+    if (-not $Token.Trim()) {
+        Add-Status "Maintenance token is required." $statusTextBox ([System.Drawing.Color]::Red)
+        return
+    }
+
+    try {
+        Add-Status "Resolving CrowdStrike ProductCode..." $statusTextBox ([System.Drawing.Color]::Gray)
+        $productCode = Get-CrowdStrikeProductCode
+        if (-not $productCode) {
+            Add-Status "Could not find CrowdStrike Windows Sensor in Uninstall registry." $statusTextBox ([System.Drawing.Color]::Red)
+            return
+        }
+        Add-Status "ProductCode: $productCode" $statusTextBox ([System.Drawing.Color]::Gray)
+
+        # Cố gắng dừng service trước khi gỡ
+        try {
+            $svc = Get-Service -Name csagent -ErrorAction SilentlyContinue
+            if ($svc -and $svc.Status -eq 'Running') {
+                Add-Status "Stopping service csagent..." $statusTextBox ([System.Drawing.Color]::Gray)
+                Stop-Service -Name csagent -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 2
+            }
+        } catch {}
+
+        $args = "/x $productCode /qn /norestart MAINTENANCE_TOKEN=$Token"
+        Add-Status "Uninstalling via msiexec $args" $statusTextBox ([System.Drawing.Color]::Gray)
+        $p = Start-Process -FilePath "msiexec.exe" -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
+
+        if ($p.ExitCode -eq 0) {
+            Add-Status "Uninstall completed successfully." $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "Uninstall finished with exit code $($p.ExitCode)." $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+
+        # Xác nhận
+        $svc2 = Get-Service -Name csagent -ErrorAction SilentlyContinue
+        if ($null -eq $svc2) {
+            Add-Status "csagent service removed." $statusTextBox ([System.Drawing.Color]::Green)
+        } else {
+            Add-Status "csagent service still present (status: $($svc2.Status))." $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+    } catch {
+        Add-Status ("Uninstall error: " + $_.Exception.Message) $statusTextBox ([System.Drawing.Color]::Red)
+    }
+}
+
+function Invoke-CrowdStrikeUninstallDialog {
+    param([Parameter(Mandatory=$true)][System.Windows.Forms.RichTextBox]$statusTextBox)
+
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "Uninstall CrowdStrike - Maintenance Token"
+    $form.Size = New-Object System.Drawing.Size(420, 200)
+    $form.StartPosition = 'CenterParent'
+    $form.BackColor = [System.Drawing.Color]::Black
+    $form.ForeColor = [System.Drawing.Color]::White
+    $form.TopMost = $true
+
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Text = "Enter Maintenance Token:"
+    $lbl.AutoSize = $true
+    $lbl.Location = New-Object System.Drawing.Point(15, 20)
+    $form.Controls.Add($lbl)
+
+    $txt = New-Object System.Windows.Forms.TextBox
+    $txt.Location = New-Object System.Drawing.Point(18, 45)
+    $txt.Size = New-Object System.Drawing.Size(360, 24)
+    $txt.UseSystemPasswordChar = $true
+    $form.Controls.Add($txt)
+
+    $chk = New-Object System.Windows.Forms.CheckBox
+    $chk.Text = "Show"
+    $chk.AutoSize = $true
+    $chk.Location = New-Object System.Drawing.Point(18, 75)
+    $chk.Add_CheckedChanged({ $txt.UseSystemPasswordChar = -not $chk.Checked })
+    $form.Controls.Add($chk)
+
+    $btnOk = New-Object System.Windows.Forms.Button
+    $btnOk.Text = "Uninstall"
+    $btnOk.Location = New-Object System.Drawing.Point(200, 110)
+    $btnOk.Size = New-Object System.Drawing.Size(85, 30)
+    $btnOk.Add_Click({
+        $token = $txt.Text
+        $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
+        $form.Close()
+        Uninstall-CrowdStrikeSensor -Token $token -statusTextBox $statusTextBox
+    })
+    $form.Controls.Add($btnOk)
+
+    $btnCancel = New-Object System.Windows.Forms.Button
+    $btnCancel.Text = "Cancel"
+    $btnCancel.Location = New-Object System.Drawing.Point(293, 110)
+    $btnCancel.Size = New-Object System.Drawing.Size(85, 30)
+    $btnCancel.Add_Click({ $form.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $form.Close() })
+    $form.Controls.Add($btnCancel)
+
+    [void]$form.ShowDialog()
 }
 
 # Các nút menu
@@ -6240,16 +6588,9 @@ function Update-MenuLayout {
 $script:form.Add_Resize({ Update-MenuLayout })
 Update-MenuLayout
 
-# Add KeyDown event handler for Esc key
-$script:form.Add_KeyDown({
-        param($sender, $e)
-        if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
-            $script:form.Close()
-        }
-    })
-
-# Enable key events
+# Add escape handler to close the form
 $script:form.KeyPreview = $true
+$script:form.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $script:form.Close() } })
 
 # Show the form
 $script:form.ShowDialog()
