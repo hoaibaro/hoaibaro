@@ -1117,245 +1117,244 @@ function Invoke-UserPasswordManagement {param ([string]$deviceType,[System.Windo
 }
 
 # [2] Install Software Functions
-function Copy-SoftwareFiles {param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
-    try {
-        $tempDir = "$env:USERPROFILE\Downloads\SETUP"
+# function Copy-SoftwareFiles {param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+#     try {
+#         $tempDir = "$env:USERPROFILE\Downloads\SETUP"
 
-        if (-not (Test-Path $tempDir)) {
-            Add-Status "Creating temporary folder..." $statusTextBox
-            New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
-            Add-Status "Temporary folder created successfully!" $statusTextBox
-        }
-        else {
-            Add-Status "Temporary folder already exists. Skipping..." $statusTextBox
-        }
+#         if (-not (Test-Path $tempDir)) {
+#             Add-Status "Creating temporary folder..." $statusTextBox
+#             New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
+#             Add-Status "Temporary folder created successfully!" $statusTextBox
+#         }
+#         else {
+#             Add-Status "Temporary folder already exists. Skipping..." $statusTextBox
+#         }
 
-        # Check D: drive exists
-        if (-not (Test-Path "D:\")) {
-            Add-Status "WARNING: D drive not found. Creating mock installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
+#         # Check D: drive exists
+#         if (-not (Test-Path "D:\")) {
+#             Add-Status "WARNING: D drive not found. Creating mock installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
 
-            if (-not (Test-Path "$tempDir\Software")) {
-                New-Item -Path "$tempDir\Software" -ItemType Directory -Force | Out-Null
-                Add-Status "Created mock Software directory" $statusTextBox
-            }
+#             if (-not (Test-Path "$tempDir\Software")) {
+#                 New-Item -Path "$tempDir\Software" -ItemType Directory -Force | Out-Null
+#                 Add-Status "Created mock Software directory" $statusTextBox
+#             }
 
-            if (-not (Test-Path "$tempDir\Office2019")) {
-                New-Item -Path "$tempDir\Office2019" -ItemType Directory -Force | Out-Null
-                Add-Status "Created mock Office2019 directory" $statusTextBox
-            }
+#             if (-not (Test-Path "$tempDir\Office2019")) {
+#                 New-Item -Path "$tempDir\Office2019" -ItemType Directory -Force | Out-Null
+#                 Add-Status "Created mock Office2019 directory" $statusTextBox
+#             }
 
-            Add-Status "Copy-SoftwareFiles completed (mock mode)" $statusTextBox
-            return $true
-        }
+#             Add-Status "Copy-SoftwareFiles completed (mock mode)" $statusTextBox
+#             return $true
+#         }
 
-        # Copy SETUP folder from D:\SOFTWARE\PAYOO\SETUP
-        if (-not (Test-Path "$tempDir\Software")) {
-            $setupSource = "D:\SOFTWARE\PAYOO\SETUP"
-            if (Test-Path $setupSource) {
-                Add-Status "Copying setup files from $setupSource..." $statusTextBox
-                try {
-                    Copy-Item -Path $setupSource -Destination "$tempDir\Software" -Recurse -Force -ErrorAction Stop
-                    Add-Status "SetupFiles    has been copied successfully!" $statusTextBox
-                }
-                catch {
-                    Add-Status "Error copying setup files: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "Warning: Setup source folder not found at $setupSource" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        }
-        else {
-            Add-Status "SetupFiles    is already copied. Skipping..." $statusTextBox
-        }
+#         # Copy SETUP folder from D:\SOFTWARE\PAYOO\SETUP
+#         if (-not (Test-Path "$tempDir\Software")) {
+#             $setupSource = "D:\SOFTWARE\PAYOO\SETUP"
+#             if (Test-Path $setupSource) {
+#                 Add-Status "Copying setup files from $setupSource..." $statusTextBox
+#                 try {
+#                     Copy-Item -Path $setupSource -Destination "$tempDir\Software" -Recurse -Force -ErrorAction Stop
+#                     Add-Status "SetupFiles    has been copied successfully!" $statusTextBox
+#                 }
+#                 catch {
+#                     Add-Status "Error copying setup files: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                 }
+#             }
+#             else {
+#                 Add-Status "Warning: Setup source folder not found at $setupSource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#             }
+#         }
+#         else {
+#             Add-Status "SetupFiles    is already copied. Skipping..." $statusTextBox
+#         }
 
-        # Copy Office 2019 folders
-        if (-not (Test-Path "$tempDir\Office2019")) {
-            $officeSource = "D:\SOFTWARE\OFFICE\Office 2019"
-            if (Test-Path $officeSource) {
-                Add-Status "Copying Office 2019 files from $officeSource..." $statusTextBox
-                try {
-                    New-Item -Path "$tempDir\Office2019" -ItemType Directory -Force | Out-Null
-                    Copy-Item -Path "$officeSource\*" -Destination "$tempDir\Office2019" -Recurse -Force -ErrorAction Stop
-                    Add-Status "Office 2019   has been copied successfully!" $statusTextBox
-                }
-                catch {
-                    Add-Status "Error copying Office 2019: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "Warning: Office source folder not found at $officeSource" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        }
-        else {
-            Add-Status "Office 2019   is already copied. Skipping..." $statusTextBox
-        }
+#         # Copy Office 2019 folders
+#         if (-not (Test-Path "$tempDir\Office2019")) {
+#             $officeSource = "D:\SOFTWARE\OFFICE\Office 2019"
+#             if (Test-Path $officeSource) {
+#                 Add-Status "Copying Office 2019 files from $officeSource..." $statusTextBox
+#                 try {
+#                     New-Item -Path "$tempDir\Office2019" -ItemType Directory -Force | Out-Null
+#                     Copy-Item -Path "$officeSource\*" -Destination "$tempDir\Office2019" -Recurse -Force -ErrorAction Stop
+#                     Add-Status "Office 2019   has been copied successfully!" $statusTextBox
+#                 }
+#                 catch {
+#                     Add-Status "Error copying Office 2019: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                 }
+#             }
+#             else {
+#                 Add-Status "Warning: Office source folder not found at $officeSource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#             }
+#         }
+#         else {
+#             Add-Status "Office 2019   is already copied. Skipping..." $statusTextBox
+#         }
 
-        # Copy Unikey to C:\ drive
-        if (-not (Test-Path "C:\unikey46RC2-230919-win64")) {
-            $unikeySource = "D:\SOFTWARE\PAYOO\unikey46RC2-230919-win64"
-            if (Test-Path $unikeySource) {
-                Add-Status "Copying Unikey files to C:\ drive..." $statusTextBox
-                try {
-                    Copy-Item -Path $unikeySource -Destination "C:\unikey46RC2-230919-win64" -Recurse -Force -ErrorAction Stop
-                    Add-Status "Unikey        has been copied successfully!" $statusTextBox
-                }
-                catch {
-                    Add-Status "Error copying Unikey: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "Warning: Unikey source folder not found at $unikeySource" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        }
-        else {
-            Add-Status "Unikey        is already copied. Skipping..." $statusTextBox
-        }
+#         # Copy Unikey to C:\ drive
+#         if (-not (Test-Path "C:\unikey46RC2-230919-win64")) {
+#             $unikeySource = "D:\SOFTWARE\PAYOO\unikey46RC2-230919-win64"
+#             if (Test-Path $unikeySource) {
+#                 Add-Status "Copying Unikey files to C:\ drive..." $statusTextBox
+#                 try {
+#                     Copy-Item -Path $unikeySource -Destination "C:\unikey46RC2-230919-win64" -Recurse -Force -ErrorAction Stop
+#                     Add-Status "Unikey        has been copied successfully!" $statusTextBox
+#                 }
+#                 catch {
+#                     Add-Status "Error copying Unikey: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                 }
+#             }
+#             else {
+#                 Add-Status "Warning: Unikey source folder not found at $unikeySource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#             }
+#         }
+#         else {
+#             Add-Status "Unikey        is already copied. Skipping..." $statusTextBox
+#         }
 
-        # Copy MSTeamsSetup to C:\ drive
-        if (-not (Test-Path "C:\MSTeamsSetup.exe")) {
-            $teamsSource = "D:\SOFTWARE\PAYOO\MSTeamsSetup.exe"
-            if (Test-Path $teamsSource) {
-                Add-Status "Copying MSTeamsSetup file to C:\ drive..." $statusTextBox
-                try {
-                    Copy-Item -Path $teamsSource -Destination "C:\MSTeamsSetup.exe" -Force -ErrorAction Stop
-                    Add-Status "MSTeamsSetup  has been copied successfully!" $statusTextBox
-                }
-                catch {
-                    Add-Status "Error copying MSTeamsSetup: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "Warning: MSTeamsSetup source file not found at $teamsSource" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        }
-        else {
-            Add-Status "MSTeamsSetup  is already copied. Skipping..." $statusTextBox
-        }
+#         # Copy MSTeamsSetup to C:\ drive
+#         if (-not (Test-Path "C:\MSTeamsSetup.exe")) {
+#             $teamsSource = "D:\SOFTWARE\PAYOO\MSTeamsSetup.exe"
+#             if (Test-Path $teamsSource) {
+#                 Add-Status "Copying MSTeamsSetup file to C:\ drive..." $statusTextBox
+#                 try {
+#                     Copy-Item -Path $teamsSource -Destination "C:\MSTeamsSetup.exe" -Force -ErrorAction Stop
+#                     Add-Status "MSTeamsSetup  has been copied successfully!" $statusTextBox
+#                 }
+#                 catch {
+#                     Add-Status "Error copying MSTeamsSetup: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                 }
+#             }
+#             else {
+#                 Add-Status "Warning: MSTeamsSetup source file not found at $teamsSource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#             }
+#         }
+#         else {
+#             Add-Status "MSTeamsSetup  is already copied. Skipping..." $statusTextBox
+#         }
 
-        # Copy ForceScout
-        $forceScoutDest = "$env:USERPROFILE\Downloads\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
-        if (-not (Test-Path $forceScoutDest)) {
-            $forceScoutSource = "D:\SOFTWARE\PAYOO\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
-            if (Test-Path $forceScoutSource) {
-                Add-Status "Copying ForceScout file..." $statusTextBox
-                try {
-                    Copy-Item -Path $forceScoutSource -Destination $forceScoutDest -Force -ErrorAction Stop
-                    Add-Status "ForceScout    has been copied successfully!" $statusTextBox
-                }
-                catch {
-                    Add-Status "Error copying ForceScout: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "Warning: ForceScout source file not found at $forceScoutSource" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        }
-        else {
-            Add-Status "ForceScout    is already copied. Skipping..." $statusTextBox
-        }
+#         # Copy ForceScout
+#         $forceScoutDest = "$env:USERPROFILE\Downloads\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
+#         if (-not (Test-Path $forceScoutDest)) {
+#             $forceScoutSource = "D:\SOFTWARE\PAYOO\SC-wKgXWicTb0XhUSNethaFN0vkhji53AY5mektJ7O_RSOdc8bEUVIEAAH_OewU.exe"
+#             if (Test-Path $forceScoutSource) {
+#                 Add-Status "Copying ForceScout file..." $statusTextBox
+#                 try {
+#                     Copy-Item -Path $forceScoutSource -Destination $forceScoutDest -Force -ErrorAction Stop
+#                     Add-Status "ForceScout    has been copied successfully!" $statusTextBox
+#                 }
+#                 catch {
+#                     Add-Status "Error copying ForceScout: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                 }
+#             }
+#             else {
+#                 Add-Status "Warning: ForceScout source file not found at $forceScoutSource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#             }
+#         }
+#         else {
+#             Add-Status "ForceScout    is already copied. Skipping..." $statusTextBox
+#         }
 
-        # Copy FalconSensor folder
-        $falconDest = "$env:USERPROFILE\Downloads\FalconSensor_Windows_installer (All AV)"
-        if (-not (Test-Path $falconDest)) {
-            $falconSource = "D:\SOFTWARE\PAYOO\FalconSensor_Windows_installer (All AV)"
-            if (Test-Path $falconSource) {
-                Add-Status "Copying FalconSensor folder..." $statusTextBox
-                try {
-                    Copy-Item -Path $falconSource -Destination $falconDest -Recurse -Force -ErrorAction Stop
-                    Add-Status "FalconSensor  has been copied successfully!" $statusTextBox
-                }
-                catch {
-                    Add-Status "Error copying FalconSensor: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "Warning: FalconSensor source folder not found at $falconSource" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        }
-        else {
-            Add-Status "FalconSensor  is already copied. Skipping..." $statusTextBox
-        }
+#         # Copy FalconSensor folder
+#         $falconDest = "$env:USERPROFILE\Downloads\FalconSensor_Windows_installer (All AV)"
+#         if (-not (Test-Path $falconDest)) {
+#             $falconSource = "D:\SOFTWARE\PAYOO\FalconSensor_Windows_installer (All AV)"
+#             if (Test-Path $falconSource) {
+#                 Add-Status "Copying FalconSensor folder..." $statusTextBox
+#                 try {
+#                     Copy-Item -Path $falconSource -Destination $falconDest -Recurse -Force -ErrorAction Stop
+#                     Add-Status "FalconSensor  has been copied successfully!" $statusTextBox
+#                 }
+#                 catch {
+#                     Add-Status "Error copying FalconSensor: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                 }
+#             }
+#             else {
+#                 Add-Status "Warning: FalconSensor source folder not found at $falconSource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#             }
+#         }
+#         else {
+#             Add-Status "FalconSensor  is already copied. Skipping..." $statusTextBox
+#         }
 
-        # Copy device-specific agent
-        if ($deviceType -eq "Desktop") {
-            $agentDest = "$env:USERPROFILE\Downloads\Desktop Agent.exe"
-            if (-not (Test-Path $agentDest)) {
-                $agentSource = "D:\SOFTWARE\PAYOO\Desktop Agent.exe"
-                if (Test-Path $agentSource) {
-                    Add-Status "Copying Desktop Agent file..." $statusTextBox
-                    try {
-                        Copy-Item -Path $agentSource -Destination $agentDest -Force -ErrorAction Stop
-                        Add-Status "Desktop Agent has been copied successfully!" $statusTextBox
-                    }
-                    catch {
-                        Add-Status "Error copying Desktop Agent: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                    }
-                }
-                else {
-                    Add-Status "Warning: Desktop Agent source file not found at $agentSource" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
-            }
-            else {
-                Add-Status "Desktop Agent is already copied. Skipping..." $statusTextBox
-            }
-        }
-        elseif ($deviceType -eq "Laptop") {
-            # Copy Laptop Agent
-            $agentDest = "$env:USERPROFILE\Downloads\Laptop Agent.exe"
-            if (-not (Test-Path $agentDest)) {
-                $agentSource = "D:\SOFTWARE\PAYOO\Laptop Agent.exe"
-                if (Test-Path $agentSource) {
-                    Add-Status "Copying Laptop Agent file..." $statusTextBox
-                    try {
-                        Copy-Item -Path $agentSource -Destination $agentDest -Force -ErrorAction Stop
-                        Add-Status "Laptop Agent  has been copied successfully!" $statusTextBox
-                    }
-                    catch {
-                        Add-Status "Error copying Laptop Agent: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                    }
-                }
-                else {
-                    Add-Status "Warning: Laptop Agent source file not found at $agentSource" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
-            }
-            else {
-                Add-Status "Laptop Agent  is already copied. Skipping..." $statusTextBox
-            }
+#         # Copy device-specific agent
+#         if ($deviceType -eq "Desktop") {
+#             $agentDest = "$env:USERPROFILE\Downloads\Desktop Agent.exe"
+#             if (-not (Test-Path $agentDest)) {
+#                 $agentSource = "D:\SOFTWARE\PAYOO\Desktop Agent.exe"
+#                 if (Test-Path $agentSource) {
+#                     Add-Status "Copying Desktop Agent file..." $statusTextBox
+#                     try {
+#                         Copy-Item -Path $agentSource -Destination $agentDest -Force -ErrorAction Stop
+#                         Add-Status "Desktop Agent has been copied successfully!" $statusTextBox
+#                     }
+#                     catch {
+#                         Add-Status "Error copying Desktop Agent: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                     }
+#                 }
+#                 else {
+#                     Add-Status "Warning: Desktop Agent source file not found at $agentSource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#                 }
+#             }
+#             else {
+#                 Add-Status "Desktop Agent is already copied. Skipping..." $statusTextBox
+#             }
+#         }
+#         elseif ($deviceType -eq "Laptop") {
+#             # Copy Laptop Agent
+#             $agentDest = "$env:USERPROFILE\Downloads\Laptop Agent.exe"
+#             if (-not (Test-Path $agentDest)) {
+#                 $agentSource = "D:\SOFTWARE\PAYOO\Laptop Agent.exe"
+#                 if (Test-Path $agentSource) {
+#                     Add-Status "Copying Laptop Agent file..." $statusTextBox
+#                     try {
+#                         Copy-Item -Path $agentSource -Destination $agentDest -Force -ErrorAction Stop
+#                         Add-Status "Laptop Agent  has been copied successfully!" $statusTextBox
+#                     }
+#                     catch {
+#                         Add-Status "Error copying Laptop Agent: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                     }
+#                 }
+#                 else {
+#                     Add-Status "Warning: Laptop Agent source file not found at $agentSource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#                 }
+#             }
+#             else {
+#                 Add-Status "Laptop Agent  is already copied. Skipping..." $statusTextBox
+#             }
 
-            # Copy MDM for laptops
-            $mdmDest = "$env:USERPROFILE\Downloads\ManageEngine_MDMLaptopEnrollment"
-            if (-not (Test-Path $mdmDest)) {
-                $mdmSource = "D:\SOFTWARE\PAYOO\ManageEngine_MDMLaptopEnrollment"
-                if (Test-Path $mdmSource) {
-                    Add-Status "Copying MDM files..." $statusTextBox
-                    try {
-                        Copy-Item -Path $mdmSource -Destination $mdmDest -Recurse -Force -ErrorAction Stop
-                        Add-Status "MDM           has been copied successfully!" $statusTextBox
-                    }
-                    catch {
-                        Add-Status "Error copying MDM: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                    }
-                }
-                else {
-                    Add-Status "Warning: MDM source folder not found at $mdmSource" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
-            }
-            else {
-                Add-Status "MDM           is already copied. Skipping..." $statusTextBox
-            }
-        }
+#             # Copy MDM for laptops
+#             $mdmDest = "$env:USERPROFILE\Downloads\ManageEngine_MDMLaptopEnrollment"
+#             if (-not (Test-Path $mdmDest)) {
+#                 $mdmSource = "D:\SOFTWARE\PAYOO\ManageEngine_MDMLaptopEnrollment"
+#                 if (Test-Path $mdmSource) {
+#                     Add-Status "Copying MDM files..." $statusTextBox
+#                     try {
+#                         Copy-Item -Path $mdmSource -Destination $mdmDest -Recurse -Force -ErrorAction Stop
+#                         Add-Status "MDM           has been copied successfully!" $statusTextBox
+#                     }
+#                     catch {
+#                         Add-Status "Error copying MDM: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#                     }
+#                 }
+#                 else {
+#                     Add-Status "Warning: MDM source folder not found at $mdmSource" $statusTextBox ([System.Drawing.Color]::Yellow)
+#                 }
+#             }
+#             else {
+#                 Add-Status "MDM           is already copied. Skipping..." $statusTextBox
+#             }
+#         }
 
-        Add-Status "All files have been copied successfully!!!" $statusTextBox
-        return $true
-    }
-    catch {
-        Add-Status "CRITICAL ERROR in Copy-SoftwareFiles: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        Add-Status "Error details: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
-        return $false
-    }
-}
-# CHỈ copy theo danh sách Pending, không thay thế Copy-SoftwareFiles cũ
+#         Add-Status "All files have been copied successfully!!!" $statusTextBox
+#         return $true
+#     }
+#     catch {
+#         Add-Status "CRITICAL ERROR in Copy-SoftwareFiles: $_" $statusTextBox ([System.Drawing.Color]::Red)
+#         Add-Status "Error details: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+#         return $false
+#     }
+# }
 function Copy-SoftwareFilesSelective {
     param(
         [ValidateSet('Desktop','Laptop')]
@@ -1876,7 +1875,7 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
         return $true
     }
     catch {
-        Add-Status "CRITICAL ERROR in Install-Software: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "CRITICAL ERROR in Install Software: $_" $statusTextBox ([System.Drawing.Color]::Red)
         Add-Status "Error details: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
@@ -2160,26 +2159,6 @@ function Show-InstallSoftwareDialog {Hide-MainMenu
     $statusTextBox.Text = "Please select a device type..."
     $deviceTypeForm.Controls.Add($statusTextBox)
 
-    # Desktop button
-    # $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 50 -width 200 -height 50 -clickAction {
-    #     Add-Status "STEP 1: Copying required files for Desktop..."
-    #     $copyResult = Copy-SoftwareFiles -deviceType "Desktop" $statusTextBox
-
-    #     if ($copyResult) {
-    #         Add-Status "STEP 2: Installing software for Desktop..." $statusTextBox
-    #         $installResult = Install-Software -deviceType "Desktop" $statusTextBox
-
-    #         if ($installResult) {
-    #             Add-Status "All software installation completed successfully!" $statusTextBox
-    #         }
-    #         else {
-    #             Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red)
-    #         }
-    #     }
-    #     else {
-    #         Add-Status "Error: Failed to copy required files. Installation aborted." $statusTextBox ([System.Drawing.Color]::Red)
-    #     }
-    # }
     $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Desktop setup workflow..." $statusTextBox
         $result = Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox
@@ -2191,26 +2170,6 @@ function Show-InstallSoftwareDialog {Hide-MainMenu
     }
     $deviceTypeForm.Controls.Add($btnDesktop)
 
-    # Laptop button
-    # $btnLaptop = New-DynamicButton -text "LAPTOP" -x 260 -y 50 -width 200 -height 50 -clickAction {
-    #     Add-Status "STEP 1: Copying required files for Laptop..."
-    #     $copyResult = Copy-SoftwareFiles -deviceType "Laptop" $statusTextBox
-
-    #     if ($copyResult) {
-    #         Add-Status "STEP 2: Installing software for Laptop..."
-    #         $installResult = Install-Software -deviceType "Laptop" $statusTextBox
-
-    #         if ($installResult) {
-    #             Add-Status "All software installation completed successfully!" $statusTextBox
-    #         }
-    #         else {
-    #             Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red)
-    #         }
-    #     }
-    #     else {
-    #         Add-Status "Error: Failed to copy required files. Installation aborted." $statusTextBox ([System.Drawing.Color]::Red)
-    #     }
-    # }
     $btnLaptop = New-DynamicButton -text "LAPTOP" -x 260 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Laptop setup workflow..." $statusTextBox
         $result = Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox
