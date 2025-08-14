@@ -197,6 +197,50 @@ function Add-Status {param([string]$message,[System.Windows.Forms.RichTextBox]$r
 }
 
 # [1] Run All Functions
+function Select-DeviceType {
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "Select Device Type"
+    $form.Size = New-Object System.Drawing.Size(300, 210)
+    $form.StartPosition = "CenterParent"
+    $form.BackColor = [System.Drawing.Color]::Black
+    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+    $form.MaximizeBox = $false
+    $form.MinimizeBox = $false
+
+    # Safe gradient instead of inline Paint
+    Add-GradientBackground -form $form
+
+    # Title
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Text = "SELECT DEVICE TYPE"
+    $lbl.Location = New-Object System.Drawing.Point(0, 20)
+    $lbl.Size = New-Object System.Drawing.Size(290, 30)
+    $lbl.ForeColor = [System.Drawing.Color]::Lime
+    $lbl.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
+    $lbl.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+    $lbl.BackColor = [System.Drawing.Color]::Transparent
+    $form.Controls.Add($lbl)
+
+    # Buttons
+    $selection = $null
+    $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 70 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0,150,0)) -hoverColor ([System.Drawing.Color]::FromArgb(0,200,0)) -pressColor ([System.Drawing.Color]::FromArgb(0,100,0)) -clickAction {$script:selection = "Desktop";$form.DialogResult = [System.Windows.Forms.DialogResult]::OK;$form.Close()}
+    $form.Controls.Add($btnDesktop)
+
+    $btnLaptop = New-DynamicButton -text "LAPTOP" -x 10 -y 120 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0,150,0)) -hoverColor ([System.Drawing.Color]::FromArgb(0,200,0)) -pressColor ([System.Drawing.Color]::FromArgb(0,100,0)) -clickAction {$script:selection = "Laptop";$form.DialogResult = [System.Windows.Forms.DialogResult]::OK;$form.Close()}
+    $form.Controls.Add($btnLaptop)
+
+    # Esc support
+    $form.KeyPreview = $true
+    $form.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $form.Close() } })
+
+    # Show dialog
+    $result = $form.ShowDialog()
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {Add-Status "Selected device type: $script:selection" $statusTextBox}
+    else {Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)}
+    $form.Close()
+    return $script:selection
+}
+
 function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
     Hide-MainMenu
     # Create status form
@@ -282,68 +326,24 @@ function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
         Add-Status "STEP 1: Selecting Device Type and Installing Software..." $statusTextBox
         $progressBar.Value = 14
 
-        # Create device selection form
-        $deviceForm = New-Object System.Windows.Forms.Form
-        $deviceForm.Text = "Select Device Type"
-        $deviceForm.Size = New-Object System.Drawing.Size(300, 210)
-        $deviceForm.StartPosition = "CenterScreen"
-        $deviceForm.BackColor = [System.Drawing.Color]::Black
-        $deviceForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
-        $deviceForm.MaximizeBox = $false
-        $deviceForm.MinimizeBox = $false
-        $deviceForm.Add_Paint({$graphics = $_.Graphics;$rect = New-Object System.Drawing.Rectangle(0, 0, $deviceForm.Width, $deviceForm.Height);$brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush($rect,[System.Drawing.Color]::FromArgb(0, 0, 0),[System.Drawing.Color]::FromArgb(0, 40, 0),[System.Drawing.Drawing2D.LinearGradientMode]::Vertical)$graphics.FillRectangle($brush, $rect)$brush.Dispose()})
-
-        # Title label
-        $deviceTitleLabel = New-Object System.Windows.Forms.Label
-        $deviceTitleLabel.Text = "SELECT DEVICE TYPE"
-        $deviceTitleLabel.Location = New-Object System.Drawing.Point(0, 20)
-        $deviceTitleLabel.Size = New-Object System.Drawing.Size(290, 30)
-        $deviceTitleLabel.ForeColor = [System.Drawing.Color]::Lime
-        $deviceTitleLabel.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
-        $deviceTitleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
-        $deviceTitleLabel.BackColor = [System.Drawing.Color]::Transparent
-        $deviceForm.Controls.Add($deviceTitleLabel)
-
-        # Desktop button
-        $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 70 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {$script:selectedDeviceType = "Desktop";$deviceForm.DialogResult = [System.Windows.Forms.DialogResult]::OK;$deviceForm.Close()}
-        $deviceForm.Controls.Add($btnDesktop)
-
-        # Laptop button
-        $btnLaptop = New-DynamicButton -text "LAPTOP" -x 10 -y 120 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {$script:selectedDeviceType = "Laptop";$deviceForm.DialogResult = [System.Windows.Forms.DialogResult]::OK;$deviceForm.Close()}
-        $deviceForm.Controls.Add($btnLaptop)
-
-        $deviceForm.KeyPreview = $true
-        $deviceForm.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $deviceForm.Close() } })
-
-        # Show device selection form and get result
-        $result = $deviceForm.ShowDialog()
-        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-            $deviceType = $script:selectedDeviceType
-            Add-Status "Selected device type: $deviceType" $statusTextBox
-        }
-        else {
+        # Select device type (function-based)
+        $deviceType = Select-DeviceType -Owner $statusForm
+        if (-not $deviceType) {
             Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)
             $statusForm.Close()
             Show-MainMenu
             return
         }
+        Add-Status "Selected device type: $deviceType" $statusTextBox
 
-        # Copy software files
-        Add-Status "Copying software files..." $statusTextBox
-        $copyResult = Copy-SoftwareFiles -deviceType $deviceType $statusTextBox
-        if (-not $copyResult) {
-            Add-Status "Error copying software files. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)
-            $statusForm.Close()
-            Show-MainMenu
-            return
+        # STEP 1: Software provisioning
+        Add-Status "STEP 1: Software provisioning (Detect → Copy → Install)..." $statusTextBox
+
+        $provisionOk = Invoke-InstallSoftware -DeviceType $deviceType -statusTextBox $statusTextBox
+        if (-not $provisionOk) {
+            Add-Status "STEP 1 finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
-        # Install software
-        Add-Status "Installing software..." $statusTextBox
-        $installResult = Install-Software -deviceType $deviceType $statusTextBox
-        if (-not $installResult) {
-            Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
         Add-Status "STEP 1 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
 
         # STEP 2: Rename Device
@@ -1355,6 +1355,259 @@ function Copy-SoftwareFiles {param ([string]$deviceType, [System.Windows.Forms.R
         return $false
     }
 }
+# CHỈ copy theo danh sách Pending, không thay thế Copy-SoftwareFiles cũ
+function Copy-SoftwareFilesSelective {
+    param(
+        [ValidateSet('Desktop','Laptop')]
+        [string]$DeviceType,
+        [array]$Apps,  # mảng meta trả về từ Plan-SoftwareInstall().Pending
+        [System.Windows.Forms.RichTextBox]$statusTextBox
+    )
+
+    $tempDir = "$env:USERPROFILE\Downloads\SETUP"
+    $setupDir = Join-Path $tempDir "Software"
+    $office2019Dir = Join-Path $tempDir "Office2019"
+
+    # Chuẩn bị thư mục
+    if (-not (Test-Path $tempDir)) { New-Item -Path $tempDir -ItemType Directory -Force | Out-Null }
+    if (-not (Test-Path $setupDir)) { New-Item -Path $setupDir -ItemType Directory -Force | Out-Null }
+
+    # Nguồn chuẩn theo code cũ
+    $srcSETUP = "D:\SOFTWARE\PAYOO\SETUP"
+    $srcOffice = "D:\SOFTWARE\OFFICE\Office 2019"
+
+    foreach ($app in $Apps) {
+        switch ($app.Id) {
+            '7zip' {
+                if (Test-Path $srcSETUP) {
+                    $file = Get-ChildItem -Path $srcSETUP -Name "7z*.exe","7-Zip*.exe","7zip*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($file) {
+                        Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
+                        Add-Status "Copy: 7-Zip -> $setupDir\$file" $statusTextBox
+                    } else {
+                        Add-Status "Missing 7-Zip installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    }
+                }
+            }
+            'chrome' {
+                $src = Join-Path $srcSETUP "ChromeSetup.exe"
+                if (Test-Path $src) {
+                    Copy-Item -Path $src -Destination (Join-Path $setupDir "ChromeSetup.exe") -Force
+                    Add-Status "Copy: Chrome -> $setupDir\ChromeSetup.exe" $statusTextBox
+                } else {
+                    Add-Status "Missing ChromeSetup.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            }
+            'laps' {
+                $src = Join-Path $srcSETUP "LAPS_x64.msi"
+                if (Test-Path $src) {
+                    Copy-Item -Path $src -Destination (Join-Path $setupDir "LAPS_x64.msi") -Force
+                    Add-Status "Copy: LAPS -> $setupDir\LAPS_x64.msi" $statusTextBox
+                } else {
+                    Add-Status "Missing LAPS_x64.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            }
+            'foxit' {
+                if (Test-Path $srcSETUP) {
+                    $file = Get-ChildItem -Path $srcSETUP -Name "FoxitPDFReader*.exe","FoxitReader*.exe","Foxit*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($file) {
+                        Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
+                        Add-Status "Copy: Foxit -> $setupDir\$file" $statusTextBox
+                    } else {
+                        Add-Status "Missing Foxit installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    }
+                }
+            }
+            'office2019' {
+                if (Test-Path $srcOffice) {
+                    if (-not (Test-Path $office2019Dir)) { New-Item -Path $office2019Dir -ItemType Directory -Force | Out-Null }
+                    Copy-Item -Path (Join-Path $srcOffice "*") -Destination $office2019Dir -Recurse -Force
+                    Add-Status "Copy: Office2019 -> $office2019Dir" $statusTextBox
+                } else {
+                    Add-Status "Missing Office 2019 source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            }
+            'zoom' {
+                $src = Join-Path $srcSETUP "ZoomInstallerFull.exe"
+                if (Test-Path $src) {
+                    Copy-Item -Path $src -Destination (Join-Path $setupDir "ZoomInstallerFull.exe") -Force
+                    Add-Status "Copy: Zoom -> $setupDir\ZoomInstallerFull.exe" $statusTextBox
+                } else {
+                    Add-Status "Missing ZoomInstallerFull.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            }
+            'checkpointvpn' {
+                $src = Join-Path $srcSETUP "CheckPointVPN.msi"
+                if (Test-Path $src) {
+                    Copy-Item -Path $src -Destination (Join-Path $setupDir "CheckPointVPN.msi") -Force
+                    Add-Status "Copy: CheckPointVPN -> $setupDir\CheckPointVPN.msi" $statusTextBox
+                } else {
+                    Add-Status "Missing CheckPointVPN.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            }
+        }
+    }
+
+    return $true
+}
+# Detect helpers
+function Test-7ZipInstalled {
+    $paths = @(
+        "C:\Program Files\7-Zip\7z.exe",
+        "C:\Program Files (x86)\7-Zip\7z.exe"
+    )
+    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
+    return $false
+}
+function Test-ChromeInstalled {
+    $paths = @(
+        "C:\Program Files\Google\Chrome\Application\chrome.exe",
+        "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+    )
+    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
+    return $false
+}
+function Test-LAPSInstalledOrBuiltin {
+    try {
+        $osInfo = Get-ComputerInfo
+        $isWindows11 = $osInfo.WindowsProductName -like "*Windows 11*"
+        if ($isWindows11) { return @{ BuiltIn=$true; Installed=$true } }
+    } catch {}
+    $dll = "C:\Program Files\LAPS\CSE\AdmPwd.dll"
+    return @{ BuiltIn=$false; Installed=(Test-Path $dll) }
+}
+function Test-FoxitInstalled {
+    $paths = @(
+        "C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe",
+        "C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe",
+        "C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe",
+        "C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe"
+    )
+    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
+    return $false
+}
+function Test-Office2019Installed {
+    return (Test-Path "C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")
+}
+function Test-ZoomInstalled {
+    $paths = @(
+        "$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe",
+        "C:\Program Files\Zoom\bin\Zoom.exe",
+        "C:\Program Files (x86)\Zoom\bin\Zoom.exe"
+    )
+    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
+    return $false
+}
+function Test-CheckPointVPNInstalled {
+    return (Test-Path "C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")
+}
+# Lập kế hoạch theo deviceType
+function Plan_SoftwareInstall {
+    param(
+        [ValidateSet('Desktop','Laptop')]
+        [string]$DeviceType,
+        [System.Windows.Forms.RichTextBox]$statusTextBox
+    )
+
+    $pending = @()
+    $skipped = @()
+    $appsMeta = @(
+        # Id, DisplayName, Device constraint, loại copy cần
+        @{ Id='onedrive'; Display='OneDrive (uninstall only)'; Device='All' },       # chỉ log state, không copy
+        @{ Id='7zip'; Display='7-Zip'; Device='All' },
+        @{ Id='chrome'; Display='Google Chrome'; Device='All' },
+        @{ Id='laps'; Display='LAPS'; Device='All' },
+        @{ Id='foxit'; Display='Foxit Reader'; Device='All' },
+        @{ Id='office2019'; Display='Office 2019'; Device='All' },
+        @{ Id='zoom'; Display='Zoom'; Device='Laptop' },
+        @{ Id='checkpointvpn'; Display='CheckPoint VPN'; Device='Laptop' }
+    )
+
+    foreach ($app in $appsMeta) {
+        if ($app.Device -ne 'All' -and $app.Device -ne $DeviceType) { continue }
+
+        switch ($app.Id) {
+            'onedrive' {
+                if (Test-OneDriveInstalled) { $pending += $app } else { $skipped += $app }
+            }
+            '7zip' {
+                if (Test-7ZipInstalled) { $skipped += $app } else { $pending += $app }
+            }
+            'chrome' {
+                if (Test-ChromeInstalled) { $skipped += $app } else { $pending += $app }
+            }
+            'laps' {
+                $laps = Test-LAPSInstalledOrBuiltin
+                if ($laps.Installed) { $skipped += $app } else { $pending += $app }
+            }
+            'foxit' {
+                if (Test-FoxitInstalled) { $skipped += $app } else { $pending += $app }
+            }
+            'office2019' {
+                if (Test-Office2019Installed) { $skipped += $app } else { $pending += $app }
+            }
+            'zoom' {
+                if (Test-ZoomInstalled) { $skipped += $app } else { $pending += $app }
+            }
+            'checkpointvpn' {
+                if (Test-CheckPointVPNInstalled) { $skipped += $app } else { $pending += $app }
+            }
+        }
+    }
+
+    # Log nhanh
+    if ($statusTextBox) {
+        if ($skipped.Count -gt 0) {
+            $skippedDisplays = $skipped | ForEach-Object { $_.Display }
+            Add-Status ("Skipped: " + ($skippedDisplays -join ", ")) $statusTextBox ([System.Drawing.Color]::Gray)
+        }
+        if ($pending.Count -gt 0) {
+            $pendingDisplays = $pending | ForEach-Object { $_.Display }
+            Add-Status ("Pending: " + ($pendingDisplays -join ", ")) $statusTextBox ([System.Drawing.Color]::Yellow)
+        } else {
+            Add-Status "No pending apps. Everything is already installed." $statusTextBox ([System.Drawing.Color]::Green)
+        }
+    }
+
+    return @{
+        Pending = $pending
+        Skipped = $skipped
+        Meta    = $appsMeta
+    }
+}
+# Orchestrator chính cho nút Install
+function Invoke-InstallSoftware {
+    param(
+        [ValidateSet('Desktop','Laptop')]
+        [string]$DeviceType,
+        [System.Windows.Forms.RichTextBox]$statusTextBox
+    )
+
+    Add-Status "STEP 1: Detecting installed software..." $statusTextBox
+    $plan = Plan_SoftwareInstall -DeviceType $DeviceType -statusTextBox $statusTextBox
+
+    if (-not $plan.Pending -or $plan.Pending.Count -eq 0) {
+        Add-Status "Nothing to install. Skipping copy and install steps." $statusTextBox ([System.Drawing.Color]::Green)
+        return $true
+    }
+
+    Add-Status "STEP 2: Copying installers for pending apps..." $statusTextBox
+    $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox
+    if (-not $okCopy) {
+        Add-Status "Error: Failed to copy required installers. Aborting." $statusTextBox ([System.Drawing.Color]::Red)
+        return $false
+    }
+
+    Add-Status "STEP 3: Installing pending software..." $statusTextBox
+    $okInstall = Install-Software -deviceType $DeviceType $statusTextBox
+    if ($okInstall) {
+        Add-Status "All pending software installation completed successfully!" $statusTextBox
+        return $true
+    } else {
+        Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red)
+        return $false
+    }
+}
 
 function Install-Software {param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -1908,45 +2161,63 @@ function Show-InstallSoftwareDialog {Hide-MainMenu
     $deviceTypeForm.Controls.Add($statusTextBox)
 
     # Desktop button
+    # $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 50 -width 200 -height 50 -clickAction {
+    #     Add-Status "STEP 1: Copying required files for Desktop..."
+    #     $copyResult = Copy-SoftwareFiles -deviceType "Desktop" $statusTextBox
+
+    #     if ($copyResult) {
+    #         Add-Status "STEP 2: Installing software for Desktop..." $statusTextBox
+    #         $installResult = Install-Software -deviceType "Desktop" $statusTextBox
+
+    #         if ($installResult) {
+    #             Add-Status "All software installation completed successfully!" $statusTextBox
+    #         }
+    #         else {
+    #             Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red)
+    #         }
+    #     }
+    #     else {
+    #         Add-Status "Error: Failed to copy required files. Installation aborted." $statusTextBox ([System.Drawing.Color]::Red)
+    #     }
+    # }
     $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 50 -width 200 -height 50 -clickAction {
-        Add-Status "STEP 1: Copying required files for Desktop..."
-        $copyResult = Copy-SoftwareFiles -deviceType "Desktop" $statusTextBox
-
-        if ($copyResult) {
-            Add-Status "STEP 2: Installing software for Desktop..." $statusTextBox
-            $installResult = Install-Software -deviceType "Desktop" $statusTextBox
-
-            if ($installResult) {
-                Add-Status "All software installation completed successfully!" $statusTextBox
-            }
-            else {
-                Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red)
-            }
-        }
-        else {
-            Add-Status "Error: Failed to copy required files. Installation aborted." $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Starting Desktop setup workflow..." $statusTextBox
+        $result = Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox
+        if ($result) {
+            Add-Status "Desktop workflow finished." $statusTextBox
+        } else {
+            Add-Status "Desktop workflow finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
     }
     $deviceTypeForm.Controls.Add($btnDesktop)
 
     # Laptop button
+    # $btnLaptop = New-DynamicButton -text "LAPTOP" -x 260 -y 50 -width 200 -height 50 -clickAction {
+    #     Add-Status "STEP 1: Copying required files for Laptop..."
+    #     $copyResult = Copy-SoftwareFiles -deviceType "Laptop" $statusTextBox
+
+    #     if ($copyResult) {
+    #         Add-Status "STEP 2: Installing software for Laptop..."
+    #         $installResult = Install-Software -deviceType "Laptop" $statusTextBox
+
+    #         if ($installResult) {
+    #             Add-Status "All software installation completed successfully!" $statusTextBox
+    #         }
+    #         else {
+    #             Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red)
+    #         }
+    #     }
+    #     else {
+    #         Add-Status "Error: Failed to copy required files. Installation aborted." $statusTextBox ([System.Drawing.Color]::Red)
+    #     }
+    # }
     $btnLaptop = New-DynamicButton -text "LAPTOP" -x 260 -y 50 -width 200 -height 50 -clickAction {
-        Add-Status "STEP 1: Copying required files for Laptop..."
-        $copyResult = Copy-SoftwareFiles -deviceType "Laptop" $statusTextBox
-
-        if ($copyResult) {
-            Add-Status "STEP 2: Installing software for Laptop..."
-            $installResult = Install-Software -deviceType "Laptop" $statusTextBox
-
-            if ($installResult) {
-                Add-Status "All software installation completed successfully!" $statusTextBox
-            }
-            else {
-                Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red)
-            }
-        }
-        else {
-            Add-Status "Error: Failed to copy required files. Installation aborted." $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Starting Laptop setup workflow..." $statusTextBox
+        $result = Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox
+        if ($result) {
+            Add-Status "Laptop workflow finished." $statusTextBox
+        } else {
+            Add-Status "Laptop workflow finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
     }
     $deviceTypeForm.Controls.Add($btnLaptop)
