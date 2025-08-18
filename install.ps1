@@ -13,8 +13,7 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 # HIDE CONSOLE
-try {
-    Add-Type -Name Window -Namespace Console -MemberDefinition '
+try {Add-Type -Name Window -Namespace Console -MemberDefinition '
     [DllImport("Kernel32.dll")]
     public static extern IntPtr GetConsoleWindow();
     [DllImport("user32.dll")]
@@ -35,8 +34,7 @@ function Hide-MainMenu {$script:form.Hide()}
 function Show-MainMenu {$script:form.Show()}
 
 # Dynamic Button
-function New-DynamicButton {
-    param ([string]$text,[int]$x,[int]$y,[int]$width,[int]$height,[scriptblock]$clickAction,[System.Drawing.Color]$normalColor = [System.Drawing.Color]::FromArgb(0, 128, 0),[System.Drawing.Color]$hoverColor = [System.Drawing.Color]::FromArgb(0, 180, 0),[System.Drawing.Color]$pressColor = [System.Drawing.Color]::FromArgb(0, 100, 0),[System.Drawing.Color]$textColor = [System.Drawing.Color]::White,[string]$fontName = "Arial",[int]$fontSize = 12,[System.Drawing.FontStyle]$fontStyle = [System.Drawing.FontStyle]::Bold)
+function New-DynamicButton {param ([string]$text,[int]$x,[int]$y,[int]$width,[int]$height,[scriptblock]$clickAction,[System.Drawing.Color]$normalColor = [System.Drawing.Color]::FromArgb(0, 128, 0),[System.Drawing.Color]$hoverColor = [System.Drawing.Color]::FromArgb(0, 180, 0),[System.Drawing.Color]$pressColor = [System.Drawing.Color]::FromArgb(0, 100, 0),[System.Drawing.Color]$textColor = [System.Drawing.Color]::White,[string]$fontName = "Arial",[int]$fontSize = 12,[System.Drawing.FontStyle]$fontStyle = [System.Drawing.FontStyle]::Bold)
 
     $button = New-Object System.Windows.Forms.Button
     $button.Text = $text
@@ -59,14 +57,12 @@ function New-DynamicButton {
 try {Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop;Add-Type -AssemblyName System.Drawing -ErrorAction Stop}
 catch {Write-Host "Error loading Windows Forms and Drawing assemblies." -ForegroundColor Red;exit 1}
 
-# Network driver installers (configurable)
+# Network driver installers
 $Global:EthernetDriverExe = 'D:\DRIVER\Ethernet\Intel-PCIe-Ethernet-Controller-Driver_99KJH_WIN64_12.19.2.50_A27_01.exe'
 $Global:WifiDriverExe     = 'D:\DRIVER\Wifi\WiFi-23.120.0-Driver64-Win10-Win11.exe'
 
 # Global function to add gradient background to any form
-function Add-GradientBackground {
-    param([System.Windows.Forms.Form]$form,[System.Drawing.Color]$topColor = [System.Drawing.Color]::FromArgb(0, 0, 0),[System.Drawing.Color]$bottomColor = [System.Drawing.Color]::FromArgb(0, 50, 0))
-
+function Add-GradientBackground {param([System.Windows.Forms.Form]$form,[System.Drawing.Color]$topColor = [System.Drawing.Color]::FromArgb(0, 0, 0),[System.Drawing.Color]$bottomColor = [System.Drawing.Color]::FromArgb(0, 50, 0))
     # Extract ARGB values for reliable color recreation
     $topA = $topColor.A
     $topR = $topColor.R
@@ -119,7 +115,7 @@ $script:form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
 $script:form.MaximizeBox = $true  # Cho phép maximize
 
 # Apply gradient background using global function
-Add-GradientBackground -form $script:form
+Add-GradientBackground $script:form
 
 # Title label
 $titleLabel = New-Object System.Windows.Forms.Label
@@ -246,12 +242,7 @@ function Select-DeviceType {
 }
 
 # STEP 0: WiFi AUTO-CONNECTION FUNCTION
-function Install-DriverExe {
-    param(
-        [Parameter(Mandatory=$true)][string]$Path,
-        [Parameter(Mandatory=$true)][System.Windows.Forms.RichTextBox]$statusTextBox,
-        [ValidateSet('Ethernet','WiFi')][string]$Type = 'Ethernet'
-    )
+function Install-DriverExe {param([Parameter(Mandatory=$true)][string]$Path,[Parameter(Mandatory=$true)][System.Windows.Forms.RichTextBox]$statusTextBox,[ValidateSet('Ethernet','WiFi')][string]$Type = 'Ethernet')
     try {
         if (-not (Test-Path $Path)) {
             Add-Status "$Type driver not found at: $Path" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -298,13 +289,9 @@ function Install-DriverExe {
     }
 }
 
-function Install-WiFiDriversOffline {
-    param(
-        [System.Windows.Forms.Form]$OwnerForm,
-        [System.Windows.Forms.RichTextBox]$statusTextBox
-    )
+function Install-WiFiDriversOffline {param([System.Windows.Forms.Form]$OwnerForm,[System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
-        Add-Status "Attempting offline Wi‑Fi driver installation..." $statusTextBox
+        Add-Status "Attempting offline WiFi driver installation..." $statusTextBox
 
         # Try common locations first
         $candidatePaths = @(
@@ -321,10 +308,10 @@ function Install-WiFiDriversOffline {
         }
         else {
             # Let user pick a folder (USB, other drive)
-            Add-Status "Please select a folder containing *.inf Wi‑Fi drivers..." $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "Please select a folder containing *.inf WiFi drivers..." $statusTextBox ([System.Drawing.Color]::Yellow)
             Add-Type -AssemblyName System.Windows.Forms | Out-Null
             $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-            $dlg.Description = "Select folder that contains Wi‑Fi driver .inf files"
+            $dlg.Description = "Select folder that contains WiFi driver .inf files"
             if ($OwnerForm) { $dlg.ShowNewFolderButton = $false }
             $dialogResult = $dlg.ShowDialog($OwnerForm)
             if ($dialogResult -eq [System.Windows.Forms.DialogResult]::OK -and (Test-Path $dlg.SelectedPath)) {
@@ -333,7 +320,7 @@ function Install-WiFiDriversOffline {
         }
 
         if (-not $selectedPath) {
-            Add-Status "No driver folder selected. Skipping offline Wi‑Fi driver installation." $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "No driver folder selected. Skipping offline WiFi driver installation." $statusTextBox ([System.Drawing.Color]::Yellow)
             return $false
         }
 
@@ -345,17 +332,17 @@ function Install-WiFiDriversOffline {
         Start-Sleep -Seconds 8
 
         # Re-scan for wireless adapters
-        $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -like "*wireless*" -or $_.InterfaceDescription -like "*wifi*" -or $_.InterfaceDescription -like "*802.11*" }
+        $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71}
         if ($wifiAdapters -and $wifiAdapters.Count -gt 0) {
-            Add-Status "Wi‑Fi adapters detected after driver install." $statusTextBox ([System.Drawing.Color]::Green)
+            Add-Status "WiFi adapters detected after driver install." $statusTextBox ([System.Drawing.Color]::Green)
             return $true
         } else {
-            Add-Status "No Wi‑Fi adapters detected after driver install." $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "No WiFi adapters detected after driver install." $statusTextBox ([System.Drawing.Color]::Yellow)
             return $false
         }
     }
     catch {
-        Add-Status "Offline Wi‑Fi driver installation error: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Offline WiFi driver installation error: $_" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
 }
@@ -383,17 +370,17 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
         # Quick WiFi adapter check
         Add-Status "Detecting WiFi adapters..." $statusTextBox
         try {
-            $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -like "*wireless*" -or $_.InterfaceDescription -like "*wifi*" -or $_.InterfaceDescription -like "*802.11*" }
+            $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71 }
 
             if (-not $wifiAdapters) {
                 # Thử Internet qua Ethernet trước
                 try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet } catch { $hasInternet = $false }
                 if ($hasInternet) {
-                    Add-Status "No Wi‑Fi adapters, but Internet is available via Ethernet. Skipping Wi‑Fi." $statusTextBox ([System.Drawing.Color]::Cyan)
+                    Add-Status "No WiFi adapters, but Internet is available via Ethernet. Skipping WiFi." $statusTextBox ([System.Drawing.Color]::Cyan)
                     return $true
                 }
 
-                Add-Status "No Wi‑Fi adapters found. Trying Wi‑Fi driver EXE..." $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "No WiFi adapters found. Trying WiFi driver EXE..." $statusTextBox ([System.Drawing.Color]::Yellow)
                 $ownerForm = $null; try { $ownerForm = $statusTextBox.FindForm() } catch {}
                 $exeOk = Install-DriverExe -Path $Global:WifiDriverExe -statusTextBox $statusTextBox -Type 'WiFi'
                 if (-not $exeOk) {
@@ -402,15 +389,15 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
                         $infOk = Install-WiFiDriversOffline -OwnerForm $ownerForm -statusTextBox $statusTextBox
                     } else { $infOk = $false }
                     if (-not $infOk) {
-                        Add-Status "Wi‑Fi driver install failed or no adapters present. Continuing without Wi‑Fi." $statusTextBox ([System.Drawing.Color]::Yellow)
+                        Add-Status "WiFi driver install failed or no adapters present. Continuing without WiFi." $statusTextBox ([System.Drawing.Color]::Yellow)
                         return $false
                     }
                 }
 
                 # Re-scan sau khi cài
-                $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -like "*wireless*" -or $_.InterfaceDescription -like "*wifi*" -or $_.InterfaceDescription -like "*802.11*" }
+                $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71}
                 if (-not $wifiAdapters) {
-                    Add-Status "Wi‑Fi adapters still not detected. Continuing without Wi‑Fi." $statusTextBox ([System.Drawing.Color]::Yellow)
+                    Add-Status "WiFi adapters still not detected. Continuing without WiFi." $statusTextBox ([System.Drawing.Color]::Yellow)
                     return $false
                 }
             }
@@ -514,46 +501,46 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
             # Add new profile for all users
             $null = netsh wlan add profile filename="$profileFile" user=all
             if ($LASTEXITCODE -eq 0) {
-                Add-Status "Wi‑Fi profile added successfully" $statusTextBox ([System.Drawing.Color]::Green)
+                Add-Status "WiFi profile added successfully" $statusTextBox ([System.Drawing.Color]::Green)
                 # do not return here
             } else {
-                Add-Status "Failed to add Wi‑Fi profile" $statusTextBox ([System.Drawing.Color]::Red)
+                Add-Status "Failed to add WiFi profile" $statusTextBox ([System.Drawing.Color]::Red)
                 return $false
             }
         }
         catch {
-            Add-Status "Wi‑Fi profile addition failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "WiFi profile addition failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
             return $false
         }
 
         # Connect to WiFi (with retries)
-        Add-Status "Connecting to Wi‑Fi network..." $statusTextBox
+        Add-Status "Connecting to WiFi network..." $statusTextBox
         try {
             $maxRetries = 3
             for ($i = 1; $i -le $maxRetries; $i++) {
                 $null = netsh wlan connect name="$SSID"
                 if ($LASTEXITCODE -eq 0) {
-                    Add-Status "Wi‑Fi connection attempt #$i initiated" $statusTextBox ([System.Drawing.Color]::Green)
+                    Add-Status "WiFi connection attempt #$i initiated" $statusTextBox ([System.Drawing.Color]::Green)
                 } else {
-                    Add-Status "Wi‑Fi connection attempt #$i failed to initiate" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    Add-Status "WiFi connection attempt #$i failed to initiate" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
 
                 Start-Sleep -Seconds (3 + $i * 2)
 
                 $verify = netsh wlan show interfaces | Out-String
                 if ($verify -match "State\s*:\s*connected" -and $verify -match ("SSID\s*:\s*{0}" -f [regex]::Escape($SSID))) {
-                    Add-Status "Wi‑Fi connected successfully to $SSID!" $statusTextBox ([System.Drawing.Color]::Green)
+                    Add-Status "WiFi connected successfully to $SSID!" $statusTextBox ([System.Drawing.Color]::Green)
                     return $true
                 } else {
-                    Add-Status "Wi‑Fi verification attempt #$i not connected yet." $statusTextBox ([System.Drawing.Color]::Yellow)
+                    Add-Status "WiFi verification attempt #$i not connected yet." $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
 
-            Add-Status "Wi‑Fi connection verification failed after retries" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "WiFi connection verification failed after retries" $statusTextBox ([System.Drawing.Color]::Yellow)
             return $false
         }
         catch {
-            Add-Status "Wi‑Fi connection error: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "WiFi connection error: $_" $statusTextBox ([System.Drawing.Color]::Red)
             return $false
         }
         finally {
@@ -782,12 +769,12 @@ function Invoke-FileCleanup {param ([System.Windows.Forms.RichTextBox]$statusTex
     # Clean Recycle Bin and Windows Update cache
     try {
         Clear-RecycleBin -Force -ErrorAction SilentlyContinue
-        Add-Status "Recycle Bin cleaned." $statusTextBox
+        Add-Status "Recycle Bin cleaned." $statusTextBox ([System.Drawing.Color]::Green)
 
         Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
         Remove-Item -Path "$env:WINDIR\SoftwareDistribution\Download\*" -Recurse -Force -ErrorAction SilentlyContinue
         Start-Service -Name wuauserv -ErrorAction SilentlyContinue
-        Add-Status "Windows Update cache cleaned." $statusTextBox
+        Add-Status "Windows Update cache cleaned." $statusTextBox ([System.Drawing.Color]::Green)
     }
     catch {
         Add-Status "Warning: Could not complete advanced cleanup" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -815,7 +802,7 @@ function Invoke-TimezoneConfiguration {param ([System.Windows.Forms.RichTextBox]
     try {
         $tzResult = Start-Process -FilePath "tzutil" -ArgumentList "/s `"SE Asia Standard Time`"" -Wait -PassThru -WindowStyle Hidden
         if ($tzResult.ExitCode -eq 0) {
-            Add-Status "Time zone set to SE Asia Standard Time successfully!" $statusTextBox
+            Add-Status "Time zone set to SE Asia Standard Time successfully!" $statusTextBox ([System.Drawing.Color]::Green)
         }
 
         $regCommands = @(
@@ -1196,15 +1183,58 @@ function Test-ChromeInstalled {$paths = @("C:\Program Files\Google\Chrome\Applic
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-LAPSInstalledOrBuiltin {
+
+function Test-LAPSInstalledOrBuiltin {[CmdletBinding()]
+    param()
+
     try {
-        $osInfo = Get-ComputerInfo
-        $isWindows11 = $osInfo.WindowsProductName -like "*Windows 11*"
-        if ($isWindows11) { return @{ BuiltIn=$true; Installed=$true } }
-    } catch {}
-    $dll = "C:\Program Files\LAPS\CSE\AdmPwd.dll"
-    return @{ BuiltIn=$false; Installed=(Test-Path $dll) }
+        # Get Windows version information
+        $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        $isWindows11 = $osInfo.Caption -like "*Windows 11*" -or 
+                       ($osInfo.BuildNumber -ge 22000 -and $osInfo.ProductType -eq 1)  # 22000 is the first Win11 build
+        
+        if ($isWindows11) {
+            # Check if the LAPS CSP is available (Windows 11 built-in LAPS)
+            $lapsCsp = Get-CimInstance -Namespace "root\cimv2\mdm\dmmap" -ClassName "MDM_Policy_Config01_System02" -Filter "InstanceID='System' AND ParentID='./Device/Vendor/MSFT/Policy/Config'" -ErrorAction SilentlyContinue
+            $hasLapsCsp = $null -ne $lapsCsp
+            
+            return @{
+                BuiltIn = $true
+                Installed = $true
+                Version = "Windows 11 Built-in"
+                SupportsCSP = $hasLapsCsp
+            }
+        }
+
+        # For Windows 10 or other versions, check for traditional LAPS
+        $lapsDll = "C:\Program Files\LAPS\CSE\AdmPwd.dll"
+        $isLapsInstalled = Test-Path $lapsDll
+        $version = $null
+        
+        if ($isLapsInstalled) {
+            $fileInfo = (Get-Item $lapsDll).VersionInfo
+            $version = "$($fileInfo.FileMajorPart).$($fileInfo.FileMinorPart).$($fileInfo.FileBuildPart).$($fileInfo.FilePrivatePart)"
+        }
+
+        return @{
+            BuiltIn = $false
+            Installed = $isLapsInstalled
+            Version = $version
+            SupportsCSP = $false
+        }
+    }
+    catch {
+        # Fallback to basic check if any error occurs
+        $lapsDll = "C:\Program Files\LAPS\CSE\AdmPwd.dll"
+        return @{
+            BuiltIn = $false
+            Installed = (Test-Path $lapsDll)
+            Version = $null
+            SupportsCSP = $false
+        }
+    }
 }
+
 function Test-FoxitInstalled {$paths = @("C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe","C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe","C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe","C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
@@ -1511,7 +1541,8 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
         switch ($app.Id) {
             '7zip' {
                 if (Test-Path $srcSETUP) {
-                    $file = Get-ChildItem -Path $srcSETUP -Name "7z*.exe","7-Zip*.exe","7zip*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                    # $file = Get-ChildItem -Path $srcSETUP -Name "7z*.exe","7-Zip*.exe","7zip*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                    $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include '7z*.exe','7-Zip*.exe','7zip*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
                     if ($file) {
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
                         Add-Status "Copy: 7-Zip -> $setupDir\$file" $statusTextBox
@@ -1540,7 +1571,8 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
             }
             'foxit' {
                 if (Test-Path $srcSETUP) {
-                    $file = Get-ChildItem -Path $srcSETUP -Name "FoxitPDFReader*.exe","FoxitReader*.exe","Foxit*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                    # $file = Get-ChildItem -Path $srcSETUP -Name "FoxitPDFReader*.exe","FoxitReader*.exe","Foxit*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                    $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include 'FoxitPDFReader*.exe','FoxitReader*.exe','Foxit*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
                     if ($file) {
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
                         Add-Status "Copy: Foxit -> $setupDir\$file" $statusTextBox
@@ -4474,68 +4506,144 @@ function Show-SetPasswordForm {param ([string]$currentUser,[System.Windows.Forms
     return $dialogResult
 }
 
-# function Set-UserPassword {param ([string]$user,[string]$password)
-#     try {
-#         if ([string]::IsNullOrEmpty($password)) {
-#             $command = "net user $user """""
-#         }
-#         else {
-#             $command = "net user $user $password"
-#         }
-#         $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -NoNewWindow -Wait -PassThru
-#         return $process.ExitCode -eq 0
-#     }
-#     catch {
-#         return $false
-#     }
-# }
-
-function Set-UserPassword {
-    param (
-        [string]$user,
-        [SecureString]$password
-    )
+function Set-UserPassword {param ([string]$user,[SecureString]$password)
     try {
-        if ($null -eq $password) {
-            # Remove password (no secret passed on cmdline)
-            $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c net user $user """"" -NoNewWindow -Wait -PassThru
-            return $process.ExitCode -eq 0
+        # Kiểm tra xem người dùng có đang dùng Windows Hello PIN không
+        $pinEnabled = $false
+        try {
+            $pinProviders = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -Name "SessionData" -ErrorAction Stop
+            if ($null -ne $pinProviders) {
+                $pinEnabled = $true
+                Write-Host "Detected Windows Hello PIN"
+            }
+        } catch { }
+
+        # Nếu đang dùng PIN, vô hiệu hóa tạm thời
+        if ($pinEnabled) {
+            try {
+                # Lưu trạng thái PIN hiện tại
+                $pinBackup = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -Name "SessionData" -ErrorAction Stop
+                
+                # Vô hiệu hóa tạm thời PIN
+                Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -Name "SessionData" -Value $null -Force
+                Write-Host "Temporarily disabled Windows Hello PIN"
+                
+                # Đặt lại mật khẩu
+                $result = $false
+                if ($null -eq $password) {
+                    # Xóa mật khẩu
+                    $result = (Start-Process -FilePath "net.exe" -ArgumentList "user `"$user`" `"`"" -WindowStyle Hidden -Wait -PassThru).ExitCode -eq 0
+                } else {
+                    # Đặt mật khẩu mới
+                    $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                        [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($password)
+                    )
+                    $result = (Start-Process -FilePath "net.exe" -ArgumentList "user `"$user`" `"$plainPassword`"" -WindowStyle Hidden -Wait -PassThru).ExitCode -eq 0
+                    $plainPassword = $null
+                    [System.GC]::Collect()
+                }
+                
+                # Khôi phục lại trạng thái PIN
+                Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -Name "SessionData" -Value $pinBackup.SessionData -Type Binary -Force
+                Write-Host "Restored Windows Hello PIN settings"
+                
+                if ($result) {
+                    Write-Host "Password updated successfully for PIN user"
+                    return $true
+                }
+            } catch {
+                Write-Error "Error processing PIN user: $_"
+                return $false
+            }
         }
-        else {
-            Import-Module Microsoft.PowerShell.LocalAccounts -ErrorAction Stop
-            Set-LocalUser -Name $user -Password $password
-            return $true
+
+        # Nếu không dùng PIN hoặc xử lý PIN thất bại, dùng phương pháp thông thường
+        $methods = @(
+            {
+                # Phương pháp 1: Sử dụng LocalAccount module
+                try {
+                    Import-Module Microsoft.PowerShell.LocalAccounts -ErrorAction Stop
+                    $localUser = Get-LocalUser -Name $user -ErrorAction Stop
+                    if ($null -eq $password) {
+                        $localUser | Set-LocalUser -NoPassword
+                    } else {
+                        $localUser | Set-LocalUser -Password $password
+                    }
+                    Write-Host "Password updated successfully for LocalAccount module"
+                    return $true
+                } catch { throw "LocalAccount module failed: $_" }
+            },
+            {
+                # Phương pháp 2: Sử dụng ADSI
+                try {
+                    $userAccount = [ADSI]"WinNT://$env:COMPUTERNAME/$user,User"
+                    if ($null -eq $password) {
+                        $userAccount.SetPassword("")
+                    } else {
+                        $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($password)
+                        )
+                        $userAccount.SetPassword($plainPassword)
+                        $plainPassword = $null
+                        [System.GC]::Collect()
+                    }
+                    $userAccount.CommitChanges()
+                    Write-Host "Password updated successfully for ADSI"
+                    return $true
+                } catch { throw "ADSI method failed: $_" }
+            },
+            {
+                # Phương pháp 3: Sử dụng net user
+                try {
+                    if ($null -eq $password) {
+                        $process = Start-Process -FilePath "net.exe" -ArgumentList "user `"$user`" `"`"" -WindowStyle Hidden -Wait -PassThru
+                    } else {
+                        $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($password)
+                        )
+                        $process = Start-Process -FilePath "net.exe" -ArgumentList "user `"$user`" `"$plainPassword`"" -WindowStyle Hidden -Wait -PassThru
+                        $plainPassword = $null
+                        [System.GC]::Collect()
+                    }
+                    
+                    if ($process.ExitCode -ne 0) { throw "net.exe exited with code $($process.ExitCode)" }
+                    Write-Host "Password updated successfully for net user"
+                    return $true
+                } catch { throw "net user method failed: $_" }
+            }
+        )
+
+        # Thử lần lượt từng phương pháp
+        foreach ($method in $methods) {
+            try {
+                $result = & $method
+                if ($result -eq $true) {
+                    return $true
+                }
+            } catch {
+                Write-Warning "Method failed: $_"
+            }
         }
-    }
-    catch {
+
+        throw "All methods failed"
+        
+    } catch {
+        Write-Error "Error: $_"
         return $false
     }
 }
 
-# function Remove-UserPassword {param ([string]$user)
-#     try {
-#         $command = "net user $user "
-#         $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -NoNewWindow -Wait -PassThru
-#         return $process.ExitCode -eq 0
-#     }
-#     catch {
-#         return $false
-#     }
-# }
-
-function Remove-UserPassword {
-    param ([string]$user)
+function Remove-UserPassword {param([string]$user)
     try {
         return (Set-UserPassword -user $user -password $null)
-    }
-    catch {
+    } catch {
+        Write-Error "Error: $_"
         return $false
     }
 }
 
 function Invoke-SetPasswordDialog {param([string]$currentUser,[System.Windows.Forms.RichTextBox]$statusTextBox,[bool]$showMenuAfter = $false)$result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox
     if ($result.Action -eq "set") {
-        # $success = Set-UserPassword -user $currentUser -password $result.Password
         $securePwd = if ([string]::IsNullOrEmpty($result.Password)) { $null } else { ConvertTo-SecureString -String $result.Password -AsPlainText -Force }
         $success = Set-UserPassword -user $currentUser -password $securePwd
         if ($success) {
@@ -4663,43 +4771,6 @@ function Set-DomainFormLayout {param([hashtable]$FormControls,[string]$Operation
 
     }
 }
-
-# function Test-DomainJoinInputs {param([string]$DomainName,[string]$Username,[string]$Password)
-
-#     if ([string]::IsNullOrWhiteSpace($DomainName)) {
-#         return @{
-#             IsValid      = $false
-#             ErrorMessage = "Domain name cannot be empty."
-#         }
-#     }
-
-#     if ([string]::IsNullOrWhiteSpace($Username)) {
-#         return @{
-#             IsValid      = $false
-#             ErrorMessage = "Username is required for domain join."
-#         }
-#     }
-
-#     if ([string]::IsNullOrWhiteSpace($Password)) {
-#         return @{
-#             IsValid      = $false
-#             ErrorMessage = "Password is required for domain join."
-#         }
-#     }
-
-#     # Additional domain name format validation
-#     if ($DomainName -notmatch '^[a-zA-Z0-9.-]+$') {
-#         return @{
-#             IsValid      = $false
-#             ErrorMessage = "Domain name contains invalid characters. Use only letters, numbers, dots, and hyphens."
-#         }
-#     }
-
-#     return @{
-#         IsValid      = $true
-#         ErrorMessage = ""
-#     }
-# }
 
 function Test-DomainJoinInputs {param([string]$DomainName,[string]$Username,[SecureString]$Password)
 
@@ -6104,11 +6175,8 @@ $menuButtons = @(
 )
 
 # Các tham số cho các nút menu
-$buttonHeight = 60
-$buttonSpacingY = 10
-$buttonTop = 80
-$buttonLeft = 30
-$buttonControls = @()
+try {$buttonHeight = 60;$buttonSpacingY = 10;$buttonTop = 80;$buttonLeft = 30;$buttonControls = @()}
+catch {Write-Host "Error: $_" -ForegroundColor Red;Stop-Transcript -ErrorAction SilentlyContinue;exit 1}
 
 # Tạo các nút menu
 for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
