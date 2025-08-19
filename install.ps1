@@ -13,7 +13,8 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 # HIDE CONSOLE
-try {Add-Type -Name Window -Namespace Console -MemberDefinition '
+try {
+    Add-Type -Name Window -Namespace Console -MemberDefinition '
     [DllImport("Kernel32.dll")]
     public static extern IntPtr GetConsoleWindow();
     [DllImport("user32.dll")]
@@ -25,17 +26,17 @@ try {Add-Type -Name Window -Namespace Console -MemberDefinition '
         [Console.Window]::ShowWindow($consolePtr, 0)
     }
 }
-catch {Write-Warning "Failed to hide console window." -ForegroundColor Red}
+catch { Write-Warning "Failed to hide console window." -ForegroundColor Red }
 
 # HIDE MAIN MENU
-function Hide-MainMenu {$script:form.Hide()}
+function Hide-MainMenu { $script:form.Hide() }
 
 # SHOW MAIN MENU
-function Show-MainMenu {$script:form.Show()}
+function Show-MainMenu { $script:form.Show() }
 
 # Dynamic Button
-function New-DynamicButton {param ([string]$text,[int]$x,[int]$y,[int]$width,[int]$height,[scriptblock]$clickAction,[System.Drawing.Color]$normalColor = [System.Drawing.Color]::FromArgb(0, 128, 0),[System.Drawing.Color]$hoverColor = [System.Drawing.Color]::FromArgb(0, 180, 0),[System.Drawing.Color]$pressColor = [System.Drawing.Color]::FromArgb(0, 100, 0),[System.Drawing.Color]$textColor = [System.Drawing.Color]::White,[string]$fontName = "Arial",[int]$fontSize = 12,[System.Drawing.FontStyle]$fontStyle = [System.Drawing.FontStyle]::Bold)
-
+function New-DynamicButton {
+    param ([string]$text, [int]$x, [int]$y, [int]$width, [int]$height, [scriptblock]$clickAction, [System.Drawing.Color]$normalColor = [System.Drawing.Color]::FromArgb(0, 128, 0), [System.Drawing.Color]$hoverColor = [System.Drawing.Color]::FromArgb(0, 180, 0), [System.Drawing.Color]$pressColor = [System.Drawing.Color]::FromArgb(0, 100, 0), [System.Drawing.Color]$textColor = [System.Drawing.Color]::White, [string]$fontName = "Arial", [int]$fontSize = 12, [System.Drawing.FontStyle]$fontStyle = [System.Drawing.FontStyle]::Bold)
     $button = New-Object System.Windows.Forms.Button
     $button.Text = $text
     $button.Location = New-Object System.Drawing.Point($x, $y)
@@ -54,15 +55,49 @@ function New-DynamicButton {param ([string]$text,[int]$x,[int]$y,[int]$width,[in
 }
 
 # Load Windows Forms Funtions
-try {Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop;Add-Type -AssemblyName System.Drawing -ErrorAction Stop}
-catch {Write-Host "Error loading Windows Forms and Drawing assemblies." -ForegroundColor Red;exit 1}
+try { Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop; Add-Type -AssemblyName System.Drawing -ErrorAction Stop }
+catch { Write-Host "Error loading Windows Forms and Drawing assemblies." -ForegroundColor Red; exit 1 }
 
 # Network driver installers
 $Global:EthernetDriverExe = 'D:\DRIVER\Ethernet\Intel-PCIe-Ethernet-Controller-Driver_99KJH_WIN64_12.19.2.50_A27_01.exe'
-$Global:WifiDriverExe     = 'D:\DRIVER\Wifi\WiFi-23.120.0-Driver64-Win10-Win11.exe'
+$Global:WifiDriverExe = 'D:\DRIVER\Wifi\WiFi-23.120.0-Driver64-Win10-Win11.exe'
+
+# Function to ensure Office installation is completely silent
+function Set-OfficeInstallationSilent {
+    param([string]$ConfigPath)
+    
+    try {
+        if (Test-Path $ConfigPath) {
+            # Read existing config
+            [xml]$config = Get-Content $ConfigPath
+            
+            # Ensure Display Level is None for completely silent installation
+            if ($config.Configuration.Display) {
+                $config.Configuration.Display.Level = "None"
+                $config.Configuration.Display.AcceptEULA = "TRUE"
+            }
+            else {
+                # Create Display element if it doesn't exist
+                $displayElement = $config.CreateElement("Display")
+                $displayElement.SetAttribute("Level", "None")
+                $displayElement.SetAttribute("AcceptEULA", "TRUE")
+                $config.Configuration.AppendChild($displayElement)
+            }
+            
+            # Save the modified config
+            $config.Save($ConfigPath)
+            return $true
+        }
+    }
+    catch {
+        Write-Host "Warning: Could not modify Office configuration for silent install: $_" -ForegroundColor Yellow
+    }
+    return $false
+}
 
 # Global function to add gradient background to any form
-function Add-GradientBackground {param([System.Windows.Forms.Form]$form,[System.Drawing.Color]$topColor = [System.Drawing.Color]::FromArgb(0, 0, 0),[System.Drawing.Color]$bottomColor = [System.Drawing.Color]::FromArgb(0, 50, 0))
+function Add-GradientBackground {
+    param([System.Windows.Forms.Form]$form, [System.Drawing.Color]$topColor = [System.Drawing.Color]::FromArgb(0, 0, 0), [System.Drawing.Color]$bottomColor = [System.Drawing.Color]::FromArgb(0, 50, 0))
     # Extract ARGB values for reliable color recreation
     $topA = $topColor.A
     $topR = $topColor.R
@@ -101,7 +136,7 @@ function Add-GradientBackground {param([System.Windows.Forms.Form]$form,[System.
     # Add the paint event
     $form.Add_Paint($paintScript)
 
-    if ($form.PSObject.Properties['DoubleBuffered']) {$form.DoubleBuffered = $true}
+    if ($form.PSObject.Properties['DoubleBuffered']) { $form.DoubleBuffered = $true }
 }
 
 # Create main form
@@ -130,49 +165,52 @@ $titleLabel.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windo
 $script:form.Controls.Add($titleLabel)
 
 # Global function to add title animation
-function Add-TitleAnimation {param([System.Windows.Forms.Label]$titleLabel,[int]$interval = 500,[System.Drawing.Color]$color1,[System.Drawing.Color]$color2)
+function Add-TitleAnimation {
+    param([System.Windows.Forms.Label]$titleLabel, [int]$interval = 500, [System.Drawing.Color]$color1, [System.Drawing.Color]$color2)
     # Validate input
-    if (-not $titleLabel) {Write-Warning "TitleLabel is null, cannot add animation";return $null}
+    if (-not $titleLabel) { Write-Warning "TitleLabel is null, cannot add animation"; return $null }
 
     # Set default colors if not provided
-    if (-not $color1 -or $color1 -eq [System.Drawing.Color]::Empty) {$color1 = [System.Drawing.Color]::FromArgb(0, 255, 0)}
-    if (-not $color2 -or $color2 -eq [System.Drawing.Color]::Empty) {$color2 = [System.Drawing.Color]::FromArgb(0, 200, 0)}
+    if (-not $color1 -or $color1 -eq [System.Drawing.Color]::Empty) { $color1 = [System.Drawing.Color]::FromArgb(0, 255, 0) }
+    if (-not $color2 -or $color2 -eq [System.Drawing.Color]::Empty) { $color2 = [System.Drawing.Color]::FromArgb(0, 200, 0) }
 
     # Create timer for animation
     $titleTimer = New-Object System.Windows.Forms.Timer
     $titleTimer.Interval = $interval
 
     # Store references in timer's Tag property for proper cleanup
-    $titleTimer.Tag = @{Label = $titleLabel;Color1 = $color1;Color2 = $color2}
+    $titleTimer.Tag = @{Label = $titleLabel; Color1 = $color1; Color2 = $color2 }
 
     $titleTimer.Add_Tick({
-        try {
-            $data = $this.Tag
-            $label = $data.Label
+            try {
+                $data = $this.Tag
+                $label = $data.Label
 
-            # Check if label still exists and is not disposed
-            if ($label -and -not $label.IsDisposed) {
-                # Toggle between colors using ARGB comparison for reliability
-                if ($label.ForeColor.ToArgb() -eq $data.Color1.ToArgb()) {
-                    $label.ForeColor = $data.Color2
-                } else {
-                    $label.ForeColor = $data.Color1
+                # Check if label still exists and is not disposed
+                if ($label -and -not $label.IsDisposed) {
+                    # Toggle between colors using ARGB comparison for reliability
+                    if ($label.ForeColor.ToArgb() -eq $data.Color1.ToArgb()) {
+                        $label.ForeColor = $data.Color2
+                    }
+                    else {
+                        $label.ForeColor = $data.Color1
+                    }
+
+                    # Force UI update
+                    $label.Refresh()
+                    [System.Windows.Forms.Application]::DoEvents()
                 }
-
-                # Force UI update
-                $label.Refresh()
-                [System.Windows.Forms.Application]::DoEvents()
-            } else {
-                # Stop timer if label is disposed
-                $this.Stop()
+                else {
+                    # Stop timer if label is disposed
+                    $this.Stop()
+                }
             }
-        }
-        catch {
-            # Stop timer on any error to prevent crashes
-            $this.Stop()
-            Write-Host "Animation stopped due to error: $($_.Exception.Message)" -ForegroundColor Yellow
-        }
-    })
+            catch {
+                # Stop timer on any error to prevent crashes
+                $this.Stop()
+                Write-Host "Animation stopped due to error: $($_.Exception.Message)" -ForegroundColor Yellow
+            }
+        })
 
     $titleTimer.Start()
     return $titleTimer
@@ -182,8 +220,9 @@ function Add-TitleAnimation {param([System.Windows.Forms.Label]$titleLabel,[int]
 Add-TitleAnimation -titleLabel $titleLabel
 
 # Add status with optional color parameter
-function Add-Status {param([string]$message,[System.Windows.Forms.RichTextBox]$rtb,[System.Drawing.Color]$color = [System.Drawing.Color]::Lime)
-    if ($rtb.Text -eq "Please select a device type..." -or $rtb.Text -eq "Status messages will appear here...") {$rtb.Clear()}
+function Add-Status {
+    param([string]$message, [System.Windows.Forms.RichTextBox]$rtb, [System.Drawing.Color]$color = [System.Drawing.Color]::Lime)
+    if ($rtb.Text -eq "Please select a device type..." -or $rtb.Text -eq "Status messages will appear here...") { $rtb.Clear() }
     $timestamp = Get-Date -Format "HH:mm:ss"
     $rtb.SelectionStart = $rtb.TextLength
     $rtb.SelectionLength = 0
@@ -223,10 +262,10 @@ function Select-DeviceType {
 
     # Buttons
     $selection = $null
-    $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 70 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0,150,0)) -hoverColor ([System.Drawing.Color]::FromArgb(0,200,0)) -pressColor ([System.Drawing.Color]::FromArgb(0,100,0)) -clickAction {$script:selection = "Desktop";$form.DialogResult = [System.Windows.Forms.DialogResult]::OK;$form.Close()}
+    $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 70 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction { $script:selection = "Desktop"; $form.DialogResult = [System.Windows.Forms.DialogResult]::OK; $form.Close() }
     $form.Controls.Add($btnDesktop)
 
-    $btnLaptop = New-DynamicButton -text "LAPTOP" -x 10 -y 120 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0,150,0)) -hoverColor ([System.Drawing.Color]::FromArgb(0,200,0)) -pressColor ([System.Drawing.Color]::FromArgb(0,100,0)) -clickAction {$script:selection = "Laptop";$form.DialogResult = [System.Windows.Forms.DialogResult]::OK;$form.Close()}
+    $btnLaptop = New-DynamicButton -text "LAPTOP" -x 10 -y 120 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction { $script:selection = "Laptop"; $form.DialogResult = [System.Windows.Forms.DialogResult]::OK; $form.Close() }
     $form.Controls.Add($btnLaptop)
 
     # Esc support
@@ -235,14 +274,15 @@ function Select-DeviceType {
 
     # Show dialog
     $result = $form.ShowDialog()
-    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {Add-Status "Selected device type: $script:selection" $statusTextBox}
-    else {Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)}
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) { Add-Status "Selected device type: $script:selection" $statusTextBox }
+    else { Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red) }
     $form.Close()
     return $script:selection
 }
 
 # STEP 0: WiFi AUTO-CONNECTION FUNCTION
-function Install-DriverExe {param([Parameter(Mandatory=$true)][string]$Path,[Parameter(Mandatory=$true)][System.Windows.Forms.RichTextBox]$statusTextBox,[ValidateSet('Ethernet','WiFi')][string]$Type = 'Ethernet')
+function Install-DriverExe {
+    param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox, [ValidateSet('Ethernet', 'WiFi')][string]$Type = 'Ethernet')
     try {
         if (-not (Test-Path $Path)) {
             Add-Status "$Type driver not found at: $Path" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -262,14 +302,16 @@ function Install-DriverExe {param([Parameter(Mandatory=$true)][string]$Path,[Par
             try {
                 $p = Start-Process -FilePath $Path -ArgumentList $args -Wait -PassThru -NoNewWindow
                 # Một số installer trả 0 khi OK, một số trả 3010 (success restart required)
-                if ($p.ExitCode -in 0,3010) {
+                if ($p.ExitCode -in 0, 3010) {
                     Add-Status "$Type driver installer finished with code $($p.ExitCode)" $statusTextBox ([System.Drawing.Color]::Green)
                     $installed = $true
                     break
-                } else {
+                }
+                else {
                     Add-Status "$Type driver installer returned code $($p.ExitCode) with args: $args" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
-            } catch {
+            }
+            catch {
                 Add-Status "$Type driver install attempt failed with args '$args': $_" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
         }
@@ -289,7 +331,8 @@ function Install-DriverExe {param([Parameter(Mandatory=$true)][string]$Path,[Par
     }
 }
 
-function Install-WiFiDriversOffline {param([System.Windows.Forms.Form]$OwnerForm,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Install-WiFiDriversOffline {
+    param([System.Windows.Forms.Form]$OwnerForm, [System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         Add-Status "Attempting offline WiFi driver installation..." $statusTextBox
 
@@ -332,11 +375,12 @@ function Install-WiFiDriversOffline {param([System.Windows.Forms.Form]$OwnerForm
         Start-Sleep -Seconds 8
 
         # Re-scan for wireless adapters
-        $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71}
+        $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71 }
         if ($wifiAdapters -and $wifiAdapters.Count -gt 0) {
             Add-Status "WiFi adapters detected after driver install." $statusTextBox ([System.Drawing.Color]::Green)
             return $true
-        } else {
+        }
+        else {
             Add-Status "No WiFi adapters detected after driver install." $statusTextBox ([System.Drawing.Color]::Yellow)
             return $false
         }
@@ -347,7 +391,8 @@ function Install-WiFiDriversOffline {param([System.Windows.Forms.Form]$OwnerForm
     }
 }
 
-function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-WiFiAutoConnection {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # Check WLAN service
         try {
@@ -387,7 +432,8 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
                     # Fallback: nếu bạn đã có Install-WiFiDriversOffline dạng .inf, có thể gọi thêm:
                     if (Get-Command Install-WiFiDriversOffline -ErrorAction SilentlyContinue) {
                         $infOk = Install-WiFiDriversOffline -OwnerForm $ownerForm -statusTextBox $statusTextBox
-                    } else { $infOk = $false }
+                    }
+                    else { $infOk = $false }
                     if (-not $infOk) {
                         Add-Status "WiFi driver install failed or no adapters present. Continuing without WiFi." $statusTextBox ([System.Drawing.Color]::Yellow)
                         return $false
@@ -395,7 +441,7 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
                 }
 
                 # Re-scan sau khi cài
-                $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71}
+                $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71 }
                 if (-not $wifiAdapters) {
                     Add-Status "WiFi adapters still not detected. Continuing without WiFi." $statusTextBox ([System.Drawing.Color]::Yellow)
                     return $false
@@ -503,7 +549,8 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
             if ($LASTEXITCODE -eq 0) {
                 Add-Status "WiFi profile added successfully" $statusTextBox ([System.Drawing.Color]::Green)
                 # do not return here
-            } else {
+            }
+            else {
                 Add-Status "Failed to add WiFi profile" $statusTextBox ([System.Drawing.Color]::Red)
                 return $false
             }
@@ -521,7 +568,8 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
                 $null = netsh wlan connect name="$SSID"
                 if ($LASTEXITCODE -eq 0) {
                     Add-Status "WiFi connection attempt #$i initiated" $statusTextBox ([System.Drawing.Color]::Green)
-                } else {
+                }
+                else {
                     Add-Status "WiFi connection attempt #$i failed to initiate" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
 
@@ -531,7 +579,8 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
                 if ($verify -match "State\s*:\s*connected" -and $verify -match ("SSID\s*:\s*{0}" -f [regex]::Escape($SSID))) {
                     Add-Status "WiFi connected successfully to $SSID!" $statusTextBox ([System.Drawing.Color]::Green)
                     return $true
-                } else {
+                }
+                else {
                     Add-Status "WiFi verification attempt #$i not connected yet." $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
@@ -555,11 +604,12 @@ function Invoke-WiFiAutoConnection {param ([System.Windows.Forms.RichTextBox]$st
     }
 }
 
-function Invoke-WindowsUpdateCheck {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-WindowsUpdateCheck {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # Quick service check
         $wuService = Get-Service -Name "wuauserv" -ErrorAction SilentlyContinue
-        if ($wuService -and $wuService.Status -ne "Running") {Start-Service -Name "wuauserv" -ErrorAction SilentlyContinue}
+        if ($wuService -and $wuService.Status -ne "Running") { Start-Service -Name "wuauserv" -ErrorAction SilentlyContinue }
 
         # Test internet connectivity
         $testConnection = Test-NetConnection -ComputerName "8.8.8.8" -Port 53 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
@@ -600,7 +650,8 @@ function Invoke-WindowsUpdateCheck {param ([System.Windows.Forms.RichTextBox]$st
 }
 
 # STEP 2: Choose Device Type and Rename
-function Invoke-RenamebyDevice {param ([string]$deviceType,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-RenamebyDevice {
+    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # Get current computer name
         $currentName = $env:COMPUTERNAME
@@ -618,8 +669,8 @@ function Invoke-RenamebyDevice {param ([string]$deviceType,[System.Windows.Forms
 
         # Key Preview
         $renameForm.KeyPreview = $true
-        $renameForm.Add_KeyDown({param($sender, $e)if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {$renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel;$renameForm.Close()}
-                elseif ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) {$okButton.PerformClick()}})
+        $renameForm.Add_KeyDown({ param($sender, $e)if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $renameForm.Close() }
+                elseif ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) { $okButton.PerformClick() } })
 
         # Current Name Label
         $currentNameLabel = New-Object System.Windows.Forms.Label
@@ -633,8 +684,8 @@ function Invoke-RenamebyDevice {param ([string]$deviceType,[System.Windows.Forms
 
         # Prefix
         $prefix = ""
-        if ($deviceType -eq "Desktop") {$prefix = "HOD"}
-        elseif ($deviceType -eq "Laptop") {$prefix = "HOL"}
+        if ($deviceType -eq "Desktop") { $prefix = "HOD" }
+        elseif ($deviceType -eq "Laptop") { $prefix = "HOL" }
 
         # Instruction Label
         $instructionLabel = New-Object System.Windows.Forms.Label
@@ -654,7 +705,7 @@ function Invoke-RenamebyDevice {param ([string]$deviceType,[System.Windows.Forms
         $renameForm.Controls.Add($nameTextBox)
 
         # Key Preview
-        $nameTextBox.Add_KeyDown({param($sender, $e)if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) {$okButton.PerformClick()}})
+        $nameTextBox.Add_KeyDown({ param($sender, $e)if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) { $okButton.PerformClick() } })
 
         # Preview Label
         $previewLabel = New-Object System.Windows.Forms.Label
@@ -667,7 +718,7 @@ function Invoke-RenamebyDevice {param ([string]$deviceType,[System.Windows.Forms
         $renameForm.Controls.Add($previewLabel)
 
         # Text Changed
-        $nameTextBox.Add_TextChanged({$newPreview = $prefix + $nameTextBox.Text.Trim();$previewLabel.Text = "New name will be: $newPreview"})
+        $nameTextBox.Add_TextChanged({ $newPreview = $prefix + $nameTextBox.Text.Trim(); $previewLabel.Text = "New name will be: $newPreview" })
 
         # OK Button
         $okButton = New-Object System.Windows.Forms.Button
@@ -677,7 +728,7 @@ function Invoke-RenamebyDevice {param ([string]$deviceType,[System.Windows.Forms
         $okButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 0)
         $okButton.ForeColor = [System.Drawing.Color]::White
         $okButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-        $okButton.Add_Click({$renameForm.DialogResult = [System.Windows.Forms.DialogResult]::OK;$renameForm.Close()})
+        $okButton.Add_Click({ $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::OK; $renameForm.Close() })
         $renameForm.Controls.Add($okButton)
 
         # Cancel Button
@@ -688,11 +739,11 @@ function Invoke-RenamebyDevice {param ([string]$deviceType,[System.Windows.Forms
         $cancelButton.BackColor = [System.Drawing.Color]::FromArgb(150, 0, 0)
         $cancelButton.ForeColor = [System.Drawing.Color]::White
         $cancelButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-        $cancelButton.Add_Click({$renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel;$renameForm.Close()})
+        $cancelButton.Add_Click({ $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $renameForm.Close() })
         $renameForm.Controls.Add($cancelButton)
 
         # Set focus to TextBox when form is shown
-        $renameForm.Add_Shown({$nameTextBox.Focus();$nameTextBox.Select()})
+        $renameForm.Add_Shown({ $nameTextBox.Focus(); $nameTextBox.Select() })
 
         # Show form and handle result
         $result = $renameForm.ShowDialog()
@@ -733,7 +784,8 @@ function Invoke-RenamebyDevice {param ([string]$deviceType,[System.Windows.Forms
 }
 
 # STEP 3: SYSTEM CLEANUP FUNCTIONS
-function Invoke-SystemCleanup {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-SystemCleanup {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # --- 1. System File Cleanup ---
         Invoke-FileCleanup $statusTextBox
@@ -754,16 +806,17 @@ function Invoke-SystemCleanup {param ([System.Windows.Forms.RichTextBox]$statusT
     }
 }
 
-function Invoke-FileCleanup {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-FileCleanup {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     Add-Status "Cleaning temporary files..." $statusTextBox
 
     # Temporary files
-    $tempPaths = @("$env:TEMP\*","$env:WINDIR\Temp\*","$env:USERPROFILE\AppData\Local\Temp\*")
+    $tempPaths = @("$env:TEMP\*", "$env:WINDIR\Temp\*", "$env:USERPROFILE\AppData\Local\Temp\*")
 
     # Remove temporary files
     $tempPaths | ForEach-Object {
-        try {Remove-Item -Path $_ -Recurse -Force -ErrorAction SilentlyContinue}
-        catch {Add-Status "Warning: Could not clean $_" $statusTextBox ([System.Drawing.Color]::Yellow)}
+        try { Remove-Item -Path $_ -Recurse -Force -ErrorAction SilentlyContinue }
+        catch { Add-Status "Warning: Could not clean $_" $statusTextBox ([System.Drawing.Color]::Yellow) }
     }
 
     # Clean Recycle Bin and Windows Update cache
@@ -781,7 +834,8 @@ function Invoke-FileCleanup {param ([System.Windows.Forms.RichTextBox]$statusTex
     }
 }
 
-function Invoke-StartupOptimization {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-StartupOptimization {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     $startupPrograms = @("Microsoft Teams", "Microsoft Co-Pilot", "Microsoft Edge")
     $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 
@@ -798,7 +852,8 @@ function Invoke-StartupOptimization {param ([System.Windows.Forms.RichTextBox]$s
     }
 }
 
-function Invoke-TimezoneConfiguration {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-TimezoneConfiguration {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         $tzResult = Start-Process -FilePath "tzutil" -ArgumentList "/s `"SE Asia Standard Time`"" -Wait -PassThru -WindowStyle Hidden
         if ($tzResult.ExitCode -eq 0) {
@@ -820,7 +875,8 @@ function Invoke-TimezoneConfiguration {param ([System.Windows.Forms.RichTextBox]
     }
 }
 
-function Invoke-PowerOptionsConfiguration {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-PowerOptionsConfiguration {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         $powerConfigs = @(
             @{Setting = "LIDACTION"; Description = "Lid close action" },
@@ -846,7 +902,8 @@ function Invoke-PowerOptionsConfiguration {param ([System.Windows.Forms.RichText
     }
 }
 
-function Invoke-AdvancedTaskbarCustomization {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-AdvancedTaskbarCustomization {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # Unpin Microsoft Store using PowerShell
         $unpinScript = @'
@@ -926,7 +983,8 @@ Windows Registry Editor Version 5.00
 }
 
 # STEP 4: Windows and Office Activation
-function Invoke-ActivateConfiguration {param ([string]$deviceType,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-ActivateConfiguration {
+    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # --- 1. Windows 10 Pro Activation ---
         Invoke-ActivateWindows10Pro $statusTextBox
@@ -941,7 +999,8 @@ function Invoke-ActivateConfiguration {param ([string]$deviceType,[System.Window
 }
 
 # STEP 7: User Password Management Functions
-function Invoke-UserPasswordManagement {param ([string]$deviceType,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-UserPasswordManagement {
+    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # --- 1. Get Current User Information ---
         $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.Split('\')[-1]
@@ -965,7 +1024,8 @@ function Invoke-UserPasswordManagement {param ([string]$deviceType,[System.Windo
 }
 
 # Main Function Provisioing Run All Processes
-function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
+function Invoke-RunAllOperations {
+    param([System.Windows.Forms.Form]$mainForm)
     Hide-MainMenu
     # Create status form
     $statusForm = New-Object System.Windows.Forms.Form
@@ -1023,8 +1083,8 @@ function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
         Add-Status "Select device type before network preparation..." $statusTextBox
         $deviceType = Select-DeviceType -Owner $statusForm
         if (-not $deviceType) {
-            Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red)
             Show-MainMenu
+            $statusForm.Close()
             return
         }
         $isLaptop = $false
@@ -1037,18 +1097,22 @@ function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
             $wifiResult = Invoke-WiFiAutoConnection $statusTextBox
             if ($wifiResult) {
                 Add-Status "WiFi connection completed!" $statusTextBox
-            } else {
+            }
+            else {
                 Add-Status "WiFi connection failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-        } else {
+        }
+        else {
             Add-Status "STEP 0: Desktop detected — skipping WiFi, using Ethernet" $statusTextBox ([System.Drawing.Color]::Cyan)
             try {
                 $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet
-            } catch { $hasInternet = $false }
+            }
+            catch { $hasInternet = $false }
         
             if ($hasInternet) {
                 Add-Status "Internet reachable via Ethernet." $statusTextBox ([System.Drawing.Color]::Green)
-            } else {
+            }
+            else {
                 Add-Status "No Internet via Ethernet. Attempting to install Ethernet driver..." $statusTextBox ([System.Drawing.Color]::Yellow)
                 $ok = Install-DriverExe -Path $Global:EthernetDriverExe -statusTextBox $statusTextBox -Type 'Ethernet'
                 if ($ok) {
@@ -1056,10 +1120,12 @@ function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
                     try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet } catch { $hasInternet = $false }
                     if ($hasInternet) {
                         Add-Status "Internet reachable after Ethernet driver installation." $statusTextBox ([System.Drawing.Color]::Green)
-                    } else {
+                    }
+                    else {
                         Add-Status "Still no Internet after Ethernet driver installation. Continuing offline-friendly steps." $statusTextBox ([System.Drawing.Color]::Yellow)
                     }
-                } else {
+                }
+                else {
                     Add-Status "Ethernet driver installation failed or not applicable. Continuing offline-friendly steps." $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
@@ -1071,7 +1137,8 @@ function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
         $updateResult = Invoke-WindowsUpdateCheck $statusTextBox
         if ($updateResult) {
             Add-Status "Windows Update process started successfully!" $statusTextBox ([System.Drawing.Color]::Green)
-        } else {
+        }
+        else {
             Add-Status "Windows Update start failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
         Add-Status "STEP 0 completed - Updates will continue in background..." $statusTextBox ([System.Drawing.Color]::Cyan)
@@ -1081,7 +1148,7 @@ function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
         $progressBar.Value = 14
 
         $provisionOk = Invoke-InstallSoftware -DeviceType $deviceType -statusTextBox $statusTextBox
-        if (-not $provisionOk) {Add-Status "STEP 1 finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow)}
+        if (-not $provisionOk) { Add-Status "STEP 1 finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow) }
         Add-Status "STEP 1 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
 
         # STEP 2: Rename Device
@@ -1169,22 +1236,25 @@ function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
     }
     finally {
         $statusForm.KeyPreview = $true
-        $statusForm.Add_KeyDown({if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {$statusForm.Close()}})
-        $statusForm.Add_FormClosed({Show-MainMenu})
+        $statusForm.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $statusForm.Close() } })
+        $statusForm.Add_FormClosed({ Show-MainMenu })
     }
 }
 
 # [2] Install Software Functions
-function Test-7ZipInstalled {$paths = @("C:\Program Files\7-Zip\7z.exe","C:\Program Files (x86)\7-Zip\7z.exe")
+function Test-7ZipInstalled {
+    $paths = @("C:\Program Files\7-Zip\7z.exe", "C:\Program Files (x86)\7-Zip\7z.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-ChromeInstalled {$paths = @("C:\Program Files\Google\Chrome\Application\chrome.exe","C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")
+function Test-ChromeInstalled {
+    $paths = @("C:\Program Files\Google\Chrome\Application\chrome.exe", "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
 
-function Test-LAPSInstalledOrBuiltin {[CmdletBinding()]
+function Test-LAPSInstalledOrBuiltin {
+    [CmdletBinding()]
     param()
 
     try {
@@ -1199,9 +1269,9 @@ function Test-LAPSInstalledOrBuiltin {[CmdletBinding()]
             $hasLapsCsp = $null -ne $lapsCsp
             
             return @{
-                BuiltIn = $true
-                Installed = $true
-                Version = "Windows 11 Built-in"
+                BuiltIn     = $true
+                Installed   = $true
+                Version     = "Windows 11 Built-in"
                 SupportsCSP = $hasLapsCsp
             }
         }
@@ -1217,9 +1287,9 @@ function Test-LAPSInstalledOrBuiltin {[CmdletBinding()]
         }
 
         return @{
-            BuiltIn = $false
-            Installed = $isLapsInstalled
-            Version = $version
+            BuiltIn     = $false
+            Installed   = $isLapsInstalled
+            Version     = $version
             SupportsCSP = $false
         }
     }
@@ -1227,40 +1297,44 @@ function Test-LAPSInstalledOrBuiltin {[CmdletBinding()]
         # Fallback to basic check if any error occurs
         $lapsDll = "C:\Program Files\LAPS\CSE\AdmPwd.dll"
         return @{
-            BuiltIn = $false
-            Installed = (Test-Path $lapsDll)
-            Version = $null
+            BuiltIn     = $false
+            Installed   = (Test-Path $lapsDll)
+            Version     = $null
             SupportsCSP = $false
         }
     }
 }
 
-function Test-FoxitInstalled {$paths = @("C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe","C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe","C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe","C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe")
+function Test-FoxitInstalled {
+    $paths = @("C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe", "C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-Office2019Installed {$paths = @("C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")
+function Test-Office2019Installed {
+    $paths = @("C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-ZoomInstalled {$paths = @("$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe","C:\Program Files\Zoom\bin\Zoom.exe","C:\Program Files (x86)\Zoom\bin\Zoom.exe")
+function Test-ZoomInstalled {
+    $paths = @("$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe", "C:\Program Files\Zoom\bin\Zoom.exe", "C:\Program Files (x86)\Zoom\bin\Zoom.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-CheckPointVPNInstalled {$paths = @("C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")
+function Test-CheckPointVPNInstalled {
+    $paths = @("C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
 function Test-OneDriveInstalled {
     # Method 1: Check via registry (most accurate)
-    $uninstallKeys = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*","HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*","HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*")
+    $uninstallKeys = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*")
 
     foreach ($keyPath in $uninstallKeys) {
         try {
             $programs = Get-ItemProperty $keyPath -ErrorAction SilentlyContinue | Where-Object {
                 $_.DisplayName -like "*OneDrive*" -or $_.DisplayName -like "*Microsoft OneDrive*"
             }
-            if ($programs) {return $true}
+            if ($programs) { return $true }
         }
         catch {
             Add-Status "ERROR: OneDrive installation check failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
@@ -1268,22 +1342,24 @@ function Test-OneDriveInstalled {
     }
 
     # Method 2: Check via file system
-    $oneDrivePaths = @("$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe","$env:PROGRAMFILES\Microsoft OneDrive\OneDrive.exe","$env:PROGRAMFILES(x86)\Microsoft OneDrive\OneDrive.exe")
+    $oneDrivePaths = @("$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe", "$env:PROGRAMFILES\Microsoft OneDrive\OneDrive.exe", "$env:PROGRAMFILES(x86)\Microsoft OneDrive\OneDrive.exe")
 
-    foreach ($path in $oneDrivePaths) {if (Test-Path $path) {return $true}}
+    foreach ($path in $oneDrivePaths) { if (Test-Path $path) { return $true } }
 
     # Method 3: Check via Get-Package
     try {
         $package = Get-Package | Where-Object { $_.Name -like "*OneDrive*" }
         if ($package) { return $true }
-    } catch {
+    }
+    catch {
         if ($script:statusTextBox) {
             Add-Status "ERROR: OneDrive installation check failed: $($_.Exception.Message)" $script:statusTextBox ([System.Drawing.Color]::Red)
         }
     }
     return $false
 }
-function Uninstall-OneDriveComplete {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Uninstall-OneDriveComplete {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # First, verify OneDrive is actually installed
         if (-not (Test-OneDriveInstalled)) {
@@ -1313,7 +1389,7 @@ function Uninstall-OneDriveComplete {param([System.Windows.Forms.RichTextBox]$st
 
         # Step 2: Try registry-based uninstall with verification
         $uninstallSuccess = $false
-        $registryPaths = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall","HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall","HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
+        $registryPaths = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
 
         foreach ($regPath in $registryPaths) {
             if ($uninstallSuccess) { break }
@@ -1449,8 +1525,8 @@ function Uninstall-OneDriveComplete {param([System.Windows.Forms.RichTextBox]$st
             Add-Status "OneDrive has been uninstalled." $statusTextBox
 
             # Clean up remaining registry entries
-            try {Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "OneDrive" -ErrorAction SilentlyContinue}
-            catch {Add-Status "Could not clean up OneDrive registry entry" $statusTextBox ([System.Drawing.Color]::Red)}
+            try { Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "OneDrive" -ErrorAction SilentlyContinue }
+            catch { Add-Status "Could not clean up OneDrive registry entry" $statusTextBox ([System.Drawing.Color]::Red) }
             return $true
         }
 
@@ -1460,20 +1536,22 @@ function Uninstall-OneDriveComplete {param([System.Windows.Forms.RichTextBox]$st
         return $false
     }
 }
+
 # Plan Software Install
-function Plan_SoftwareInstall {param([ValidateSet('Desktop','Laptop')][string]$DeviceType,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Plan_SoftwareInstall {
+    param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $pending = @()
     $skipped = @()
     $appsMeta = @(
         # Id, DisplayName, Device constraint, loại copy cần
-        @{ Id='onedrive'; Display='OneDrive (uninstall)'; Device='All' },       # chỉ log state, không copy
-        @{ Id='7zip'; Display='7-Zip'; Device='All' },
-        @{ Id='chrome'; Display='Google Chrome'; Device='All' },
-        @{ Id='laps'; Display='LAPS'; Device='All' },
-        @{ Id='foxit'; Display='Foxit Reader'; Device='All' },
-        @{ Id='office2019'; Display='Office 2019'; Device='All' },
-        @{ Id='zoom'; Display='Zoom'; Device='Laptop' },
-        @{ Id='checkpointvpn'; Display='CheckPoint VPN'; Device='Laptop' }
+        @{ Id = 'onedrive'; Display = 'OneDrive (uninstall)'; Device = 'All' }, # chỉ log state, không copy
+        @{ Id = '7zip'; Display = '7-Zip'; Device = 'All' },
+        @{ Id = 'chrome'; Display = 'Google Chrome'; Device = 'All' },
+        @{ Id = 'laps'; Display = 'LAPS'; Device = 'All' },
+        @{ Id = 'foxit'; Display = 'Foxit Reader'; Device = 'All' },
+        @{ Id = 'office2019'; Display = 'Office 2019'; Device = 'All' },
+        @{ Id = 'zoom'; Display = 'Zoom'; Device = 'Laptop' },
+        @{ Id = 'checkpointvpn'; Display = 'CheckPoint VPN'; Device = 'Laptop' }
     )
 
     foreach ($app in $appsMeta) {
@@ -1513,7 +1591,8 @@ function Plan_SoftwareInstall {param([ValidateSet('Desktop','Laptop')][string]$D
         if ($pending.Count -gt 0) {
             $pendingDisplays = $pending | ForEach-Object { $_.Display }
             Add-Status ("Pending: " + ($pendingDisplays -join ", ")) $statusTextBox ([System.Drawing.Color]::Yellow)
-        } else {
+        }
+        else {
             return
         }
     }
@@ -1524,7 +1603,8 @@ function Plan_SoftwareInstall {param([ValidateSet('Desktop','Laptop')][string]$D
         Meta    = $appsMeta
     }
 }
-function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][string]$DeviceType,[array]$Apps,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Copy-SoftwareFilesSelective {
+    param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [array]$Apps, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $tempDir = "$env:USERPROFILE\Downloads\SETUP"
     $setupDir = Join-Path $tempDir "Software"
     $office2019Dir = Join-Path $tempDir "Office2019"
@@ -1542,11 +1622,12 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
             '7zip' {
                 if (Test-Path $srcSETUP) {
                     # $file = Get-ChildItem -Path $srcSETUP -Name "7z*.exe","7-Zip*.exe","7zip*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-                    $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include '7z*.exe','7-Zip*.exe','7zip*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
+                    $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include '7z*.exe', '7-Zip*.exe', '7zip*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
                     if ($file) {
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
                         Add-Status "Copy: 7-Zip -> $setupDir\$file" $statusTextBox
-                    } else {
+                    }
+                    else {
                         Add-Status "Missing 7-Zip installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
                     }
                 }
@@ -1556,7 +1637,8 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
                 if (Test-Path $src) {
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "ChromeSetup.exe") -Force
                     Add-Status "Copy: Chrome -> $setupDir\ChromeSetup.exe" $statusTextBox
-                } else {
+                }
+                else {
                     Add-Status "Missing ChromeSetup.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
@@ -1565,18 +1647,20 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
                 if (Test-Path $src) {
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "LAPS_x64.msi") -Force
                     Add-Status "Copy: LAPS -> $setupDir\LAPS_x64.msi" $statusTextBox
-                } else {
+                }
+                else {
                     Add-Status "Missing LAPS_x64.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
             'foxit' {
                 if (Test-Path $srcSETUP) {
                     # $file = Get-ChildItem -Path $srcSETUP -Name "FoxitPDFReader*.exe","FoxitReader*.exe","Foxit*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-                    $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include 'FoxitPDFReader*.exe','FoxitReader*.exe','Foxit*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
+                    $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include 'FoxitPDFReader*.exe', 'FoxitReader*.exe', 'Foxit*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
                     if ($file) {
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
                         Add-Status "Copy: Foxit -> $setupDir\$file" $statusTextBox
-                    } else {
+                    }
+                    else {
                         Add-Status "Missing Foxit installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
                     }
                 }
@@ -1586,7 +1670,8 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
                     if (-not (Test-Path $office2019Dir)) { New-Item -Path $office2019Dir -ItemType Directory -Force | Out-Null }
                     Copy-Item -Path (Join-Path $srcOffice "*") -Destination $office2019Dir -Recurse -Force
                     Add-Status "Copy: Office2019 -> $office2019Dir" $statusTextBox
-                } else {
+                }
+                else {
                     Add-Status "Missing Office 2019 source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
@@ -1595,7 +1680,8 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
                 if (Test-Path $src) {
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "ZoomInstallerFull.exe") -Force
                     Add-Status "Copy: Zoom -> $setupDir\ZoomInstallerFull.exe" $statusTextBox
-                } else {
+                }
+                else {
                     Add-Status "Missing ZoomInstallerFull.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
@@ -1604,7 +1690,8 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
                 if (Test-Path $src) {
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "CheckPointVPN.msi") -Force
                     Add-Status "Copy: CheckPointVPN -> $setupDir\CheckPointVPN.msi" $statusTextBox
-                } else {
+                }
+                else {
                     Add-Status "Missing CheckPointVPN.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
@@ -1613,24 +1700,26 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop','Laptop')][st
 
     return $true
 }
-# Main Orchestrator
-function Invoke-InstallSoftware {param([ValidateSet('Desktop','Laptop')][string]$DeviceType,[System.Windows.Forms.RichTextBox]$statusTextBox)
+
+function Invoke-InstallSoftware {
+    param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     Add-Status "1. Detecting installed software..." $statusTextBox
     $plan = Plan_SoftwareInstall -DeviceType $DeviceType -statusTextBox $statusTextBox
 
-    if (-not $plan.Pending -or $plan.Pending.Count -eq 0) {Add-Status "Nothing to install. Skipping copy and install steps." $statusTextBox ([System.Drawing.Color]::Green);return $true}
+    if (-not $plan.Pending -or $plan.Pending.Count -eq 0) { Add-Status "Nothing to install. Skipping copy and install steps." $statusTextBox ([System.Drawing.Color]::Green); return $true }
 
     Add-Status "2. Copying installers for pending apps..." $statusTextBox
     $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox
-    if (-not $okCopy) {Add-Status "Error: Failed to copy required installers. Aborting." $statusTextBox ([System.Drawing.Color]::Red);return $false}
+    if (-not $okCopy) { Add-Status "Error: Failed to copy required installers. Aborting." $statusTextBox ([System.Drawing.Color]::Red); return $false }
 
     Add-Status "3. Installing pending software..." $statusTextBox
     $okInstall = Install-Software -deviceType $DeviceType $statusTextBox
-    if ($okInstall) {Add-Status "All pending software installation completed successfully!" $statusTextBox;return $true}
-    else {Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red);return $false}
+    if ($okInstall) { Add-Status "All pending software installation completed successfully!" $statusTextBox; return $true }
+    else { Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red); return $false }
 }
 
-function Install-Software {param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+function Install-Software {
+    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         $tempDir = "$env:USERPROFILE\Downloads\SETUP"
         $setupDir = "$tempDir\Software"
@@ -1639,9 +1728,10 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
         # 1. Check and uninstall OneDrive if present
         if (Test-OneDriveInstalled) {
             $result = Uninstall-OneDriveComplete -statusTextBox $statusTextBox
-            if ($result) {Add-Status "OneDrive: Has been uninstalled!" $statusTextBox}
-            else {Add-Status "OneDrive: Removal incomplete. Check Control Panel." $statusTextBox ([System.Drawing.Color]::Yellow)}
-        } else {Add-Status "OneDrive:     Has not installed. Skipping..." $statusTextBox}
+            if ($result) { Add-Status "OneDrive: Has been uninstalled!" $statusTextBox }
+            else { Add-Status "OneDrive: Removal incomplete. Check Control Panel." $statusTextBox ([System.Drawing.Color]::Yellow) }
+        }
+        else { Add-Status "OneDrive:     Has not installed. Skipping..." $statusTextBox }
 
         # 2. Install 7-Zip - FIXED VERSION
         $sevenZipPaths = @(
@@ -1673,10 +1763,11 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                 $sevenZipInstaller = "$setupDir\$($sevenZipFiles[0])"
                 Add-Status "Installing 7-Zip..." $statusTextBox
 
-                try {$result = Start-Process -FilePath $sevenZipInstaller -ArgumentList "/S" -Wait -PassThru -WindowStyle Hidden
+                try {
+                    $result = Start-Process -FilePath $sevenZipInstaller -ArgumentList "/S" -Wait -PassThru -WindowStyle Hidden
 
-                    if ($result.ExitCode -eq 0) {Add-Status "7-Zip installed successfully!" $statusTextBox}
-                    else {Add-Status "WARNING: 7-Zip EXE installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red)}
+                    if ($result.ExitCode -eq 0) { Add-Status "7-Zip installed successfully!" $statusTextBox }
+                    else { Add-Status "WARNING: 7-Zip EXE installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red) }
                 }
                 catch {
                     Add-Status "ERROR: 7-Zip installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
@@ -1780,10 +1871,11 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                 $foxitPath = "$setupDir\$($foxitFiles[0])"
                 Add-Status "Installing Foxit Reader..." $statusTextBox
 
-                try {$result = Start-Process -FilePath $foxitPath -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait -PassThru -WindowStyle Hidden
+                try {
+                    $result = Start-Process -FilePath $foxitPath -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait -PassThru -WindowStyle Hidden
 
-                    if ($result.ExitCode -eq 0) {Add-Status "Foxit Reader installed successfully!" $statusTextBox}
-                    else {Add-Status "ERROR: Foxit Reader installation failed (Exit code: $($result.ExitCode))" $statusTextBox ([System.Drawing.Color]::Red)}
+                    if ($result.ExitCode -eq 0) { Add-Status "Foxit Reader installed successfully!" $statusTextBox }
+                    else { Add-Status "ERROR: Foxit Reader installation failed (Exit code: $($result.ExitCode))" $statusTextBox ([System.Drawing.Color]::Red) }
                 }
                 catch {
                     Add-Status "ERROR: Foxit Reader installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
@@ -1797,22 +1889,94 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
             Add-Status "Foxit Reader: Already installed. Skipping..." $statusTextBox
         }
 
-        # 6. Install Office 2019
+        # 6. Install Office 2019 (Completely Silent)
         if (-not (Test-Path "C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")) {
             $officeSetup = "$office2019Dir\setup.exe"
+            $configFile = "$office2019Dir\configuration.xml"
+            
+            # Check if we have a silent config template
+            $silentConfigTemplate = Join-Path $PSScriptRoot "config\office2019-silent-config.xml"
+            if (Test-Path $silentConfigTemplate) {
+                Copy-Item -Path $silentConfigTemplate -Destination $configFile -Force
+                Add-Status "Using silent installation configuration for Office 2019" $statusTextBox ([System.Drawing.Color]::Cyan)
+            }
+            
+            # Ensure the configuration is set for completely silent installation
+            if (Test-Path $configFile) {
+                Set-OfficeInstallationSilent -ConfigPath $configFile
+                Add-Status "Configuration verified for silent installation (no UI will be shown)" $statusTextBox ([System.Drawing.Color]::Cyan)
+            }
+            
             if (Test-Path $officeSetup) {
-                Add-Status "Installing Office 2019..." $statusTextBox
-                try {Start-Process -FilePath $officeSetup -ArgumentList "/configure `"$office2019Dir\configuration.xml`"" -Wait
-                    Add-Status "Office 2019 installed successfully!" $statusTextBox
+                Add-Status "Installing Office 2019 silently (no progress window will be shown)..." $statusTextBox
+                try {
+                    # Kill any existing Office processes
+                    Get-Process | Where-Object { $_.ProcessName -match "winword|excel|powerpnt|outlook|msaccess|mspub|onenote" } | Stop-Process -Force -ErrorAction SilentlyContinue
+                    
+                    # Hide any potential Office installation windows
+                    Add-Type -TypeDefinition @"
+                        using System;
+                        using System.Runtime.InteropServices;
+                        public class WindowHelper {
+                            [DllImport("user32.dll")]
+                            public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+                            [DllImport("user32.dll")]
+                            public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+                        }
+"@ -ErrorAction SilentlyContinue
+                    
+                    # Start completely silent installation
+                    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+                    $startInfo.FileName = $officeSetup
+                    $startInfo.Arguments = "/configure `"$configFile`""
+                    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+                    $startInfo.CreateNoWindow = $true
+                    $startInfo.UseShellExecute = $false
+                    
+                    $installProcess = [System.Diagnostics.Process]::Start($startInfo)
+                    
+                    # Monitor installation progress without showing UI
+                    $timeout = 1800 # 30 minutes timeout
+                    $elapsed = 0
+                    $checkInterval = 10
+                    
+                    while (-not $installProcess.HasExited -and $elapsed -lt $timeout) {
+                        Start-Sleep -Seconds $checkInterval
+                        $elapsed += $checkInterval
+                        
+                        # Update status every minute
+                        if ($elapsed % 60 -eq 0) {
+                            $minutes = [math]::Round($elapsed/60)
+                            Add-Status "Office 2019 installation in progress... ($minutes minutes elapsed)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                        }
+                        
+                        # Refresh UI
+                        [System.Windows.Forms.Application]::DoEvents()
+                    }
+                    
+                    if ($installProcess.HasExited) {
+                        if ($installProcess.ExitCode -eq 0) {
+                            Add-Status "Office 2019 installed successfully! (Silent installation completed)" $statusTextBox ([System.Drawing.Color]::Green)
+                        }
+                        else {
+                            Add-Status "Office 2019 installation completed with exit code: $($installProcess.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                        }
+                    }
+                    else {
+                        Add-Status "Office 2019 installation timeout - process may still be running in background" $statusTextBox ([System.Drawing.Color]::Yellow)
+                        $installProcess.Kill()
+                    }
                 }
-                catch {Add-Status "ERROR: Office 2019 installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)}
+                catch {
+                    Add-Status "ERROR: Office 2019 installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                }
             }
             else {
                 Add-Status "ERROR: Office 2019 setup not found at $officeSetup" $statusTextBox ([System.Drawing.Color]::Red)
             }
         }
         else {
-            Add-Status "Office 2019:  Already installed. Skipping..." $statusTextBox
+            Add-Status "Office 2019: Already installed. Skipping..." $statusTextBox ([System.Drawing.Color]::Green)
         }
 
         # 7. Install Zoom
@@ -1833,10 +1997,11 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                 $zoomInstaller = "$setupDir\ZoomInstallerFull.exe"
                 if (Test-Path $zoomInstaller) {
                     Add-Status "Installing Zoom..." $statusTextBox
-                    try {Start-Process -FilePath $zoomInstaller -ArgumentList "/silent" -Wait
+                    try {
+                        Start-Process -FilePath $zoomInstaller -ArgumentList "/silent" -Wait
                         Add-Status "Zoom installed successfully!" $statusTextBox
                     }
-                    catch {Add-Status "ERROR: Zoom installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)}
+                    catch { Add-Status "ERROR: Zoom installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
                 }
                 else {
                     Add-Status "ERROR: Zoom installer not found at $zoomInstaller" $statusTextBox ([System.Drawing.Color]::Red)
@@ -1874,9 +2039,27 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
         Add-Status "Error details: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
+    finally {
+        try {
+            $tempDir = "$env:USERPROFILE\Downloads\SETUP"
+            if (Test-Path $tempDir) {
+                Add-Status "Cleaning up temporary files..." $statusTextBox
+                Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+                if (-not (Test-Path $tempDir)) {
+                    Add-Status "Temporary files cleaned up successfully!" $statusTextBox
+                } else {
+                    Add-Status "Warning: Could not fully remove temporary directory." $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            }
+        }
+        catch {
+            Add-Status "Warning: Failed to clean up temporary files: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+    }
 }
 
-function Show-InstallSoftwareDialog {Hide-MainMenu
+function Show-InstallSoftwareDialog {
+    Hide-MainMenu
     # Create device type selection form
     $deviceTypeForm = New-Object System.Windows.Forms.Form
     $deviceTypeForm.Text = "Select Device Type"
@@ -1922,7 +2105,8 @@ function Show-InstallSoftwareDialog {Hide-MainMenu
         $result = Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox
         if ($result) {
             Add-Status "Desktop workflow finished." $statusTextBox
-        } else {
+        }
+        else {
             Add-Status "Desktop workflow finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
     }
@@ -1933,7 +2117,8 @@ function Show-InstallSoftwareDialog {Hide-MainMenu
         $result = Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox
         if ($result) {
             Add-Status "Laptop workflow finished." $statusTextBox
-        } else {
+        }
+        else {
             Add-Status "Laptop workflow finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
     }
@@ -1941,17 +2126,18 @@ function Show-InstallSoftwareDialog {Hide-MainMenu
 
     # Add escape handler to close the form
     $deviceTypeForm.KeyPreview = $true
-    $deviceTypeForm.Add_KeyDown({if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {$deviceTypeForm.Close()}})
+    $deviceTypeForm.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $deviceTypeForm.Close() } })
 
     # When form closes, show main menu
-    $deviceTypeForm.Add_FormClosed({Show-MainMenu})
+    $deviceTypeForm.Add_FormClosed({ Show-MainMenu })
 
     # Show the dialog
     $deviceTypeForm.ShowDialog()
 }
 
 # [3] Power Options Functions
-function Invoke-SetTimezonePower {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-SetTimezonePower {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         Add-Status "Setting time zone to SE Asia Standard Time..." $statusTextBox
 
@@ -2006,7 +2192,8 @@ function Invoke-SetTimezonePower {param([System.Windows.Forms.RichTextBox]$statu
     }
 }
 
-function Invoke-FirewallOn {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-FirewallOn {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         Add-Status "Turning on the firewall..." $statusTextBox
 
@@ -2028,7 +2215,8 @@ function Invoke-FirewallOn {param([System.Windows.Forms.RichTextBox]$statusTextB
     }
 }
 
-function Invoke-FirewallOff {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-FirewallOff {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         Add-Status "Turning off the firewall..." $statusTextBox
 
@@ -2050,7 +2238,8 @@ function Invoke-FirewallOff {param([System.Windows.Forms.RichTextBox]$statusText
     }
 }
 
-function Invoke-PowerOptionsDialog {Hide-MainMenu
+function Invoke-PowerOptionsDialog {
+    Hide-MainMenu
     # Create Power Options form
     $powerForm = New-Object System.Windows.Forms.Form
     $powerForm.Text = "Power Options"
@@ -2133,7 +2322,8 @@ function Invoke-PowerOptionsDialog {Hide-MainMenu
 }
 
 # [4] Volume Management Functions
-function Update-DriveList {$driveListBox.Items.Clear()
+function Update-DriveList {
+    $driveListBox.Items.Clear()
     $drives = Get-WmiObject Win32_LogicalDisk | Select-Object @{Name = 'Name'; Expression = { $_.DeviceID } }, `
     @{Name = 'VolumeName'; Expression = { $_.VolumeName } }, `
     @{Name = 'Size (GB)'; Expression = { [math]::round($_.Size / 1GB, 0) } }, `
@@ -2151,7 +2341,8 @@ function Update-DriveList {$driveListBox.Items.Clear()
     return $drives.Count
 }
 
-function Invoke-VolumeManagementDialog {Hide-MainMenu
+function Invoke-VolumeManagementDialog {
+    Hide-MainMenu
     # Create volume management form
     $volumeForm = New-Object System.Windows.Forms.Form
     $volumeForm.Text = "Volume Management"
@@ -2613,7 +2804,8 @@ assign letter=$newLetter
 }
 
 # [4.2] Shrink Volume Functions
-function New-ShrinkVolumeTitle {param([System.Windows.Forms.Panel]$contentPanel)
+function New-ShrinkVolumeTitle {
+    param([System.Windows.Forms.Panel]$contentPanel)
 
     # Title label
     $titleLabel = New-Object System.Windows.Forms.Label
@@ -2627,7 +2819,8 @@ function New-ShrinkVolumeTitle {param([System.Windows.Forms.Panel]$contentPanel)
     $contentPanel.Controls.Add($titleLabel)
 }
 
-function New-ShrinkVolumeDriveSelector {param([System.Windows.Forms.Panel]$contentPanel)
+function New-ShrinkVolumeDriveSelector {
+    param([System.Windows.Forms.Panel]$contentPanel)
 
     # Selected drive letter label
     $selectedDriveLabel = New-Object System.Windows.Forms.Label
@@ -2652,7 +2845,8 @@ function New-ShrinkVolumeDriveSelector {param([System.Windows.Forms.Panel]$conte
     $contentPanel.Controls.Add($script:selectedDriveTextBox)
 }
 
-function New-ShrinkVolumePartitionSizeOptions {param ([System.Windows.Forms.Panel]$contentPanel, [System.Windows.Forms.TextBox]$selectedDriveTextBox)
+function New-ShrinkVolumePartitionSizeOptions {
+    param ([System.Windows.Forms.Panel]$contentPanel, [System.Windows.Forms.TextBox]$selectedDriveTextBox)
 
     # Partition size options group box
     $partitionGroupBox = New-Object System.Windows.Forms.GroupBox
@@ -2750,7 +2944,8 @@ function New-ShrinkVolumePartitionSizeOptions {param ([System.Windows.Forms.Pane
         })
 }
 
-function New-ShrinkVolumeNewLabelInput {param([System.Windows.Forms.Panel]$contentPanel, [System.Windows.Forms.TextBox]$selectedDriveTextBox)
+function New-ShrinkVolumeNewLabelInput {
+    param([System.Windows.Forms.Panel]$contentPanel, [System.Windows.Forms.TextBox]$selectedDriveTextBox)
 
     # New partition label
     $newLabelLabel = New-Object System.Windows.Forms.Label
@@ -2772,7 +2967,8 @@ function New-ShrinkVolumeNewLabelInput {param([System.Windows.Forms.Panel]$conte
     $contentPanel.Controls.Add($script:newLabelTextBox)
 }
 
-function Get-ShrinkVolumePartitionSize {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Get-ShrinkVolumePartitionSize {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     # Determine partition size based on selected radio button
     $sizeMB = 0
 
@@ -2819,7 +3015,8 @@ function Get-ShrinkVolumePartitionSize {param([System.Windows.Forms.RichTextBox]
     return $sizeMB
 }
 
-function Test-ShrinkVolumeSpace {param([string]$driveLetter, [int]$sizeMB)
+function Test-ShrinkVolumeSpace {
+    param([string]$driveLetter, [int]$sizeMB)
 
     # Validate drive exists and get info
     try {
@@ -2865,7 +3062,8 @@ function Test-ShrinkVolumeSpace {param([string]$driveLetter, [int]$sizeMB)
     return $true
 }
 
-function Invoke-ShrinkVolumeOperation {param([string]$driveLetter, [int]$sizeMB, [string]$newLabel)
+function Invoke-ShrinkVolumeOperation {
+    param([string]$driveLetter, [int]$sizeMB, [string]$newLabel)
 
     # Create a batch file that will run diskpart (using exact install.ps1 approach)
     $batchFilePath = "shrink_volume.bat"
@@ -3042,7 +3240,8 @@ echo Operation completed successfully. >> shrink_status.txt
     }
 }
 
-function New-ShrinkVolumeActionButton {param([System.Windows.Forms.Panel]$contentPanel)
+function New-ShrinkVolumeActionButton {
+    param([System.Windows.Forms.Panel]$contentPanel)
 
     # Shrink button
     $shrinkButton = New-DynamicButton -text "Shrink" -x 275 -y 210 -width 200 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
@@ -3078,7 +3277,8 @@ function New-ShrinkVolumeActionButton {param([System.Windows.Forms.Panel]$conten
 }
 
 # [4.3] Rename Volume Functions
-function New-RenameVolumeTitle {param([System.Windows.Forms.Panel]$parentPanel)
+function New-RenameVolumeTitle {
+    param([System.Windows.Forms.Panel]$parentPanel)
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "Rename Volume"
     $titleLabel.Location = New-Object System.Drawing.Point(0, 10)
@@ -3090,7 +3290,8 @@ function New-RenameVolumeTitle {param([System.Windows.Forms.Panel]$parentPanel)
     $parentPanel.Controls.Add($titleLabel)
 }
 
-function New-RenameVolumeGroupBox {param([System.Windows.Forms.Panel]$parentPanel, [System.Windows.Forms.ListBox]$driveListBox)
+function New-RenameVolumeGroupBox {
+    param([System.Windows.Forms.Panel]$parentPanel, [System.Windows.Forms.ListBox]$driveListBox)
     $groupBox = New-Object System.Windows.Forms.GroupBox
     $groupBox.Text = "Volume Rename Configuration"
     $groupBox.Location = New-Object System.Drawing.Point(180, 60)
@@ -3148,7 +3349,8 @@ function New-RenameVolumeGroupBox {param([System.Windows.Forms.Panel]$parentPane
     }
 }
 
-function New-RenameActionButton {param([System.Windows.Forms.GroupBox]$groupBox, [System.Windows.Forms.ListBox]$driveListBox)
+function New-RenameActionButton {
+    param([System.Windows.Forms.GroupBox]$groupBox, [System.Windows.Forms.ListBox]$driveListBox)
     $renameButton = New-DynamicButton -text "Rename" -x 100 -y 100 -width 200 -height 40 -clickAction {
         if ($script:renameDriveLetterTextBox -and $script:renameNewLabelTextBox) {
             $dl = $script:renameDriveLetterTextBox.Text.Trim().ToUpper()
@@ -3171,7 +3373,8 @@ function New-RenameActionButton {param([System.Windows.Forms.GroupBox]$groupBox,
 }
 
 # [4.4] Extend Volume Functions
-function New-ExtendVolumeTitle {param([System.Windows.Forms.Panel]$parentPanel)
+function New-ExtendVolumeTitle {
+    param([System.Windows.Forms.Panel]$parentPanel)
 
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "Extend Volume"
@@ -3184,7 +3387,8 @@ function New-ExtendVolumeTitle {param([System.Windows.Forms.Panel]$parentPanel)
     $parentPanel.Controls.Add($titleLabel)
 }
 
-function New-ExtendVolumeGroupBox {param([System.Windows.Forms.Panel]$parentPanel)
+function New-ExtendVolumeGroupBox {
+    param([System.Windows.Forms.Panel]$parentPanel)
 
     # Create GroupBox for centered content
     $extendGroupBox = New-Object System.Windows.Forms.GroupBox
@@ -3281,7 +3485,8 @@ function New-ExtendVolumeGroupBox {param([System.Windows.Forms.Panel]$parentPane
     }
 }
 
-function New-ExtendActionButton {param([hashtable]$extendControls, [System.Windows.Forms.RichTextBox]$statusTextBox)
+function New-ExtendActionButton {
+    param([hashtable]$extendControls, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $groupBox = $extendControls.GroupBox
 
     # Extend button (inside GroupBox)
@@ -3334,7 +3539,8 @@ function New-ExtendActionButton {param([hashtable]$extendControls, [System.Windo
     return $mergeButton
 }
 
-function Test-ExtendVolumeInput {param([string]$sourceDrive, [string]$targetDrive, [System.Windows.Forms.TextBox]$statusTextBox)
+function Test-ExtendVolumeInput {
+    param([string]$sourceDrive, [string]$targetDrive, [System.Windows.Forms.TextBox]$statusTextBox)
 
     # Check if source drive is C - CHỈ CẤM SOURCE, KHÔNG CẤM TARGET
     if ($sourceDrive -eq "C") {
@@ -3391,7 +3597,8 @@ function Test-ExtendVolumeInput {param([string]$sourceDrive, [string]$targetDriv
     return $true
 }
 
-function Invoke-ExtendVolumeOperation {param([string]$sourceDrive, [string]$targetDrive, [System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-ExtendVolumeOperation {
+    param([string]$sourceDrive, [string]$targetDrive, [System.Windows.Forms.RichTextBox]$statusTextBox)
 
     try {
         # Verify disk compatibility first
@@ -3571,7 +3778,8 @@ function Get-WindowsVersionShort {
     }
 }
 
-function Invoke-ActivateWindows10Pro {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-ActivateWindows10Pro {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # Display current Windows version
         $currentWindowsVersion = Get-WindowsVersionShort
@@ -3605,7 +3813,8 @@ function Invoke-ActivateWindows10Pro {param([System.Windows.Forms.RichTextBox]$s
     }
 }
 
-function Invoke-ActivateOffice2019 {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-ActivateOffice2019 {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         Add-Status "Checking Activation Status of Office..." $statusTextBox
         # Check multiple possible Office paths
@@ -3686,7 +3895,8 @@ function Invoke-ActivateOffice2019 {param([System.Windows.Forms.RichTextBox]$sta
     }
 }
 
-function Invoke-UpgradeWindowsHomeToPro {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-UpgradeWindowsHomeToPro {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         Add-Status "Checking Windows version..." $statusTextBox
 
@@ -3727,7 +3937,8 @@ function Invoke-UpgradeWindowsHomeToPro {param([System.Windows.Forms.RichTextBox
     }
 }
 
-function Invoke-ActivationDialog {Hide-MainMenu
+function Invoke-ActivationDialog {
+    Hide-MainMenu
     # Create activation form
     $activateForm = New-Object System.Windows.Forms.Form
     $activateForm.Text = "Activation Options"
@@ -3800,7 +4011,8 @@ function Invoke-ActivationDialog {Hide-MainMenu
 }
 
 # [6] Features Functions
-function Invoke-WindowsFeaturesConfiguration {param ([string]$deviceType,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-WindowsFeaturesConfiguration {
+    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # --- 1. Check and Enable Required Features ---
         Invoke-EnableWindowsFeatures $statusTextBox
@@ -3814,7 +4026,8 @@ function Invoke-WindowsFeaturesConfiguration {param ([string]$deviceType,[System
     }
 }
 
-function Invoke-FeaturesDialog {Hide-MainMenu
+function Invoke-FeaturesDialog {
+    Hide-MainMenu
     # Create features configuration form
     $featuresForm = New-Object System.Windows.Forms.Form
     $featuresForm.Text = "Windows Features Configuration"
@@ -3927,7 +4140,8 @@ function Invoke-FeaturesDialog {Hide-MainMenu
     $featuresForm.ShowDialog()
 }
 
-function Invoke-EnableWindowsFeatures {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-EnableWindowsFeatures {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     # Danh sách các features cần enable
     $featuresToEnable = @(
         @{
@@ -3988,7 +4202,8 @@ function Invoke-EnableWindowsFeatures {param ([System.Windows.Forms.RichTextBox]
     }
 }
 
-function Invoke-DisableWindowsFeatures {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-DisableWindowsFeatures {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     # Take OS version
     $osVersion = (Get-CimInstance Win32_OperatingSystem).Caption
 
@@ -4057,7 +4272,8 @@ function Invoke-DisableWindowsFeatures {param ([System.Windows.Forms.RichTextBox
 }
 
 # [7] Rename Device Functions
-function Invoke-RenameDialog {Hide-MainMenu
+function Invoke-RenameDialog {
+    Hide-MainMenu
     # Create device rename form
     $renameForm = New-Object System.Windows.Forms.Form
     $renameForm.Text = "Rename Device"
@@ -4267,7 +4483,7 @@ function Invoke-RenameDialog {Hide-MainMenu
     $renameForm.Controls.Add($renameButton)
 
     # Cancel button
-    $cancelButton = New-DynamicButton  -text "Cancel" -x 250 -y 240 -width 200 -height 40 -clickAction {$renameForm.Close()} -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0))
+    $cancelButton = New-DynamicButton  -text "Cancel" -x 250 -y 240 -width 200 -height 40 -clickAction { $renameForm.Close() } -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0))
     $renameForm.Controls.Add($cancelButton)
 
     # Set the accept button (Enter key)
@@ -4276,14 +4492,15 @@ function Invoke-RenameDialog {Hide-MainMenu
     $renameForm.CancelButton = $cancelButton
 
     # When the form is closed, show the main menu again
-    $renameForm.Add_FormClosed({Show-MainMenu})
+    $renameForm.Add_FormClosed({ Show-MainMenu })
 
     # Show the form
     $renameForm.ShowDialog()
 }
 
 # [8] Password Functions
-function Show-SetPasswordForm {param ([string]$currentUser,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Show-SetPasswordForm {
+    param ([string]$currentUser, [System.Windows.Forms.RichTextBox]$statusTextBox)
     Hide-MainMenu
 
     # Set Password Form
@@ -4357,10 +4574,10 @@ function Show-SetPasswordForm {param ([string]$currentUser,[System.Windows.Forms
 
     # Add preset password options
     $presetComboBox.Items.AddRange(@(
-        "Custom (enter below)",
-        "Pr0t3ct10c@1@VU",
-        "Aa1234567890"
-    ))
+            "Custom (enter below)",
+            "Pr0t3ct10c@1@VU",
+            "Aa1234567890"
+        ))
     $presetComboBox.SelectedIndex = 0
     $form.Controls.Add($presetComboBox)
 
@@ -4400,19 +4617,19 @@ function Show-SetPasswordForm {param ([string]$currentUser,[System.Windows.Forms
 
     # Event handler for preset selection
     $presetComboBox.Add_SelectedIndexChanged({
-        $selectedItem = $presetComboBox.SelectedItem.ToString()
-        switch ($selectedItem) {
-            "Custom (enter below)" {
-                $passwordTextBox.Text = ""
-                $passwordTextBox.Enabled = $true
-                $passwordTextBox.Focus()
+            $selectedItem = $presetComboBox.SelectedItem.ToString()
+            switch ($selectedItem) {
+                "Custom (enter below)" {
+                    $passwordTextBox.Text = ""
+                    $passwordTextBox.Enabled = $true
+                    $passwordTextBox.Focus()
+                }
+                default {
+                    $passwordTextBox.Text = $selectedItem
+                    $passwordTextBox.Enabled = $false  # Disable textbox for preset passwords
+                }
             }
-            default {
-                $passwordTextBox.Text = $selectedItem
-                $passwordTextBox.Enabled = $false  # Disable textbox for preset passwords
-            }
-        }
-    })
+        })
 
     # Info label for empty password
     $infoLabel = New-Object System.Windows.Forms.Label
@@ -4498,15 +4715,16 @@ function Show-SetPasswordForm {param ([string]$currentUser,[System.Windows.Forms
         })
 
     $form.Add_FormClosed({
-        Show-MainMenu
-    })
+            Show-MainMenu
+        })
 
     # Show the form
     $form.ShowDialog()
     return $dialogResult
 }
 
-function Set-UserPassword {param ([string]$user,[SecureString]$password)
+function Set-UserPassword {
+    param ([string]$user, [SecureString]$password)
     try {
         # Kiểm tra xem người dùng có đang dùng Windows Hello PIN không
         $pinEnabled = $false
@@ -4516,7 +4734,8 @@ function Set-UserPassword {param ([string]$user,[SecureString]$password)
                 $pinEnabled = $true
                 Write-Host "Detected Windows Hello PIN"
             }
-        } catch { }
+        }
+        catch { }
 
         # Nếu đang dùng PIN, vô hiệu hóa tạm thời
         if ($pinEnabled) {
@@ -4533,7 +4752,8 @@ function Set-UserPassword {param ([string]$user,[SecureString]$password)
                 if ($null -eq $password) {
                     # Xóa mật khẩu
                     $result = (Start-Process -FilePath "net.exe" -ArgumentList "user `"$user`" `"`"" -WindowStyle Hidden -Wait -PassThru).ExitCode -eq 0
-                } else {
+                }
+                else {
                     # Đặt mật khẩu mới
                     $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
                         [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($password)
@@ -4551,7 +4771,8 @@ function Set-UserPassword {param ([string]$user,[SecureString]$password)
                     Write-Host "Password updated successfully for PIN user"
                     return $true
                 }
-            } catch {
+            }
+            catch {
                 Write-Error "Error processing PIN user: $_"
                 return $false
             }
@@ -4566,12 +4787,14 @@ function Set-UserPassword {param ([string]$user,[SecureString]$password)
                     $localUser = Get-LocalUser -Name $user -ErrorAction Stop
                     if ($null -eq $password) {
                         $localUser | Set-LocalUser -NoPassword
-                    } else {
+                    }
+                    else {
                         $localUser | Set-LocalUser -Password $password
                     }
                     Write-Host "Password updated successfully for LocalAccount module"
                     return $true
-                } catch { throw "LocalAccount module failed: $_" }
+                }
+                catch { throw "LocalAccount module failed: $_" }
             },
             {
                 # Phương pháp 2: Sử dụng ADSI
@@ -4579,7 +4802,8 @@ function Set-UserPassword {param ([string]$user,[SecureString]$password)
                     $userAccount = [ADSI]"WinNT://$env:COMPUTERNAME/$user,User"
                     if ($null -eq $password) {
                         $userAccount.SetPassword("")
-                    } else {
+                    }
+                    else {
                         $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
                             [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($password)
                         )
@@ -4590,14 +4814,16 @@ function Set-UserPassword {param ([string]$user,[SecureString]$password)
                     $userAccount.CommitChanges()
                     Write-Host "Password updated successfully for ADSI"
                     return $true
-                } catch { throw "ADSI method failed: $_" }
+                }
+                catch { throw "ADSI method failed: $_" }
             },
             {
                 # Phương pháp 3: Sử dụng net user
                 try {
                     if ($null -eq $password) {
                         $process = Start-Process -FilePath "net.exe" -ArgumentList "user `"$user`" `"`"" -WindowStyle Hidden -Wait -PassThru
-                    } else {
+                    }
+                    else {
                         $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
                             [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($password)
                         )
@@ -4609,7 +4835,8 @@ function Set-UserPassword {param ([string]$user,[SecureString]$password)
                     if ($process.ExitCode -ne 0) { throw "net.exe exited with code $($process.ExitCode)" }
                     Write-Host "Password updated successfully for net user"
                     return $true
-                } catch { throw "net user method failed: $_" }
+                }
+                catch { throw "net user method failed: $_" }
             }
         )
 
@@ -4620,29 +4847,34 @@ function Set-UserPassword {param ([string]$user,[SecureString]$password)
                 if ($result -eq $true) {
                     return $true
                 }
-            } catch {
+            }
+            catch {
                 Write-Warning "Method failed: $_"
             }
         }
 
         throw "All methods failed"
         
-    } catch {
+    }
+    catch {
         Write-Error "Error: $_"
         return $false
     }
 }
 
-function Remove-UserPassword {param([string]$user)
+function Remove-UserPassword {
+    param([string]$user)
     try {
         return (Set-UserPassword -user $user -password $null)
-    } catch {
+    }
+    catch {
         Write-Error "Error: $_"
         return $false
     }
 }
 
-function Invoke-SetPasswordDialog {param([string]$currentUser,[System.Windows.Forms.RichTextBox]$statusTextBox,[bool]$showMenuAfter = $false)$result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox
+function Invoke-SetPasswordDialog {
+    param([string]$currentUser, [System.Windows.Forms.RichTextBox]$statusTextBox, [bool]$showMenuAfter = $false)$result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox
     if ($result.Action -eq "set") {
         $securePwd = if ([string]::IsNullOrEmpty($result.Password)) { $null } else { ConvertTo-SecureString -String $result.Password -AsPlainText -Force }
         $success = Set-UserPassword -user $currentUser -password $securePwd
@@ -4673,7 +4905,7 @@ function Invoke-SetPasswordDialog {param([string]$currentUser,[System.Windows.Fo
 }
 
 # [9] Domain Management Functions
-$script:DomainConfig = @{FormWidth = 500;FormHeight = 450;FormHeightMinimal = 380;ButtonY = 350;ButtonYMinimal = 280;ControlSpacing = 40;DefaultWorkgroup = "WORKGROUP"}
+$script:DomainConfig = @{FormWidth = 500; FormHeight = 450; FormHeightMinimal = 380; ButtonY = 350; ButtonYMinimal = 280; ControlSpacing = 40; DefaultWorkgroup = "WORKGROUP" }
 
 function Get-ComputerDomainInfo {
     try {
@@ -4696,7 +4928,8 @@ function Get-ComputerDomainInfo {
     }
 }
 
-function New-DomainManagementLabel {param([string]$Text,[int]$X,[int]$Y,[int]$Width,[int]$Height,[int]$FontSize = 12,[System.Drawing.FontStyle]$FontStyle = [System.Drawing.FontStyle]::Regular)
+function New-DomainManagementLabel {
+    param([string]$Text, [int]$X, [int]$Y, [int]$Width, [int]$Height, [int]$FontSize = 12, [System.Drawing.FontStyle]$FontStyle = [System.Drawing.FontStyle]::Regular)
     $label = New-Object System.Windows.Forms.Label
     $label.Text = $Text
     $label.Font = New-Object System.Drawing.Font("Arial", $FontSize, $FontStyle)
@@ -4707,7 +4940,8 @@ function New-DomainManagementLabel {param([string]$Text,[int]$X,[int]$Y,[int]$Wi
     return $label
 }
 
-function New-DomainManagementTextBox {param([int]$X,[int]$Y,[int]$Width,[int]$Height,[bool]$IsPassword = $false,[string]$DefaultText = "")
+function New-DomainManagementTextBox {
+    param([int]$X, [int]$Y, [int]$Width, [int]$Height, [bool]$IsPassword = $false, [string]$DefaultText = "")
     $textBox = New-Object System.Windows.Forms.TextBox
     $textBox.Font = New-Object System.Drawing.Font("Arial", 12)
     $textBox.Size = New-Object System.Drawing.Size($Width, $Height)
@@ -4715,11 +4949,12 @@ function New-DomainManagementTextBox {param([int]$X,[int]$Y,[int]$Width,[int]$He
     $textBox.BackColor = [System.Drawing.Color]::White
     $textBox.ForeColor = [System.Drawing.Color]::Black
     $textBox.Text = $DefaultText
-    if ($IsPassword) {$textBox.UseSystemPasswordChar = $true}
+    if ($IsPassword) { $textBox.UseSystemPasswordChar = $true }
     return $textBox
 }
 
-function New-DomainManagementRadioButton {param([string]$Text,[int]$X,[int]$Y,[int]$Width,[int]$Height,[bool]$IsChecked = $false,[bool]$IsEnabled = $true)
+function New-DomainManagementRadioButton {
+    param([string]$Text, [int]$X, [int]$Y, [int]$Width, [int]$Height, [bool]$IsChecked = $false, [bool]$IsEnabled = $true)
     $radioButton = New-Object System.Windows.Forms.RadioButton
     $radioButton.Text = $Text
     $radioButton.Font = New-Object System.Drawing.Font("Arial", 12)
@@ -4732,7 +4967,8 @@ function New-DomainManagementRadioButton {param([string]$Text,[int]$X,[int]$Y,[i
     return $radioButton
 }
 
-function Set-DomainFormLayout {param([hashtable]$FormControls,[string]$OperationType)
+function Set-DomainFormLayout {
+    param([hashtable]$FormControls, [string]$OperationType)
     switch ($OperationType) {
         'Domain' {
             $FormControls.NameLabel.Text = "Domain Name:"
@@ -4772,7 +5008,8 @@ function Set-DomainFormLayout {param([hashtable]$FormControls,[string]$Operation
     }
 }
 
-function Test-DomainJoinInputs {param([string]$DomainName,[string]$Username,[SecureString]$Password)
+function Test-DomainJoinInputs {
+    param([string]$DomainName, [string]$Username, [SecureString]$Password)
 
     if ([string]::IsNullOrWhiteSpace($DomainName)) {
         return @{
@@ -4808,7 +5045,8 @@ function Test-DomainJoinInputs {param([string]$DomainName,[string]$Username,[Sec
     }
 }
 
-function Test-WorkgroupInputs {param([string]$WorkgroupName)
+function Test-WorkgroupInputs {
+    param([string]$WorkgroupName)
     if ([string]::IsNullOrWhiteSpace($WorkgroupName)) {
         return @{
             IsValid      = $false
@@ -4837,7 +5075,8 @@ function Test-WorkgroupInputs {param([string]$WorkgroupName)
     }
 }
 
-function Invoke-ElevatedDomainCommand {param([string]$Command,[string]$OperationType)
+function Invoke-ElevatedDomainCommand {
+    param([string]$Command, [string]$OperationType)
     try {
         # Create a temporary PowerShell script file
         $tempScript = [System.IO.Path]::GetTempFileName() + ".ps1"
@@ -4944,7 +5183,8 @@ catch {
     }
 }
 
-function Invoke-DomainJoinOperation {param([string]$DomainName,[string]$Username,[SecureString]$Password)
+function Invoke-DomainJoinOperation {
+    param([string]$DomainName, [string]$Username, [SecureString]$Password)
     # Validate inputs
     $validation = Test-DomainJoinInputs -DomainName $DomainName -Username $Username -Password $Password
     if (-not $validation.IsValid) {
@@ -4970,8 +5210,9 @@ function Invoke-DomainJoinOperation {param([string]$DomainName,[string]$Username
             )
             return $false
         }
-    } finally {
-        if ($pwdPtr -ne [IntPtr]::Zero) {[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pwdPtr)}
+    }
+    finally {
+        if ($pwdPtr -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pwdPtr) }
     }
 
     # Test domain connectivity first (like sysdm.cpl does)
@@ -5005,8 +5246,8 @@ function Invoke-DomainJoinOperation {param([string]$DomainName,[string]$Username
 
         # Build domain join command inside the elevated process: it reconstructs a SecureString there
         $command = "`$securePassword = ConvertTo-SecureString '$escapedPassword' -AsPlainText -Force; " +
-                "`$credential = New-Object System.Management.Automation.PSCredential('$Username', `$securePassword); " +
-                "Add-Computer -DomainName '$DomainName' -Credential `$credential -Force -Verbose"
+        "`$credential = New-Object System.Management.Automation.PSCredential('$Username', `$securePassword); " +
+        "Add-Computer -DomainName '$DomainName' -Credential `$credential -Force -Verbose"
     }
     finally {
         if ($pwdBstr -ne [IntPtr]::Zero) {
@@ -5016,7 +5257,8 @@ function Invoke-DomainJoinOperation {param([string]$DomainName,[string]$Username
     return Invoke-ElevatedDomainCommand -Command $command -OperationType "DomainJoin"
 }
 
-function Invoke-WorkgroupJoinOperation {param ([string]$WorkgroupName)
+function Invoke-WorkgroupJoinOperation {
+    param ([string]$WorkgroupName)
     # Validate inputs
     $validation = Test-WorkgroupInputs -WorkgroupName $WorkgroupName
     if (-not $validation.IsValid) {
@@ -5035,7 +5277,8 @@ function Invoke-WorkgroupJoinOperation {param ([string]$WorkgroupName)
     return Invoke-ElevatedDomainCommand -Command $command -OperationType "WorkgroupJoin"
 }
 
-function Show-DomainManagementForm {param ([string]$deviceType,[System.Windows.Forms.RichTextBox]$statusTextBox)
+function Show-DomainManagementForm {
+    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     Hide-MainMenu
 
     $computerInfo = Get-ComputerDomainInfo
@@ -5070,8 +5313,8 @@ function Show-DomainManagementForm {param ([string]$deviceType,[System.Windows.F
     $joinForm.Controls.Add($currentNameBoldLabel)
 
     # Current domain/workgroup name label
-    if (-not $computerInfo.IsPartOfDomain -or $computerInfo.Domain -eq $computerInfo.ComputerName) {$domainDisplay = "$($computerInfo.Domain)"}
-    else {$domainDisplay = $computerInfo.Domain}
+    if (-not $computerInfo.IsPartOfDomain -or $computerInfo.Domain -eq $computerInfo.ComputerName) { $domainDisplay = "$($computerInfo.Domain)" }
+    else { $domainDisplay = $computerInfo.Domain }
 
     $domainBoldLabel = New-DomainManagementLabel -Text $domainDisplay -X 170 -Y 100 -Width 320 -Height 30 -FontSize 12 -FontStyle ([System.Drawing.FontStyle]::Bold)
     $domainBoldLabel.Font = $boldFont
@@ -5150,9 +5393,9 @@ function Show-DomainManagementForm {param ([string]$deviceType,[System.Windows.F
     }
 
     # Event handlers for radio buttons
-    $radioDomain.Add_CheckedChanged({if ($radioDomain.Checked) {Set-DomainFormLayout -FormControls $formControls -OperationType 'Domain'}})
+    $radioDomain.Add_CheckedChanged({ if ($radioDomain.Checked) { Set-DomainFormLayout -FormControls $formControls -OperationType 'Domain' } })
 
-    $radioWorkgroup.Add_CheckedChanged({if ($radioWorkgroup.Checked) {Set-DomainFormLayout -FormControls $formControls -OperationType 'Workgroup'}})
+    $radioWorkgroup.Add_CheckedChanged({ if ($radioWorkgroup.Checked) { Set-DomainFormLayout -FormControls $formControls -OperationType 'Workgroup' } })
 
     # Join button click handler
     $joinButton.Add_Click({
@@ -5186,14 +5429,15 @@ function Show-DomainManagementForm {param ([string]$deviceType,[System.Windows.F
     # Set form behavior
     $joinForm.AcceptButton = $joinButton
     $joinForm.CancelButton = $cancelButton
-    $joinForm.Add_FormClosed({Show-MainMenu})
+    $joinForm.Add_FormClosed({ Show-MainMenu })
 
     # Show the form
     $joinForm.ShowDialog()
 }
 
 # [10] CrowdStrike Functions
-function Invoke-CrowdStrikeDialog {Hide-MainMenu
+function Invoke-CrowdStrikeDialog {
+    Hide-MainMenu
     # Create CrowdStrike form with modern design
     $crowdStrikeForm = New-Object System.Windows.Forms.Form
     $crowdStrikeForm.Text = "BAOPROVIP - CROWDSTRIKE MANAGEMENT"
@@ -5296,32 +5540,32 @@ function Invoke-CrowdStrikeDialog {Hide-MainMenu
 
     # Department change handler for smart recommendations
     $deptComboBox.Add_SelectedIndexChanged({
-        $selectedDept = $deptComboBox.SelectedItem.ToString()
+            $selectedDept = $deptComboBox.SelectedItem.ToString()
 
-        # Skip section headers and empty lines
-        if ($selectedDept -like "---*" -or $selectedDept -eq "") {
-            $recommendLabel.Text = "Select department first"
+            # Skip section headers and empty lines
+            if ($selectedDept -like "---*" -or $selectedDept -eq "") {
+                $recommendLabel.Text = "Select department first"
+                $recommendLabel.Location = New-Object System.Drawing.Point(400, 90)
+                $recommendLabel.Size = New-Object System.Drawing.Size(200, 25)
+                $recommendLabel.Font = New-Object System.Drawing.Font("Arial", 12)
+                $recommendLabel.ForeColor = [System.Drawing.Color]::Gray
+                return
+            }
+
+            # Get recommendation based on department
+            $recommendation = Get-DepartmentRecommendation -Department $selectedDept
+            $recommendLabel.Text = "Recommended: $($recommendation.Type)"
             $recommendLabel.Location = New-Object System.Drawing.Point(400, 90)
             $recommendLabel.Size = New-Object System.Drawing.Size(200, 25)
             $recommendLabel.Font = New-Object System.Drawing.Font("Arial", 12)
-            $recommendLabel.ForeColor = [System.Drawing.Color]::Gray
-            return
-        }
+            $recommendLabel.ForeColor = $recommendation.Color
 
-        # Get recommendation based on department
-        $recommendation = Get-DepartmentRecommendation -Department $selectedDept
-        $recommendLabel.Text = "Recommended: $($recommendation.Type)"
-        $recommendLabel.Location = New-Object System.Drawing.Point(400, 90)
-        $recommendLabel.Size = New-Object System.Drawing.Size(200, 25)
-        $recommendLabel.Font = New-Object System.Drawing.Font("Arial", 12)
-        $recommendLabel.ForeColor = $recommendation.Color
+            # Auto-select recommended type
+            if ($recommendation.Type -eq "EDR") { $radioEDR.Checked = $true } else { $radioAV.Checked = $true }
 
-        # Auto-select recommended type
-        if ($recommendation.Type -eq "EDR") {$radioEDR.Checked = $true} else {$radioAV.Checked = $true}
-
-        # Update status text with recommendation reason
-        $statusTextBox.Text = "Department: $selectedDept`nRecommendation: $($recommendation.Type) - $($recommendation.Reason)"
-    })
+            # Update status text with recommendation reason
+            $statusTextBox.Text = "Department: $selectedDept`nRecommendation: $($recommendation.Type) - $($recommendation.Reason)"
+        })
 
     $crowdStrikeForm.Controls.Add($deptComboBox)
 
@@ -5394,15 +5638,15 @@ function Invoke-CrowdStrikeDialog {Hide-MainMenu
     $crowdStrikeForm.Controls.Add($btnInstall)
 
     # Status button
-    $btnStatus = New-DynamicButton -text "Status" -x 170 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0))  -clickAction {Invoke-CheckCrowdStrikeStatus -statusTextBox $statusTextBox}
+    $btnStatus = New-DynamicButton -text "Status" -x 170 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0))  -clickAction { Invoke-CheckCrowdStrikeStatus -statusTextBox $statusTextBox }
     $crowdStrikeForm.Controls.Add($btnStatus)
 
     # Change GroupTag button
-    $btnCrowdStrikeTag = New-DynamicButton -text "Change GroupTag" -x 330 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {Invoke-CrowdStrikeGroupTagDialog -Departments (@($deptComboBox.Items | ForEach-Object { $_.ToString() }))}
+    $btnCrowdStrikeTag = New-DynamicButton -text "Change GroupTag" -x 330 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction { Invoke-CrowdStrikeGroupTagDialog -Departments (@($deptComboBox.Items | ForEach-Object { $_.ToString() })) }
     $crowdStrikeForm.Controls.Add($btnCrowdStrikeTag)
 
     # Uninstall button
-    $btnUninstall = New-DynamicButton -text "Uninstall" -x 490 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {Invoke-CrowdStrikeUninstallDialog -statusTextBox $statusTextBox}
+    $btnUninstall = New-DynamicButton -text "Uninstall" -x 490 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction { Invoke-CrowdStrikeUninstallDialog -statusTextBox $statusTextBox }
     $crowdStrikeForm.Controls.Add($btnUninstall)
 
     # Status text box
@@ -5427,32 +5671,34 @@ function Invoke-CrowdStrikeDialog {Hide-MainMenu
 
     # Trigger initial recommendation for first actual department selection
     $crowdStrikeForm.Add_Shown({
-        # Trigger the department change event for initial recommendation
-        if ($deptComboBox.Items.Count -gt 1) {
-            $deptComboBox.SelectedIndex = 1  # Select first actual department
-            # Manually trigger the event
-            $selectedDept = $deptComboBox.SelectedItem.ToString()
-            if (-not ($selectedDept -like "---*" -or $selectedDept -eq "")) {
-                $recommendation = Get-DepartmentRecommendation -Department $selectedDept
-                $recommendLabel.Text = "Recommended: $($recommendation.Type)"
-                $recommendLabel.ForeColor = $recommendation.Color
+            # Trigger the department change event for initial recommendation
+            if ($deptComboBox.Items.Count -gt 1) {
+                $deptComboBox.SelectedIndex = 1  # Select first actual department
+                # Manually trigger the event
+                $selectedDept = $deptComboBox.SelectedItem.ToString()
+                if (-not ($selectedDept -like "---*" -or $selectedDept -eq "")) {
+                    $recommendation = Get-DepartmentRecommendation -Department $selectedDept
+                    $recommendLabel.Text = "Recommended: $($recommendation.Type)"
+                    $recommendLabel.ForeColor = $recommendation.Color
 
-                if ($recommendation.Type -eq "EDR") {
-                    $radioEDR.Checked = $true
-                } else {
-                    $radioAV.Checked = $true
+                    if ($recommendation.Type -eq "EDR") {
+                        $radioEDR.Checked = $true
+                    }
+                    else {
+                        $radioAV.Checked = $true
+                    }
+
+                    $statusTextBox.Text = "Department: $selectedDept`nRecommendation: $($recommendation.Type) - $($recommendation.Reason)`n`nInstallation will follow current policy automatically."
                 }
-
-                $statusTextBox.Text = "Department: $selectedDept`nRecommendation: $($recommendation.Type) - $($recommendation.Reason)`n`nInstallation will follow current policy automatically."
             }
-        }
-    })
+        })
 
     # Show the form
     $crowdStrikeForm.ShowDialog()
 }
 
-function Invoke-InstallCrowdStrike {param ([System.Windows.Forms.RichTextBox]$statusTextBox,[string]$Department,[string]$InstallType)
+function Invoke-InstallCrowdStrike {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox, [string]$Department, [string]$InstallType)
     try {
         $statusTextBox.Clear()
         Add-Status "=== CROWDSTRIKE INSTALLATION STARTED ===" $statusTextBox ([System.Drawing.Color]::Cyan)
@@ -5474,10 +5720,11 @@ function Invoke-InstallCrowdStrike {param ([System.Windows.Forms.RichTextBox]$st
                 [System.Windows.Forms.MessageBoxIcon]::Question
             )
 
-            if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {Add-Status "Installation cancelled by user." $statusTextBox ([System.Drawing.Color]::Yellow) ; return}
+            if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) { Add-Status "Installation cancelled by user." $statusTextBox ([System.Drawing.Color]::Yellow) ; return }
 
             Add-Status "   Proceeding with reinstallation..." $statusTextBox ([System.Drawing.Color]::Yellow)
-        } else {
+        }
+        else {
             Add-Status "   ✓ No existing installation found" $statusTextBox ([System.Drawing.Color]::Green)
         }
 
@@ -5510,7 +5757,7 @@ function Invoke-InstallCrowdStrike {param ([System.Windows.Forms.RichTextBox]$st
 
         # Prepare installation command
         Add-Status "3. Preparing installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
-        $arguments = @("-ExecutionPolicy", "Bypass","-File", "`"$scriptPath`"","-Department", "`"$Department`"","-ForceInstallType", "`"$InstallType`"","-Silent")
+        $arguments = @("-ExecutionPolicy", "Bypass", "-File", "`"$scriptPath`"", "-Department", "`"$Department`"", "-ForceInstallType", "`"$InstallType`"", "-Silent")
 
         Add-Status "   Command: powershell.exe $($arguments -join ' ')" $statusTextBox ([System.Drawing.Color]::Gray)
 
@@ -5539,22 +5786,26 @@ function Invoke-InstallCrowdStrike {param ([System.Windows.Forms.RichTextBox]$st
                 Add-Status "   ✓ CrowdStrike service is running!" $statusTextBox ([System.Drawing.Color]::Green)
                 Add-Status "   Service Name: $($newService.DisplayName)" $statusTextBox ([System.Drawing.Color]::Gray)
                 Add-Status "=== INSTALLATION SUCCESSFUL ===" $statusTextBox ([System.Drawing.Color]::Green)
-            } else {
+            }
+            else {
                 Add-Status "   ⚠ Service verification failed" $statusTextBox ([System.Drawing.Color]::Yellow)
                 Add-Status "   The installation may need time to complete" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-        } else {
+        }
+        else {
             Add-Status "   ✗ Installation failed!" $statusTextBox ([System.Drawing.Color]::Red)
             Add-Status "   Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
-    } catch {
+    }
+    catch {
         Add-Status "Error during CrowdStrike installation: $_" $statusTextBox ([System.Drawing.Color]::Red)
         Add-Status "Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
 
-function Invoke-CheckCrowdStrikeStatus {param ([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-CheckCrowdStrikeStatus {
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         $statusTextBox.Clear()
         Add-Status "CROWDSTRIKE STATUS CHECK" $statusTextBox ([System.Drawing.Color]::Cyan)
@@ -5566,7 +5817,8 @@ function Invoke-CheckCrowdStrikeStatus {param ([System.Windows.Forms.RichTextBox
         if ($csagentService) {
             $statusColor = if ($csagentService.Status -eq "Running") { [System.Drawing.Color]::Green } else { [System.Drawing.Color]::Red }
             Add-Status "   ✓ CrowdStrike Falcon: $($csagentService.Status)" $statusTextBox $statusColor
-        } else {
+        }
+        else {
             Add-Status "   ✗ CrowdStrike not installed!" $statusTextBox ([System.Drawing.Color]::Red)
             return
         }
@@ -5584,14 +5836,17 @@ function Invoke-CheckCrowdStrikeStatus {param ([System.Windows.Forms.RichTextBox
                     $recommendation = Get-DepartmentRecommendation -Department $department
                     $policyColor = if ($recommendation.Type -eq "EDR") { [System.Drawing.Color]::Orange } else { [System.Drawing.Color]::Cyan }
                     Add-Status "   Policy: $($recommendation.Type) - $($recommendation.Reason)" $statusTextBox $policyColor
-                } else {
+                }
+                else {
                     Add-Status "   ⚠ Unknown department mapping" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
-            } else {
+            }
+            else {
                 Add-Status "   ⚠ No department assignment found" $statusTextBox ([System.Drawing.Color]::Yellow)
                 Add-Status "   Device may not be properly deployed" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-        } catch {
+        }
+        catch {
             Add-Status "   ✗ Error checking department: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
@@ -5606,7 +5861,8 @@ function Invoke-CheckCrowdStrikeStatus {param ([System.Windows.Forms.RichTextBox
 
         if ($runningProcesses) {
             Add-Status "   ✓ Protection active ($($runningProcesses.Count) processes)" $statusTextBox ([System.Drawing.Color]::Green)
-        } else {
+        }
+        else {
             Add-Status "   ⚠ Protection processes not detected" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
@@ -5617,10 +5873,12 @@ function Invoke-CheckCrowdStrikeStatus {param ([System.Windows.Forms.RichTextBox
             $foundFiles = $keyFiles | Where-Object { Test-Path (Join-Path $installPath $_) }
             if ($foundFiles.Count -eq $keyFiles.Count) {
                 Add-Status "   ✓ Installation integrity: OK" $statusTextBox ([System.Drawing.Color]::Green)
-            } else {
+            }
+            else {
                 Add-Status "   ⚠ Installation may be incomplete" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-        } else {
+        }
+        else {
             Add-Status "   ✗ Installation directory not found" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
@@ -5630,10 +5888,12 @@ function Invoke-CheckCrowdStrikeStatus {param ([System.Windows.Forms.RichTextBox
             $testResult = Test-NetConnection -ComputerName "ts01-b.cloudsink.net" -Port 443 -InformationLevel Quiet -ErrorAction SilentlyContinue
             if ($testResult) {
                 Add-Status "   ✓ CrowdStrike cloud: Connected" $statusTextBox ([System.Drawing.Color]::Green)
-            } else {
+            }
+            else {
                 Add-Status "   ⚠ CrowdStrike cloud: Disconnected" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-        } catch {
+        }
+        catch {
             Add-Status "   ⚠ Could not test connectivity" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
@@ -5669,18 +5929,21 @@ function Invoke-CheckCrowdStrikeStatus {param ([System.Windows.Forms.RichTextBox
 
         if ($overallStatus -eq "HEALTHY") {
             Add-Status "✓ CrowdStrike is properly installed and protected" $statusTextBox ([System.Drawing.Color]::Green)
-        } else {
+        }
+        else {
             Add-Status "Issues found: $issues" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-    } catch {
+    }
+    catch {
         Add-Status "Error checking CrowdStrike status: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
 
-function Set-CrowdStrikeGroupingTag {param([Parameter(Mandatory=$true)][string]$Tag,[Parameter(Mandatory=$true)][string]$Token,[System.Windows.Forms.RichTextBox]$StatusTextBox)
+function Set-CrowdStrikeGroupingTag {
+    param([Parameter(Mandatory = $true)][string]$Tag, [Parameter(Mandatory = $true)][string]$Token, [System.Windows.Forms.RichTextBox]$StatusTextBox)
     try {
         # Ensure we’re elevated
-        $identity  = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = New-Object Security.Principal.WindowsPrincipal($identity)
         if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
             if ($StatusTextBox) { Add-Status "ERROR: This operation requires Administrator privileges." $StatusTextBox ([System.Drawing.Color]::Red) }
@@ -5730,7 +5993,8 @@ function Set-CrowdStrikeGroupingTag {param([Parameter(Mandatory=$true)][string]$
         if ($exitCode -eq 0) {
             if ($StatusTextBox) { Add-Status "CrowdStrike grouping tag updated successfully." $StatusTextBox }
             return $true
-        } else {
+        }
+        else {
             if ($StatusTextBox) { Add-Status "ERROR: CSSensorSettings exited with code $exitCode." $StatusTextBox ([System.Drawing.Color]::Red) }
             return $false
         }
@@ -5741,7 +6005,8 @@ function Set-CrowdStrikeGroupingTag {param([Parameter(Mandatory=$true)][string]$
     }
 }
 
-function Invoke-CrowdStrikeGroupTagDialog {param([string[]]$Departments)
+function Invoke-CrowdStrikeGroupTagDialog {
+    param([string[]]$Departments)
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "CrowdStrike Grouping Tag"
     $form.Size = New-Object System.Drawing.Size(520, 360)
@@ -5823,8 +6088,8 @@ function Invoke-CrowdStrikeGroupTagDialog {param([string[]]$Departments)
     $chkShow.ForeColor = [System.Drawing.Color]::White
     $chkShow.BackColor = [System.Drawing.Color]::Transparent
     $chkShow.Add_CheckedChanged({
-        $txtToken.UseSystemPasswordChar = -not $chkShow.Checked
-    })
+            $txtToken.UseSystemPasswordChar = -not $chkShow.Checked
+        })
     $form.Controls.Add($chkShow)
 
     # Status box
@@ -5850,28 +6115,30 @@ function Invoke-CrowdStrikeGroupTagDialog {param([string[]]$Departments)
     $btnApply.ForeColor = [System.Drawing.Color]::White
     $btnApply.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $btnApply.Add_Click({
-        $selectedDept = if ($deptCombo.SelectedItem) { $deptCombo.SelectedItem.ToString().Trim() } else { "" }
-        $tok = $txtToken.Text
-        $status.Clear()
+            $selectedDept = if ($deptCombo.SelectedItem) { $deptCombo.SelectedItem.ToString().Trim() } else { "" }
+            $tok = $txtToken.Text
+            $status.Clear()
 
-        if (-not $selectedDept) { Add-Status "Please select a department." $status ([System.Drawing.Color]::Yellow); return }
-        if ($selectedDept -like '---*') { Add-Status "Please select a valid department (not a section header)." $status ([System.Drawing.Color]::Yellow); return }
-        if (-not $tok) { Add-Status "Please enter maintenance token." $status ([System.Drawing.Color]::Yellow); return }
+            if (-not $selectedDept) { Add-Status "Please select a department." $status ([System.Drawing.Color]::Yellow); return }
+            if ($selectedDept -like '---*') { Add-Status "Please select a valid department (not a section header)." $status ([System.Drawing.Color]::Yellow); return }
+            if (-not $tok) { Add-Status "Please enter maintenance token." $status ([System.Drawing.Color]::Yellow); return }
 
-        # Use department as the grouping tag
-        $tag = $selectedDept
-        Add-Status "Applying tag '$tag'..." $status
-        try {
-            $ok = Set-CrowdStrikeGroupingTag -Tag $tag -Token $tok -StatusTextBox $status
-            if ($ok) {
-                Add-Status "Completed." $status
-            } else {
-                Add-Status "Failed to update tag." $status ([System.Drawing.Color]::Red)
+            # Use department as the grouping tag
+            $tag = $selectedDept
+            Add-Status "Applying tag '$tag'..." $status
+            try {
+                $ok = Set-CrowdStrikeGroupingTag -Tag $tag -Token $tok -StatusTextBox $status
+                if ($ok) {
+                    Add-Status "Completed." $status
+                }
+                else {
+                    Add-Status "Failed to update tag." $status ([System.Drawing.Color]::Red)
+                }
             }
-        } catch {
-            Add-Status ("ERROR: " + $_.Exception.Message) $status ([System.Drawing.Color]::Red)
-        }
-    })
+            catch {
+                Add-Status ("ERROR: " + $_.Exception.Message) $status ([System.Drawing.Color]::Red)
+            }
+        })
     $form.Controls.Add($btnApply)
 
     $form.KeyPreview = $true
@@ -5882,8 +6149,8 @@ function Invoke-CrowdStrikeGroupTagDialog {param([string[]]$Departments)
     $form.ShowDialog() | Out-Null
 }
 
-function Get-DepartmentRecommendation {param ([string]$Department)
-
+function Get-DepartmentRecommendation {
+    param ([string]$Department)
     # EDR Departments
     $edrDepartments = @(
         "Board-of-Directors", "Legal-Compliance", "Accounting", "HR-Admin",
@@ -5901,67 +6168,68 @@ function Get-DepartmentRecommendation {param ([string]$Department)
 
     if ($edrDepartments -contains $Department) {
         return @{
-            Type = "EDR"
-            Color = [System.Drawing.Color]::Orange
+            Type   = "EDR"
+            Color  = [System.Drawing.Color]::Orange
             Reason = "High security department"
         }
     }
     elseif ($devDepartments -contains $Department) {
         return @{
-            Type = "AV"
-            Color = [System.Drawing.Color]::Cyan
+            Type   = "AV"
+            Color  = [System.Drawing.Color]::Cyan
             Reason = "DEV department (EDR for senior positions)"
         }
     }
     else {
         return @{
-            Type = "AV"
-            Color = [System.Drawing.Color]::Lime
+            Type   = "AV"
+            Color  = [System.Drawing.Color]::Lime
             Reason = "Standard department"
         }
     }
 }
 
-function Get-DepartmentFromGroupTag {param ([string]$GroupTag)
+function Get-DepartmentFromGroupTag {
+    param ([string]$GroupTag)
     # Map group tags to departments based on our department list
     $departmentMapping = @{
-        "Board-of-Directors" = "Board-of-Directors"
-        "HR-Admin" = "HR-Admin"
-        "Legal-Compliance" = "Legal-Compliance"
-        "Marketing" = "Marketing"
-        "HN-Branch" = "HN-Branch"
-        "Accounting" = "Accounting"
-        "Fee-Control" = "Fee-Control"
-        "Data-Exchange" = "Data-Exchange"
-        "Service-Operation-Division" = "Service-Operation-Division"
-        "Training" = "Training"
-        "Customer-Service" = "Customer-Service"
-        "Account-System-Management" = "Account-System-Management"
-        "Quality-of-Service" = "Quality-of-Service"
-        "Project-Strategy-Division" = "Project-Strategy-Division"
-        "Financial-Service-Project" = "Financial-Service-Project"
-        "Bill-Payment-Project" = "Bill-Payment-Project"
-        "Business-Development" = "Business-Development"
-        "Network-Development" = "Network-Development"
-        "E-Commerce" = "E-Commerce"
-        "Omni" = "Omni"
-        "Paycode" = "Paycode"
-        "Digi-Gift" = "Digi-Gift"
-        "Product-Management" = "Product-Management"
-        "Payoo-X-and-Biz-Solutions" = "Payoo-X-and-Biz-Solutions"
-        "Web" = "Web"
-        "System-Integration" = "System-Integration"
-        "Core-System" = "Core-System"
-        "Database-Management" = "Database-Management"
-        "Quality-Control" = "Quality-Control"
-        "Business-Analysis" = "Business-Analysis"
+        "Board-of-Directors"                = "Board-of-Directors"
+        "HR-Admin"                          = "HR-Admin"
+        "Legal-Compliance"                  = "Legal-Compliance"
+        "Marketing"                         = "Marketing"
+        "HN-Branch"                         = "HN-Branch"
+        "Accounting"                        = "Accounting"
+        "Fee-Control"                       = "Fee-Control"
+        "Data-Exchange"                     = "Data-Exchange"
+        "Service-Operation-Division"        = "Service-Operation-Division"
+        "Training"                          = "Training"
+        "Customer-Service"                  = "Customer-Service"
+        "Account-System-Management"         = "Account-System-Management"
+        "Quality-of-Service"                = "Quality-of-Service"
+        "Project-Strategy-Division"         = "Project-Strategy-Division"
+        "Financial-Service-Project"         = "Financial-Service-Project"
+        "Bill-Payment-Project"              = "Bill-Payment-Project"
+        "Business-Development"              = "Business-Development"
+        "Network-Development"               = "Network-Development"
+        "E-Commerce"                        = "E-Commerce"
+        "Omni"                              = "Omni"
+        "Paycode"                           = "Paycode"
+        "Digi-Gift"                         = "Digi-Gift"
+        "Product-Management"                = "Product-Management"
+        "Payoo-X-and-Biz-Solutions"         = "Payoo-X-and-Biz-Solutions"
+        "Web"                               = "Web"
+        "System-Integration"                = "System-Integration"
+        "Core-System"                       = "Core-System"
+        "Database-Management"               = "Database-Management"
+        "Quality-Control"                   = "Quality-Control"
+        "Business-Analysis"                 = "Business-Analysis"
         "Payoo-Plus-Digital-Transformation" = "Payoo-Plus-Digital-Transformation"
-        "Mobile-App" = "Mobile-App"
-        "IT-Administration" = "IT-Administration"
-        "Technical-Operation" = "Technical-Operation"
-        "Cyber-Security" = "Cyber-Security"
-        "NTT" = "NTT"
-        "Collaborator" = "Collaborator"
+        "Mobile-App"                        = "Mobile-App"
+        "IT-Administration"                 = "IT-Administration"
+        "Technical-Operation"               = "Technical-Operation"
+        "Cyber-Security"                    = "Cyber-Security"
+        "NTT"                               = "NTT"
+        "Collaborator"                      = "Collaborator"
     }
 
     # Direct match
@@ -6004,10 +6272,12 @@ function Get-CrowdStrikeProductCode {
                             return $_.PSChildName
                         }
                     }
-                } catch {}
+                }
+                catch {}
             }
         }
-    } catch {}
+    }
+    catch {}
     return $null
 }
 
@@ -6027,19 +6297,22 @@ function Get-CrowdStrikeUninstallString {
                     if ($name -match '(?i)crowdstrike.*(windows|falcon).*sensor') {
                         if ($p.UninstallString) { return $p.UninstallString }
                     }
-                } catch {}
+                }
+                catch {}
             }
         }
-    } catch {}
+    }
+    catch {}
     return $null
 }
 
-function Uninstall-CrowdStrikeSensor {param([Parameter(Mandatory=$true)][string]$Token,[Parameter(Mandatory=$true)][System.Windows.Forms.RichTextBox]$statusTextBox)
-    if (-not $Token.Trim()) {Add-Status "Maintenance token is required." $statusTextBox ([System.Drawing.Color]::Red);return}
-
+function Uninstall-CrowdStrikeSensor {
+    param([Parameter(Mandatory = $true)][string]$Token, [Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox)
+    if (-not $Token.Trim()) { Add-Status "Maintenance token is required." $statusTextBox ([System.Drawing.Color]::Red); return }
+    
     # Chọn msiexec 64-bit
     $msi64 = Join-Path $env:WINDIR 'Sysnative\msiexec.exe'
-    if (-not (Test-Path $msi64)) {$msi64 = Join-Path $env:WINDIR 'System32\msiexec.exe'}
+    if (-not (Test-Path $msi64)) { $msi64 = Join-Path $env:WINDIR 'System32\msiexec.exe' }
 
     # Ghi log để debug (tự động vào %TEMP%)
     $logFile = Join-Path $env:TEMP ("cs_uninstall_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))
@@ -6051,7 +6324,8 @@ function Uninstall-CrowdStrikeSensor {param([Parameter(Mandatory=$true)][string]
 
     if ($p.ExitCode -eq 0) {
         Add-Status "Uninstall completed successfully." $statusTextBox ([System.Drawing.Color]::Green)
-    } else {
+    }
+    else {
         Add-Status "Uninstall finished with exit code $($p.ExitCode). Log: $logFile" $statusTextBox ([System.Drawing.Color]::Yellow)
 
         # Fallback nếu 1605: chạy đúng UninstallString từ registry
@@ -6069,10 +6343,12 @@ function Uninstall-CrowdStrikeSensor {param([Parameter(Mandatory=$true)][string]
 
                 if ($p2.ExitCode -eq 0) {
                     Add-Status "Uninstall completed successfully (fallback)." $statusTextBox ([System.Drawing.Color]::Green)
-                } else {
+                }
+                else {
                     Add-Status "Fallback exit code: $($p2.ExitCode). Log: $logFile" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
-            } else {
+            }
+            else {
                 Add-Status "No UninstallString found in registry for fallback." $statusTextBox ([System.Drawing.Color]::Red)
             }
         }
@@ -6082,16 +6358,19 @@ function Uninstall-CrowdStrikeSensor {param([Parameter(Mandatory=$true)][string]
     try {
         Add-Status "Resolving CrowdStrike ProductCode..." $statusTextBox ([System.Drawing.Color]::Gray)
         $productCode = Get-CrowdStrikeProductCode
-        if (-not $productCode) {Add-Status "Could not find CrowdStrike Windows Sensor in Uninstall registry." $statusTextBox ([System.Drawing.Color]::Red);return}
+        if (-not $productCode) { Add-Status "Could not find CrowdStrike Windows Sensor in Uninstall registry." $statusTextBox ([System.Drawing.Color]::Red); return }
         Add-Status "ProductCode: $productCode" $statusTextBox ([System.Drawing.Color]::Gray)
 
         # Cố gắng dừng service trước khi gỡ
-        try {$svc = Get-Service -Name csagent -ErrorAction SilentlyContinue
-            if ($svc -and $svc.Status -eq 'Running') {Add-Status "Stopping service csagent..." $statusTextBox ([System.Drawing.Color]::Gray)
+        try {
+            $svc = Get-Service -Name csagent -ErrorAction SilentlyContinue
+            if ($svc -and $svc.Status -eq 'Running') {
+                Add-Status "Stopping service csagent..." $statusTextBox ([System.Drawing.Color]::Gray)
                 Stop-Service -Name csagent -Force -ErrorAction SilentlyContinue
                 Start-Sleep -Seconds 2
             }
-        } catch {}
+        }
+        catch {}
 
         $arguments = "/x $productCode /qn /norestart MAINTENANCE_TOKEN=$Token"
         Add-Status "Uninstalling via msiexec $arguments" $statusTextBox ([System.Drawing.Color]::Gray)
@@ -6099,15 +6378,18 @@ function Uninstall-CrowdStrikeSensor {param([Parameter(Mandatory=$true)][string]
 
         if ($p.ExitCode -eq 0) {
             Add-Status "Uninstall completed successfully." $statusTextBox ([System.Drawing.Color]::Green)
-        } else {Add-Status "Uninstall finished with exit code $($p.ExitCode)." $statusTextBox ([System.Drawing.Color]::Yellow)}
+        }
+        else { Add-Status "Uninstall finished with exit code $($p.ExitCode)." $statusTextBox ([System.Drawing.Color]::Yellow) }
 
         # Xác nhận
         $svc2 = Get-Service -Name csagent -ErrorAction SilentlyContinue
-        if ($null -eq $svc2) {Add-Status "csagent service removed." $statusTextBox ([System.Drawing.Color]::Green)} else {Add-Status "csagent service still present (status: $($svc2.Status))." $statusTextBox ([System.Drawing.Color]::Yellow)}
-    } catch {Add-Status ("Uninstall error: " + $_.Exception.Message) $statusTextBox ([System.Drawing.Color]::Red)}
+        if ($null -eq $svc2) { Add-Status "csagent service removed." $statusTextBox ([System.Drawing.Color]::Green) } else { Add-Status "csagent service still present (status: $($svc2.Status))." $statusTextBox ([System.Drawing.Color]::Yellow) }
+    }
+    catch { Add-Status ("Uninstall error: " + $_.Exception.Message) $statusTextBox ([System.Drawing.Color]::Red) }
 }
 
-function Invoke-CrowdStrikeUninstallDialog {param([Parameter(Mandatory=$true)][System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-CrowdStrikeUninstallDialog {
+    param([Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox)
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "Uninstall CrowdStrike - Maintenance Token"
     $form.Size = New-Object System.Drawing.Size(420, 200)
@@ -6140,11 +6422,11 @@ function Invoke-CrowdStrikeUninstallDialog {param([Parameter(Mandatory=$true)][S
     $btnOk.Location = New-Object System.Drawing.Point(200, 110)
     $btnOk.Size = New-Object System.Drawing.Size(85, 30)
     $btnOk.Add_Click({
-        $token = $txt.Text
-        $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
-        $form.Close()
-        Uninstall-CrowdStrikeSensor -Token $token -statusTextBox $statusTextBox
-    })
+            $token = $txt.Text
+            $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
+            $form.Close()
+            Uninstall-CrowdStrikeSensor -Token $token -statusTextBox $statusTextBox
+        })
     $form.Controls.Add($btnOk)
 
     $btnCancel = New-Object System.Windows.Forms.Button
@@ -6175,21 +6457,21 @@ $menuButtons = @(
 )
 
 # Các tham số cho các nút menu
-try {$buttonHeight = 60;$buttonSpacingY = 10;$buttonTop = 80;$buttonLeft = 30;$buttonControls = @()}
-catch {Write-Host "Error: $_" -ForegroundColor Red;Stop-Transcript -ErrorAction SilentlyContinue;exit 1}
+try { $buttonHeight = 60; $buttonSpacingY = 10; $buttonTop = 80; $buttonLeft = 30; $buttonControls = @() }
+catch { Write-Host "Error: $_" -ForegroundColor Red; Stop-Transcript -ErrorAction SilentlyContinue; exit 1 }
 
 # Tạo các nút menu
 for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
     # Nút bên trái
-    if ($menuButtons[$i].text -eq '[0] CrowStrike') {$btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action -normalColor ([System.Drawing.Color]::FromArgb(255, 140, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 165, 0)) -pressColor ([System.Drawing.Color]::FromArgb(200, 100, 0))}
-    else {$btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action}
+    if ($menuButtons[$i].text -eq '[0] CrowStrike') { $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action -normalColor ([System.Drawing.Color]::FromArgb(255, 140, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 165, 0)) -pressColor ([System.Drawing.Color]::FromArgb(200, 100, 0)) }
+    else { $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action }
     $btnL.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $script:form.Controls.Add($btnL)
     $buttonControls += $btnL
     # Nút bên phải
     if ($i + 1 -lt $menuButtons.Count) {
-        if ($menuButtons[$i + 1].text -eq '[0] CrowStrike') {$btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action -normalColor ([System.Drawing.Color]::FromArgb(255, 140, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 165, 0)) -pressColor ([System.Drawing.Color]::FromArgb(200, 100, 0))}
-        else {$btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action}
+        if ($menuButtons[$i + 1].text -eq '[0] CrowStrike') { $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action -normalColor ([System.Drawing.Color]::FromArgb(255, 140, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 165, 0)) -pressColor ([System.Drawing.Color]::FromArgb(200, 100, 0)) }
+        else { $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action }
         $btnR.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
         $script:form.Controls.Add($btnR)
         $buttonControls += $btnR
