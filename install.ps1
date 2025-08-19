@@ -1242,17 +1242,14 @@ function Invoke-RunAllOperations {
 }
 
 # [2] Install Software Functions
-function Test-7ZipInstalled {
-    $paths = @("C:\Program Files\7-Zip\7z.exe", "C:\Program Files (x86)\7-Zip\7z.exe")
+function Test-7ZipInstalled {$paths = @("C:\Program Files\7-Zip\7z.exe", "C:\Program Files (x86)\7-Zip\7z.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-ChromeInstalled {
-    $paths = @("C:\Program Files\Google\Chrome\Application\chrome.exe", "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")
+function Test-ChromeInstalled {$paths = @("C:\Program Files\Google\Chrome\Application\chrome.exe", "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-
 function Test-LAPSInstalledOrBuiltin {
     [CmdletBinding()]
     param()
@@ -1304,31 +1301,23 @@ function Test-LAPSInstalledOrBuiltin {
         }
     }
 }
-
-function Test-FoxitInstalled {
-    $paths = @("C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe", "C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe")
+function Test-FoxitInstalled {$paths = @("C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe", "C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-Office2019Installed {
-    $paths = @("C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")
+function Test-Office2019Installed {$paths = @("C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-ZoomInstalled {
-    $paths = @("$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe", "C:\Program Files\Zoom\bin\Zoom.exe", "C:\Program Files (x86)\Zoom\bin\Zoom.exe")
+function Test-ZoomInstalled {$paths = @("$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe", "C:\Program Files\Zoom\bin\Zoom.exe", "C:\Program Files (x86)\Zoom\bin\Zoom.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-CheckPointVPNInstalled {
-    $paths = @("C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")
+function Test-CheckPointVPNInstalled {$paths = @("C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-OneDriveInstalled {
-    # Method 1: Check via registry (most accurate)
-    $uninstallKeys = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*")
-
+function Test-OneDriveInstalled {$uninstallKeys = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*")
     foreach ($keyPath in $uninstallKeys) {
         try {
             $programs = Get-ItemProperty $keyPath -ErrorAction SilentlyContinue | Where-Object {
@@ -1358,8 +1347,7 @@ function Test-OneDriveInstalled {
     }
     return $false
 }
-function Uninstall-OneDriveComplete {
-    param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Uninstall-OneDriveComplete {param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # First, verify OneDrive is actually installed
         if (-not (Test-OneDriveInstalled)) {
@@ -1537,14 +1525,12 @@ function Uninstall-OneDriveComplete {
     }
 }
 
-# Plan Software Install
-function Plan_SoftwareInstall {
-    param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+function Plan_SoftwareInstall {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $pending = @()
     $skipped = @()
     $appsMeta = @(
         # Id, DisplayName, Device constraint, loại copy cần
-        @{ Id = 'onedrive'; Display = 'OneDrive (uninstall)'; Device = 'All' }, # chỉ log state, không copy
+        @{ Id = 'onedrive'; Display = 'OneDrive (uninstall)'; Device = 'All' },
         @{ Id = '7zip'; Display = '7-Zip'; Device = 'All' },
         @{ Id = 'chrome'; Display = 'Google Chrome'; Device = 'All' },
         @{ Id = 'laps'; Display = 'LAPS'; Device = 'All' },
@@ -1603,8 +1589,7 @@ function Plan_SoftwareInstall {
         Meta    = $appsMeta
     }
 }
-function Copy-SoftwareFilesSelective {
-    param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [array]$Apps, [System.Windows.Forms.RichTextBox]$statusTextBox)
+function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [array]$Apps, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $tempDir = "$env:USERPROFILE\Downloads\SETUP"
     $setupDir = Join-Path $tempDir "Software"
     $office2019Dir = Join-Path $tempDir "Office2019"
@@ -1621,7 +1606,6 @@ function Copy-SoftwareFilesSelective {
         switch ($app.Id) {
             '7zip' {
                 if (Test-Path $srcSETUP) {
-                    # $file = Get-ChildItem -Path $srcSETUP -Name "7z*.exe","7-Zip*.exe","7zip*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
                     $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include '7z*.exe', '7-Zip*.exe', '7zip*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
                     if ($file) {
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
@@ -1654,7 +1638,6 @@ function Copy-SoftwareFilesSelective {
             }
             'foxit' {
                 if (Test-Path $srcSETUP) {
-                    # $file = Get-ChildItem -Path $srcSETUP -Name "FoxitPDFReader*.exe","FoxitReader*.exe","Foxit*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
                     $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include 'FoxitPDFReader*.exe', 'FoxitReader*.exe', 'Foxit*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
                     if ($file) {
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
@@ -1697,12 +1680,9 @@ function Copy-SoftwareFilesSelective {
             }
         }
     }
-
     return $true
 }
-
-function Invoke-InstallSoftware {
-    param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     Add-Status "1. Detecting installed software..." $statusTextBox
     $plan = Plan_SoftwareInstall -DeviceType $DeviceType -statusTextBox $statusTextBox
 
@@ -1710,20 +1690,22 @@ function Invoke-InstallSoftware {
 
     Add-Status "2. Copying installers for pending apps..." $statusTextBox
     $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox
+
     if (-not $okCopy) { Add-Status "Error: Failed to copy required installers. Aborting." $statusTextBox ([System.Drawing.Color]::Red); return $false }
 
     Add-Status "3. Installing pending software..." $statusTextBox
-    $okInstall = Install-Software -deviceType $DeviceType $statusTextBox
+    $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $plan.Pending
     if ($okInstall) { Add-Status "All pending software installation completed successfully!" $statusTextBox; return $true }
     else { Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red); return $false }
 }
-
-function Install-Software {
-    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+function Install-Software {param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [array]$appsToInstall)
     try {
         $tempDir = "$env:USERPROFILE\Downloads\SETUP"
         $setupDir = "$tempDir\Software"
         $office2019Dir = "$tempDir\Office2019"
+
+        # Take list of Ids to install
+        $appIds = $appsToInstall | ForEach-Object { $_.Id }
 
         # 1. Check and uninstall OneDrive if present
         if (Test-OneDriveInstalled) {
@@ -1733,161 +1715,60 @@ function Install-Software {
         }
         else { Add-Status "OneDrive:     Has not installed. Skipping..." $statusTextBox }
 
-        # 2. Install 7-Zip - FIXED VERSION
-        $sevenZipPaths = @(
-            "C:\Program Files\7-Zip\7z.exe",
-            "C:\Program Files (x86)\7-Zip\7z.exe"
-        )
-
-        $sevenZipInstalled = $false
-        foreach ($path in $sevenZipPaths) {
-            if (Test-Path $path) {
-                $sevenZipInstalled = $true
-                break
-            }
-        }
-
-        if (-not $sevenZipInstalled) {
-            $sevenZipFiles = @()
-            $searchPatterns = @("7z*.exe", "7-Zip*.exe", "7zip*.exe")
-
-            foreach ($pattern in $searchPatterns) {
-                $foundFiles = Get-ChildItem -Path $setupDir -Name $pattern -ErrorAction SilentlyContinue
-                if ($foundFiles) {
-                    $sevenZipFiles += $foundFiles
-                    break
+        # 2. Install 7-Zip
+        if ($appIds -contains '7zip') {
+            $sevenZipInstaller = Get-ChildItem -Path $setupDir -Include "7z*.exe","7-Zip*.exe","7zip*.exe" -Recurse | Select-Object -First 1
+            if ($sevenZipInstaller) { Add-Status "7-Zip: Installing..." $statusTextBox
+                try { $process = Start-Process -FilePath $sevenZipInstaller.FullName -ArgumentList "/S" -Wait -PassThru -WindowStyle Hidden
+                    if ($process.ExitCode -eq 0) { Add-Status "7-Zip: Installed successfully!" $statusTextBox 
+                    } else { Add-Status "7-Zip: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)}
+                } catch [System.Exception] { $errorMessage = $_.Exception.Message
+                    Add-Status "7-Zip: Installation failed: $errorMessage" $statusTextBox ([System.Drawing.Color]::Red)
                 }
+            } else { Add-Status "7-Zip: Installer not found in $setupDir" $statusTextBox ([System.Drawing.Color]::Red)
             }
-
-            if ($sevenZipFiles.Count -gt 0) {
-                $sevenZipInstaller = "$setupDir\$($sevenZipFiles[0])"
-                Add-Status "Installing 7-Zip..." $statusTextBox
-
-                try {
-                    $result = Start-Process -FilePath $sevenZipInstaller -ArgumentList "/S" -Wait -PassThru -WindowStyle Hidden
-
-                    if ($result.ExitCode -eq 0) { Add-Status "7-Zip installed successfully!" $statusTextBox }
-                    else { Add-Status "WARNING: 7-Zip EXE installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red) }
-                }
-                catch {
-                    Add-Status "ERROR: 7-Zip installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-        }
-        else {
-            Add-Status "7-Zip:        Already installed. Skipping..." $statusTextBox
-        }
-
+        } else { Add-Status "7-Zip: Already installed. Skipping..." $statusTextBox }
 
         # 3. Install Chrome
-        $chromeCheck = @(
-            "C:\Program Files\Google\Chrome\Application\chrome.exe",
-            "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
-        )
-        $chromeInstalled = $false
-        foreach ($path in $chromeCheck) {
-            if (Test-Path $path) {
-                $chromeInstalled = $true
-                break
-            }
-        }
-
-        if (-not $chromeInstalled) {
-            $chromeInstaller = "$setupDir\ChromeSetup.exe"
+        if ($appIds -contains 'chrome') {
+            $chromeInstaller = Join-Path $setupDir "ChromeSetup.exe"
             if (Test-Path $chromeInstaller) {
-                Add-Status "Installing Chrome..." $statusTextBox
+                Add-Status "Chrome: Installing..." $statusTextBox
                 try {
-                    Start-Process -FilePath $chromeInstaller -ArgumentList "/silent /install" -Wait
-                    Add-Status "Chrome installed successfully!" $statusTextBox
+                    $process = Start-Process -FilePath $chromeInstaller -ArgumentList "/silent /install" -Wait -PassThru -WindowStyle Hidden
+                    if ($process.ExitCode -eq 0) {
+                        Add-Status "Chrome: Installed successfully!" $statusTextBox
+                    } else {
+                        Add-Status "Chrome: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    }
+                } catch {
+                    Add-Status "Chrome: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
                 }
-                catch {
-                    Add-Status "ERROR: Chrome installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "ERROR: Chrome installer not found at $chromeInstaller" $statusTextBox ([System.Drawing.Color]::Red)
-            }
-        }
-        else {
-            Add-Status "Chrome:       Already installed. Skipping..." $statusTextBox
-        }
+            } else { Add-Status "Chrome: Installer not found in $setupDir" $statusTextBox ([System.Drawing.Color]::Red) }
+        } else { Add-Status "Chrome:       Already installed. Skipping..." $statusTextBox }
 
         # 4. Install LAPS - Skip on Windows 11 as it's built-in
-        $osInfo = Get-ComputerInfo
-        $isWindows11 = $osInfo.WindowsProductName -like "*Windows 11*"
+        if ($appIds -contains 'laps') {
+            $osInfo = Get-ComputerInfo
+            if ($osInfo.WindowsProductName -match "Windows 10") {
+                $lapsInstaller = Join-Path $setupDir "LAPS_x64.msi"
+                if (Test-Path $lapsInstaller) { Add-Status "LAPS: Installing..." $statusTextBox
+                    try { $result = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$lapsInstaller`" /qn /norestart" -Wait -PassThru
+                        if ($result.ExitCode -eq 0) { Add-Status "LAPS: Installed successfully!" $statusTextBox } else { Add-Status "LAPS: Installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                    } catch { Add-Status "LAPS: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+                } else { Add-Status "LAPS: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
+            } else { Add-Status "LAPS: Built-in on Windows 11, skipping installation" $statusTextBox }
+        } else { Add-Status "LAPS:       Already installed. Skipping..." $statusTextBox }
 
-        if ($isWindows11) {
-            Add-Status "LAPS:         Skipping on Windows 11 (built-in feature)" $statusTextBox
-        }
-        elseif (-not (Test-Path "C:\Program Files\LAPS\CSE\AdmPwd.dll")) {
-            $lapsInstaller = "$setupDir\LAPS_x64.msi"
-            if (Test-Path $lapsInstaller) {
-                Add-Status "Installing LAPS..." $statusTextBox
-                try {
-                    Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$lapsInstaller`" /quiet" -Wait
-                    Add-Status "LAPS installed successfully!" $statusTextBox
-                }
-                catch {
-                    Add-Status "ERROR: LAPS installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "ERROR: LAPS installer not found at $lapsInstaller" $statusTextBox ([System.Drawing.Color]::Red)
-            }
-        }
-        else {
-            Add-Status "LAPS:         Already installed. Skipping..." $statusTextBox
-        }
-
-        # 5. Install Foxit Reader - COMPLETELY SILENT VERSION
-        $foxitCheck = @(
-            "C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe",
-            "C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe",
-            "C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe",
-            "C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe"
-        )
-
-        $foxitInstalled = $false
-        foreach ($path in $foxitCheck) {
-            if (Test-Path $path) {
-                $foxitInstalled = $true
-                break
-            }
-        }
-
-        if (-not $foxitInstalled) {
-            $foxitFiles = @()
-            $searchPatterns = @("FoxitPDFReader*.exe", "FoxitReader*.exe", "Foxit*.exe")
-
-            foreach ($pattern in $searchPatterns) {
-                $foundFiles = Get-ChildItem -Path $setupDir -Name $pattern -ErrorAction SilentlyContinue
-                if ($foundFiles) {
-                    $foxitFiles += $foundFiles
-                    break
-                }
-            }
-
-            if ($foxitFiles.Count -gt 0) {
-                $foxitPath = "$setupDir\$($foxitFiles[0])"
-                Add-Status "Installing Foxit Reader..." $statusTextBox
-
-                try {
-                    $result = Start-Process -FilePath $foxitPath -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait -PassThru -WindowStyle Hidden
-
-                    if ($result.ExitCode -eq 0) { Add-Status "Foxit Reader installed successfully!" $statusTextBox }
-                    else { Add-Status "ERROR: Foxit Reader installation failed (Exit code: $($result.ExitCode))" $statusTextBox ([System.Drawing.Color]::Red) }
-                }
-                catch {
-                    Add-Status "ERROR: Foxit Reader installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "ERROR: Foxit Reader installer not found in $setupDir" $statusTextBox ([System.Drawing.Color]::Red)
-            }
-        }
-        else {
-            Add-Status "Foxit Reader: Already installed. Skipping..." $statusTextBox
-        }
+        # 5. Install Foxit Reader
+        if ($appIds -contains 'foxit') {
+            $foxitInstaller = Get-ChildItem -Path $setupDir -Include "Foxit*.exe" -Recurse | Select-Object -First 1
+            if ($foxitInstaller) { Add-Status "Foxit Reader: Installing..." $statusTextBox
+                try { $result = Start-Process -FilePath $foxitInstaller.FullName -ArgumentList "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES" -Wait -PassThru
+                    if ($result.ExitCode -eq 0) { Add-Status "Foxit Reader: Installed successfully!" $statusTextBox } else { Add-Status "Foxit Reader: Installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                } catch { Add-Status "Foxit Reader: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+            } else { Add-Status "Foxit Reader: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
+        } else { Add-Status "Foxit Reader: Already installed. Skipping..." $statusTextBox }
 
         # 6. Install Office 2019 (Completely Silent)
         if (-not (Test-Path "C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")) {
@@ -1908,7 +1789,7 @@ function Install-Software {
             }
             
             if (Test-Path $officeSetup) {
-                Add-Status "Installing Office 2019 silently (no progress window will be shown)..." $statusTextBox
+                Add-Status "Office 2019: Installing silently (no progress window will be shown)..." $statusTextBox
                 try {
                     # Kill any existing Office processes
                     Get-Process | Where-Object { $_.ProcessName -match "winword|excel|powerpnt|outlook|msaccess|mspub|onenote" } | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -1972,11 +1853,11 @@ function Install-Software {
                 }
             }
             else {
-                Add-Status "ERROR: Office 2019 setup not found at $officeSetup" $statusTextBox ([System.Drawing.Color]::Red)
+                Add-Status "Office 2019: Setup not found at $officeSetup" $statusTextBox ([System.Drawing.Color]::Red)
             }
         }
         else {
-            Add-Status "Office 2019: Already installed. Skipping..." $statusTextBox ([System.Drawing.Color]::Green)
+            Add-Status "Office 2019: Already installed. Skipping..." $statusTextBox 
         }
 
         # 7. Install Zoom
@@ -2004,7 +1885,7 @@ function Install-Software {
                     catch { Add-Status "ERROR: Zoom installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
                 }
                 else {
-                    Add-Status "ERROR: Zoom installer not found at $zoomInstaller" $statusTextBox ([System.Drawing.Color]::Red)
+                    Add-Status "Zoom:         Installer not found at $zoomInstaller" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             }
             else {
@@ -2057,7 +1938,6 @@ function Install-Software {
         }
     }
 }
-
 function Show-InstallSoftwareDialog {
     Hide-MainMenu
     # Create device type selection form
