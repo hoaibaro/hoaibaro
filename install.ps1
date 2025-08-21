@@ -50,7 +50,6 @@ function New-DynamicButton {
     $button.FlatAppearance.MouseDownBackColor = $pressColor
     $button.Cursor = [System.Windows.Forms.Cursors]::Hand
     $button.Add_Click($clickAction)
-
     return $button
 }
 
@@ -64,7 +63,6 @@ $Global:WifiDriverExe = 'D:\DRIVER\Wifi\WiFi-23.120.0-Driver64-Win10-Win11.exe'
 
 # Function to ensure Office installation is completely silent
 function Set-OfficeInstallationSilent {param([string]$ConfigPath)
-    
     try {
         if (Test-Path $ConfigPath) {
             # Read existing config
@@ -235,50 +233,6 @@ function Add-Status {
 }
 
 # [1] Run All Functions
-function Select-DeviceType {
-    $form = New-Object System.Windows.Forms.Form
-    $form.Text = "Select Device Type"
-    $form.Size = New-Object System.Drawing.Size(300, 210)
-    $form.StartPosition = "CenterParent"
-    $form.BackColor = [System.Drawing.Color]::Black
-    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
-    $form.MaximizeBox = $false
-    $form.MinimizeBox = $false
-
-    # Safe gradient instead of inline Paint
-    Add-GradientBackground -form $form
-
-    # Title
-    $lbl = New-Object System.Windows.Forms.Label
-    $lbl.Text = "SELECT DEVICE TYPE"
-    $lbl.Location = New-Object System.Drawing.Point(0, 20)
-    $lbl.Size = New-Object System.Drawing.Size(290, 30)
-    $lbl.ForeColor = [System.Drawing.Color]::Lime
-    $lbl.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
-    $lbl.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
-    $lbl.BackColor = [System.Drawing.Color]::Transparent
-    $form.Controls.Add($lbl)
-
-    # Buttons
-    $selection = $null
-    $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 70 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction { $script:selection = "Desktop"; $form.DialogResult = [System.Windows.Forms.DialogResult]::OK; $form.Close() }
-    $form.Controls.Add($btnDesktop)
-
-    $btnLaptop = New-DynamicButton -text "LAPTOP" -x 10 -y 120 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction { $script:selection = "Laptop"; $form.DialogResult = [System.Windows.Forms.DialogResult]::OK; $form.Close() }
-    $form.Controls.Add($btnLaptop)
-
-    # Esc support
-    $form.KeyPreview = $true
-    $form.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $form.Close() } })
-
-    # Show dialog
-    $result = $form.ShowDialog()
-    if ($result -eq [System.Windows.Forms.DialogResult]::OK) { Add-Status "Selected device type: $script:selection" $statusTextBox }
-    else { Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red) }
-    $form.Close()
-    return $script:selection
-}
-
 # STEP 0: WiFi AUTO-CONNECTION FUNCTION
 function Install-DriverExe {
     param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox, [ValidateSet('Ethernet', 'WiFi')][string]$Type = 'Ethernet')
@@ -306,13 +260,9 @@ function Install-DriverExe {
                     $installed = $true
                     break
                 }
-                else {
-                    Add-Status "$Type driver installer returned code $($p.ExitCode) with args: $args" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
+                else { Add-Status "$Type driver installer returned code $($p.ExitCode) with args: $args" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
-            catch {
-                Add-Status "$Type driver install attempt failed with args '$args': $_" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
+            catch { Add-Status "$Type driver install attempt failed with args '$args': $_" $statusTextBox ([System.Drawing.Color]::Yellow) }
         }
 
         if (-not $installed) {
@@ -324,12 +274,8 @@ function Install-DriverExe {
         Start-Sleep -Seconds 8
         return $true
     }
-    catch {
-        Add-Status "$Type driver installation error: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        return $false
-    }
+    catch { Add-Status "$Type driver installation error: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 }
-
 function Install-WiFiDriversOffline {
     param([System.Windows.Forms.Form]$OwnerForm, [System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -412,7 +358,6 @@ function Test-InternetConnection { param([int]$timeoutMs = 3000)
     }
     return $success
 }
-
 function Invoke-WiFiAutoConnection {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -574,7 +519,6 @@ function Invoke-WiFiAutoConnection {
     }
     catch { Add-Status "WiFi setup failed: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 }
-
 function Invoke-WindowsUpdateCheck {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -604,6 +548,51 @@ function Invoke-WindowsUpdateCheck {
         }
     }
     catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
+}
+
+# STEP 1: Select Device Type
+function Select-DeviceType {
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "Select Device Type"
+    $form.Size = New-Object System.Drawing.Size(300, 210)
+    $form.StartPosition = "CenterParent"
+    $form.BackColor = [System.Drawing.Color]::Black
+    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+    $form.MaximizeBox = $false
+    $form.MinimizeBox = $false
+
+    # Safe gradient instead of inline Paint
+    Add-GradientBackground -form $form
+
+    # Title
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Text = "SELECT DEVICE TYPE"
+    $lbl.Location = New-Object System.Drawing.Point(0, 20)
+    $lbl.Size = New-Object System.Drawing.Size(290, 30)
+    $lbl.ForeColor = [System.Drawing.Color]::Lime
+    $lbl.Font = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Bold)
+    $lbl.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+    $lbl.BackColor = [System.Drawing.Color]::Transparent
+    $form.Controls.Add($lbl)
+
+    # Buttons
+    $selection = $null
+    $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 70 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction { $script:selection = "Desktop"; $form.DialogResult = [System.Windows.Forms.DialogResult]::OK; $form.Close() }
+    $form.Controls.Add($btnDesktop)
+
+    $btnLaptop = New-DynamicButton -text "LAPTOP" -x 10 -y 120 -width 260 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction { $script:selection = "Laptop"; $form.DialogResult = [System.Windows.Forms.DialogResult]::OK; $form.Close() }
+    $form.Controls.Add($btnLaptop)
+
+    # Esc support
+    $form.KeyPreview = $true
+    $form.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $form.Close() } })
+
+    # Show dialog
+    $result = $form.ShowDialog()
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) { Add-Status "Selected device type: $script:selection" $statusTextBox }
+    else { Add-Status "Device type selection cancelled. Exiting..." $statusTextBox ([System.Drawing.Color]::Red) }
+    $form.Close()
+    return $script:selection
 }
 
 # STEP 2: Choose Device Type and Rename
@@ -975,8 +964,7 @@ function Invoke-UserPasswordManagement {
 }
 
 # Main Function Provisioing Run All Processes
-function Invoke-RunAllOperations {
-    param([System.Windows.Forms.Form]$mainForm)
+function Invoke-RunAllOperations {param([System.Windows.Forms.Form]$mainForm)
     Hide-MainMenu
     # Create status form
     $statusForm = New-Object System.Windows.Forms.Form
@@ -1467,6 +1455,7 @@ function Uninstall-OneDriveComplete {
     }
 }
 
+# Main function 
 function PlanSoftwareInstall {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $pending = @()
     $skipped = @()
@@ -1533,12 +1522,10 @@ function PlanSoftwareInstall {param([ValidateSet('Desktop', 'Laptop')][string]$D
     }
 }
 function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [array]$Apps, [System.Windows.Forms.RichTextBox]$statusTextBox)
-    $tempDir = "$env:USERPROFILE\Downloads\SETUP"
-    $setupDir = Join-Path $tempDir "Software"
-    $office2019Dir = Join-Path $tempDir "Office 2019"
+    $setupDir = "$env:USERPROFILE\Downloads\SETUP"
+    $office2019Dir = Join-Path $setupDir "Office 2019"
 
     # Create directories if they don't exist
-    if (-not (Test-Path $tempDir)) { New-Item -Path $tempDir -ItemType Directory -Force | Out-Null }
     if (-not (Test-Path $setupDir)) { New-Item -Path $setupDir -ItemType Directory -Force | Out-Null }
     if (-not (Test-Path $office2019Dir)) { New-Item -Path $office2019Dir -ItemType Directory -Force | Out-Null }
 
@@ -1556,9 +1543,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
                         Add-Status "Copying: 7-Zip" $statusTextBox
                     }
-                    else {
-                        Add-Status "Missing 7-Zip installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
-                    }
+                    else { Add-Status "Missing 7-Zip installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow) }
                 }
             }
             'chrome' {
@@ -1567,9 +1552,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "ChromeSetup.exe") -Force
                     Add-Status "Copying: Chrome" $statusTextBox
                 }
-                else {
-                    Add-Status "Missing ChromeSetup.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
+                else { Add-Status "Missing ChromeSetup.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'laps' {
                 $src = Join-Path $srcSETUP "LAPS_x64.msi"
@@ -1577,9 +1560,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "LAPS_x64.msi") -Force
                     Add-Status "Copying: LAPS" $statusTextBox
                 }
-                else {
-                    Add-Status "Missing LAPS_x64.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
+                else { Add-Status "Missing LAPS_x64.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'foxit' {
                 if (Test-Path $srcSETUP) {
@@ -1588,9 +1569,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
                         Add-Status "Copying: Foxit" $statusTextBox
                     }
-                    else {
-                        Add-Status "Missing Foxit installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
-                    }
+                    else { Add-Status "Missing Foxit installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow) }
                 }
             }
             'office2019' {
@@ -1599,9 +1578,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                     Copy-Item -Path (Join-Path $srcOffice "*") -Destination $office2019Dir -Recurse -Force
                     Add-Status "Copying: Office2019" $statusTextBox
                 }
-                else {
-                    Add-Status "Missing Office2019 source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
+                else { Add-Status "Missing Office2019 source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'zoom' {
                 $src = Join-Path $srcSETUP "ZoomInstallerFull.exe"
@@ -1609,9 +1586,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "ZoomInstallerFull.exe") -Force
                     Add-Status "Copying: Zoom" $statusTextBox
                 }
-                else {
-                    Add-Status "Missing ZoomInstallerFull.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
+                else { Add-Status "Missing ZoomInstallerFull.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'checkpointvpn' {
                 $src = Join-Path $srcSETUP "CheckPointVPN.msi"
@@ -1619,9 +1594,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "CheckPointVPN.msi") -Force
                     Add-Status "Copying: CheckPointVPN" $statusTextBox
                 }
-                else {
-                    Add-Status "Missing CheckPointVPN.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
+                else { Add-Status "Missing CheckPointVPN.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
         }
     }
@@ -1671,11 +1644,9 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                     $process = Start-Process -FilePath $chromeInstaller -ArgumentList "/silent /install" -Wait -PassThru -WindowStyle Hidden
                     if ($process.ExitCode -eq 0) {
                         Add-Status "Chrome: Installed successfully!" $statusTextBox
-                    } else {
-                        Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
-                    }
-                } catch {
-                    Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                    } else { Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                } catch [System.Exception] { $errorMessage = $_.Exception.Message
+                    Add-Status "Error: $errorMessage" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
         } else { Add-Status "Chrome:       Already installed. Skipping..." $statusTextBox }
@@ -1690,7 +1661,9 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                     try {
                         $result = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$lapsInstaller`" /qn /norestart" -Wait -PassThru
                         if ($result.ExitCode -eq 0) { Add-Status "LAPS: Installed successfully!" $statusTextBox } else { Add-Status "Error: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                    } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+                    } catch [System.Exception] { $errorMessage = $_.Exception.Message
+                        Add-Status "Error: $errorMessage" $statusTextBox ([System.Drawing.Color]::Red)
+                    }
                 } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
             } else { Add-Status "LAPS: Built-in on Windows 11, skipping installation" $statusTextBox }
         } else { Add-Status "LAPS:       Already installed. Skipping..." $statusTextBox }
@@ -1703,7 +1676,9 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                 try {
                     $result = Start-Process -FilePath $foxitInstaller.FullName -ArgumentList "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES" -Wait -PassThru
                     if ($result.ExitCode -eq 0) { Add-Status "Foxit Reader: Installed successfully!" $statusTextBox } else { Add-Status "Error: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+                } catch [System.Exception] { $errorMessage = $_.Exception.Message
+                    Add-Status "Error: $errorMessage" $statusTextBox ([System.Drawing.Color]::Red)
+                }
             } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
         } else { Add-Status "Foxit Reader: Already installed. Skipping..." $statusTextBox }
 
@@ -1873,12 +1848,12 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
             if (-not (Test-Path $agentDest)) {
                 if (Test-Path $desktopAgent.FullName) {
                     Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force
-                    Add-Status "Desktop Agent has been copied" $statusTextBox
+                    Add-Status "DesktopAgent has been copied" $statusTextBox
                 } else {
                     Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             } else {
-                Add-Status "Desktop Agent existed. Skipped" $statusTextBox
+                Add-Status "DesktopAgent existed. Skipped" $statusTextBox
             }
         } else {
             Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
@@ -2102,7 +2077,6 @@ function Invoke-SetTimezonePower {
         Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
-
 function Invoke-FirewallOn {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -2125,7 +2099,6 @@ function Invoke-FirewallOn {
         Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
-
 function Invoke-FirewallOff {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -2148,7 +2121,6 @@ function Invoke-FirewallOff {
         Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
-
 function Invoke-PowerOptionsDialog {
     Hide-MainMenu
     # Create Power Options form
@@ -4814,7 +4786,6 @@ function Get-ComputerDomainInfo {
         }
     }
 }
-
 function New-DomainManagementLabel {
     param([string]$Text, [int]$X, [int]$Y, [int]$Width, [int]$Height, [int]$FontSize = 12, [System.Drawing.FontStyle]$FontStyle = [System.Drawing.FontStyle]::Regular)
     $label = New-Object System.Windows.Forms.Label
@@ -4826,7 +4797,6 @@ function New-DomainManagementLabel {
 
     return $label
 }
-
 function New-DomainManagementTextBox {
     param([int]$X, [int]$Y, [int]$Width, [int]$Height, [bool]$IsPassword = $false, [string]$DefaultText = "")
     $textBox = New-Object System.Windows.Forms.TextBox
@@ -4839,7 +4809,6 @@ function New-DomainManagementTextBox {
     if ($IsPassword) { $textBox.UseSystemPasswordChar = $true }
     return $textBox
 }
-
 function New-DomainManagementRadioButton {
     param([string]$Text, [int]$X, [int]$Y, [int]$Width, [int]$Height, [bool]$IsChecked = $false, [bool]$IsEnabled = $true)
     $radioButton = New-Object System.Windows.Forms.RadioButton
@@ -4853,7 +4822,6 @@ function New-DomainManagementRadioButton {
     $radioButton.Enabled = $IsEnabled
     return $radioButton
 }
-
 function Set-DomainFormLayout {
     param([hashtable]$FormControls, [string]$OperationType)
     switch ($OperationType) {
@@ -4894,7 +4862,6 @@ function Set-DomainFormLayout {
 
     }
 }
-
 function Test-DomainJoinInputs {
     param([string]$DomainName, [string]$Username, [SecureString]$Password)
 
@@ -4931,7 +4898,6 @@ function Test-DomainJoinInputs {
         ErrorMessage = ""
     }
 }
-
 function Test-WorkgroupInputs {
     param([string]$WorkgroupName)
     if ([string]::IsNullOrWhiteSpace($WorkgroupName)) {
@@ -4961,7 +4927,6 @@ function Test-WorkgroupInputs {
         ErrorMessage = ""
     }
 }
-
 function Invoke-ElevatedDomainCommand {
     param([string]$Command, [string]$OperationType)
     try {
@@ -5004,18 +4969,14 @@ catch {
         # Start the elevated process and wait for completion
         $process = [System.Diagnostics.Process]::Start($processStartInfo)
 
-        if ($null -eq $process) {
-            throw "Failed to start elevated process - User may have cancelled UAC prompt"
-        }
+        if ($null -eq $process) { throw "Failed to start elevated process - User may have cancelled UAC prompt" }
 
         # Wait for the process to complete (with timeout)
         $timeout = 120000 # 2 minutes
         $completed = $process.WaitForExit($timeout)
 
         # Clean up temp file
-        if (Test-Path $tempScript) {
-            Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
-        }
+        if (Test-Path $tempScript) { Remove-Item $tempScript -Force -ErrorAction SilentlyContinue }
 
         if (-not $completed) {
             # Process timed out
@@ -5044,7 +5005,6 @@ catch {
                 # Force restart
                 Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 10 /c `"Restarting to complete $OperationType`"" -WindowStyle Hidden
             }
-
             return $true
         }
         else {
@@ -5069,7 +5029,6 @@ catch {
         return $false
     }
 }
-
 function Invoke-DomainJoinOperation {
     param([string]$DomainName, [string]$Username, [SecureString]$Password)
     # Validate inputs
@@ -5098,9 +5057,7 @@ function Invoke-DomainJoinOperation {
             return $false
         }
     }
-    finally {
-        if ($pwdPtr -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pwdPtr) }
-    }
+    finally { if ($pwdPtr -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pwdPtr) } }
 
     # Test domain connectivity first (like sysdm.cpl does)
     try {
@@ -5114,14 +5071,10 @@ function Invoke-DomainJoinOperation {
                 [System.Windows.Forms.MessageBoxIcon]::Warning
             )
 
-            if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) {
-                return $false
-            }
+            if ($confirmResult -eq [System.Windows.Forms.DialogResult]::No) { return $false }
         }
     }
-    catch {
-        Write-Warning "Could not test domain connectivity: $_"
-    }
+    catch { Write-Warning "Could not test domain connectivity: $_" }    
 
     # Convert SecureString to plain in-memory just to compose the elevated command, then scrub
     $pwdBstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
@@ -5136,14 +5089,9 @@ function Invoke-DomainJoinOperation {
         "`$credential = New-Object System.Management.Automation.PSCredential('$Username', `$securePassword); " +
         "Add-Computer -DomainName '$DomainName' -Credential `$credential -Force -Verbose"
     }
-    finally {
-        if ($pwdBstr -ne [IntPtr]::Zero) {
-            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pwdBstr)
-        }
-    }
+    finally { if ($pwdBstr -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pwdBstr) } }
     return Invoke-ElevatedDomainCommand -Command $command -OperationType "DomainJoin"
 }
-
 function Invoke-WorkgroupJoinOperation {
     param ([string]$WorkgroupName)
     # Validate inputs
@@ -5163,7 +5111,6 @@ function Invoke-WorkgroupJoinOperation {
 
     return Invoke-ElevatedDomainCommand -Command $command -OperationType "WorkgroupJoin"
 }
-
 function Show-DomainManagementForm {
     param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     Hide-MainMenu
@@ -5583,7 +5530,6 @@ function Invoke-CrowdStrikeDialog {
     # Show the form
     $crowdStrikeForm.ShowDialog()
 }
-
 function Invoke-InstallCrowdStrike {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox, [string]$Department, [string]$InstallType)
     try {
@@ -6185,139 +6131,130 @@ function Get-CrowdStrikeUninstallString {
     catch {}
     return $null
 }
-function Uninstall-CrowdStrikeSensor {
-    param([Parameter(Mandatory = $true)][string]$Token, [Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox)
-    if (-not $Token.Trim()) { Add-Status "Maintenance token is required." $statusTextBox ([System.Drawing.Color]::Red); return }
+function Invoke-CrowdStrikeUninstallDialog {
+    param([Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox)
     
-    # Chọn msiexec 64-bit
-    $msi64 = Join-Path $env:WINDIR 'Sysnative\msiexec.exe'
-    if (-not (Test-Path $msi64)) { $msi64 = Join-Path $env:WINDIR 'System32\msiexec.exe' }
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "Uninstall CrowdStrike"
+    $form.Size = New-Object System.Drawing.Size(500, 250)
+    $form.StartPosition = "CenterScreen"
+    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+    $form.MaximizeBox = $false
+    $form.MinimizeBox = $false
 
-    # Ghi log để debug (tự động vào %TEMP%)
-    $logFile = Join-Path $env:TEMP ("cs_uninstall_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))
+    # Label hướng dẫn
+    $label = New-Object System.Windows.Forms.Label
+    $label.Location = New-Object System.Drawing.Point(20, 20)
+    $label.Size = New-Object System.Drawing.Size(440, 40)
+    $label.Text = "Input token to uninstall CrowdStrike:"
+    $form.Controls.Add($label)
 
-    $arguments = "/x $productCode /qn /norestart MAINTENANCE_TOKEN=$Token /L*v `"$logFile`""
-    Add-Status "Uninstalling via: $msi64 $arguments" $statusTextBox ([System.Drawing.Color]::Gray)
+    # Ô nhập token
+    $textBox = New-Object System.Windows.Forms.TextBox
+    $textBox.Location = New-Object System.Drawing.Point(20, 70)
+    $textBox.Size = New-Object System.Drawing.Size(440, 20)
+    $textBox.PasswordChar = '•'
+    $form.Controls.Add($textBox)
 
-    $p = Start-Process -FilePath $msi64 -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+    # Nút xác nhận
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Location = New-Object System.Drawing.Point(150, 120)
+    $okButton.Size = New-Object System.Drawing.Size(80, 30)
+    $okButton.Text = "Confirm"
+    $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $form.AcceptButton = $okButton
+    $form.Controls.Add($okButton)
 
-    if ($p.ExitCode -eq 0) {
-        Add-Status "Uninstall completed successfully." $statusTextBox ([System.Drawing.Color]::Green)
-    }
-    else {
-        Add-Status "Uninstall finished with exit code $($p.ExitCode). Log: $logFile" $statusTextBox ([System.Drawing.Color]::Yellow)
+    # Nút hủy
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Location = New-Object System.Drawing.Point(250, 120)
+    $cancelButton.Size = New-Object System.Drawing.Size(80, 30)
+    $cancelButton.Text = "Cancel"
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $form.CancelButton = $cancelButton
+    $form.Controls.Add($cancelButton)
 
-        # Fallback nếu 1605: chạy đúng UninstallString từ registry
-        if ($p.ExitCode -eq 1605) {
-            $u = Get-CrowdStrikeUninstallString
-            if ($u) {
-                # Đảm bảo dùng /X (gỡ) và chèn token + log
-                $u2 = $u -replace '(?i)\s+/I\s+', ' /X '  # đổi /I thành /X nếu có
-                if ($u2 -notmatch '(?i)\s+/X\s+') { $u2 = "$u2 /X" }
-                if ($u2 -notmatch '(?i)/L\*V') { $u2 = "$u2 /L*v `"$logFile`"" }
-                if ($u2 -notmatch '(?i)MAINTENANCE_TOKEN=') { $u2 = "$u2 MAINTENANCE_TOKEN=$Token" }
+    $result = $form.ShowDialog()
 
-                Add-Status "Retry via UninstallString: $u2" $statusTextBox ([System.Drawing.Color]::Gray)
-                $p2 = Start-Process -FilePath $msi64 -ArgumentList $u2 -Wait -PassThru -WindowStyle Hidden
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        $token = $textBox.Text.Trim()
+        if ([string]::IsNullOrEmpty($token)) {
+            [System.Windows.Forms.MessageBox]::Show("Please enter token!", "Error", 
+                [System.Windows.Forms.MessageBoxButtons]::OK, 
+                [System.Windows.Forms.MessageBoxIcon]::Error)
+            return
+        }
 
-                if ($p2.ExitCode -eq 0) {
-                    Add-Status "Uninstall completed successfully (fallback)." $statusTextBox ([System.Drawing.Color]::Green)
-                }
-                else {
-                    Add-Status "Fallback exit code: $($p2.ExitCode). Log: $logFile" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
-            }
-            else {
-                Add-Status "No UninstallString found in registry for fallback." $statusTextBox ([System.Drawing.Color]::Red)
-            }
+        # Xác nhận trước khi gỡ
+        $confirm = [System.Windows.Forms.MessageBox]::Show(
+            "Are you sure you want to uninstall CrowdStrike?",
+            "Confirm Uninstall",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Warning)
+
+        if ($confirm -eq [System.Windows.Forms.DialogResult]::Yes) {
+            Uninstall-CrowdStrikeSensor -Token $token -statusTextBox $statusTextBox
         }
     }
+}
+function Uninstall-CrowdStrikeSensor {
+    param(
+        [Parameter(Mandatory = $true)][string]$Token,
+        [Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox
+    )
 
-    # Try uninstall via msiexec
-    try {
-        Add-Status "Resolving CrowdStrike ProductCode..." $statusTextBox ([System.Drawing.Color]::Gray)
-        $productCode = Get-CrowdStrikeProductCode
-        if (-not $productCode) { Add-Status "Could not find CrowdStrike Windows Sensor in Uninstall registry." $statusTextBox ([System.Drawing.Color]::Red); return }
-        Add-Status "ProductCode: $productCode" $statusTextBox ([System.Drawing.Color]::Gray)
+    # Kiểm tra token
+    if ($Token.Length -lt 8) {
+        Add-Status "Token is invalid. Please check again." $statusTextBox ([System.Drawing.Color]::Red)
+        return
+    }
 
-        # Cố gắng dừng service trước khi gỡ
+    # Lấy thông tin sản phẩm
+    Add-Status "Checking CrowdStrike installation..." $statusTextBox
+    $productCode = Get-CrowdStrikeProductCode
+    if (-not $productCode) {
+        Add-Status "CrowdStrike is not installed on this system." $statusTextBox ([System.Drawing.Color]::Yellow)
+        return
+    }
+
+    # Tạo file log
+    $logFile = Join-Path $env:TEMP "cs_uninstall_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+    $msiArgs = @(
+        "/x", $productCode,
+        "/qn",
+        "/norestart",
+        "MAINTENANCE_TOKEN=$Token",
+        "/L*v", "`"$logFile`""
+    )
+
+    # Dừng các dịch vụ liên quan
+    $services = @('CSFalconService', 'CSFalconContainer', 'CSAgent')
+    foreach ($service in $services) {
         try {
-            $svc = Get-Service -Name csagent -ErrorAction SilentlyContinue
+            $svc = Get-Service -Name $service -ErrorAction SilentlyContinue
             if ($svc -and $svc.Status -eq 'Running') {
-                Add-Status "Stopping service csagent..." $statusTextBox ([System.Drawing.Color]::Gray)
-                Stop-Service -Name csagent -Force -ErrorAction SilentlyContinue
+                Add-Status "Stopping service $service..." $statusTextBox
+                Stop-Service -Name $service -Force
                 Start-Sleep -Seconds 2
             }
         }
-        catch {}
-
-        $arguments = "/x $productCode /qn /norestart MAINTENANCE_TOKEN=$Token"
-        Add-Status "Uninstalling via msiexec $arguments" $statusTextBox ([System.Drawing.Color]::Gray)
-        $p = Start-Process -FilePath "msiexec.exe" -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
-
-        if ($p.ExitCode -eq 0) {
-            Add-Status "Uninstall completed successfully." $statusTextBox ([System.Drawing.Color]::Green)
+        catch {
+            Add-Status "Cannot stop service $service $_" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-        else { Add-Status "Uninstall finished with exit code $($p.ExitCode)." $statusTextBox ([System.Drawing.Color]::Yellow) }
-
-        # Xác nhận
-        $svc2 = Get-Service -Name csagent -ErrorAction SilentlyContinue
-        if ($null -eq $svc2) { Add-Status "csagent service removed." $statusTextBox ([System.Drawing.Color]::Green) } else { Add-Status "csagent service still present (status: $($svc2.Status))." $statusTextBox ([System.Drawing.Color]::Yellow) }
     }
-    catch { Add-Status ("Uninstall error: " + $_.Exception.Message) $statusTextBox ([System.Drawing.Color]::Red) }
-}
-function Invoke-CrowdStrikeUninstallDialog {
-    param([Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox)
-    $form = New-Object System.Windows.Forms.Form
-    $form.Text = "Uninstall CrowdStrike - Maintenance Token"
-    $form.Size = New-Object System.Drawing.Size(420, 200)
-    $form.StartPosition = 'CenterParent'
-    $form.BackColor = [System.Drawing.Color]::Black
-    $form.ForeColor = [System.Drawing.Color]::White
-    $form.TopMost = $true
 
-    $lbl = New-Object System.Windows.Forms.Label
-    $lbl.Text = "Enter Maintenance Token:"
-    $lbl.AutoSize = $true
-    $lbl.Location = New-Object System.Drawing.Point(15, 20)
-    $form.Controls.Add($lbl)
+    # Thực hiện gỡ cài đặt
+    Add-Status "Uninstalling CrowdStrike..." $statusTextBox
+    $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -PassThru -WindowStyle Hidden
 
-    $txt = New-Object System.Windows.Forms.TextBox
-    $txt.Location = New-Object System.Drawing.Point(18, 45)
-    $txt.Size = New-Object System.Drawing.Size(360, 24)
-    $txt.UseSystemPasswordChar = $true
-    $form.Controls.Add($txt)
-
-    $chk = New-Object System.Windows.Forms.CheckBox
-    $chk.Text = "Show"
-    $chk.AutoSize = $true
-    $chk.Location = New-Object System.Drawing.Point(18, 75)
-    $chk.Add_CheckedChanged({ $txt.UseSystemPasswordChar = -not $chk.Checked })
-    $form.Controls.Add($chk)
-
-    $btnOk = New-Object System.Windows.Forms.Button
-    $btnOk.Text = "Uninstall"
-    $btnOk.Location = New-Object System.Drawing.Point(200, 110)
-    $btnOk.Size = New-Object System.Drawing.Size(85, 30)
-    $btnOk.Add_Click({
-            $token = $txt.Text
-            $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
-            $form.Close()
-            Uninstall-CrowdStrikeSensor -Token $token -statusTextBox $statusTextBox
-        })
-    $form.Controls.Add($btnOk)
-
-    $btnCancel = New-Object System.Windows.Forms.Button
-    $btnCancel.Text = "Cancel"
-    $btnCancel.Location = New-Object System.Drawing.Point(293, 110)
-    $btnCancel.Size = New-Object System.Drawing.Size(85, 30)
-    $btnCancel.Add_Click({ $form.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $form.Close() })
-    $form.Controls.Add($btnCancel)
-
-    $form.KeyPreview = $true
-    $form.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $form.Close() } })
-
-    [void]$form.ShowDialog()
+    # Kiểm tra kết quả
+    if ($process.ExitCode -eq 0) {
+        Add-Status "CrowdStrike uninstalled successfully." $statusTextBox ([System.Drawing.Color]::Green)
+    }
+    else {
+        Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "View log at: $logFile" $statusTextBox
+    }
 }
 
 # Các nút menu
