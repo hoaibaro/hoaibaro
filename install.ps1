@@ -63,8 +63,7 @@ $Global:EthernetDriverExe = 'D:\DRIVER\Ethernet\Intel-PCIe-Ethernet-Controller-D
 $Global:WifiDriverExe = 'D:\DRIVER\Wifi\WiFi-23.120.0-Driver64-Win10-Win11.exe'
 
 # Function to ensure Office installation is completely silent
-function Set-OfficeInstallationSilent {
-    param([string]$ConfigPath)
+function Set-OfficeInstallationSilent {param([string]$ConfigPath)
     
     try {
         if (Test-Path $ConfigPath) {
@@ -390,6 +389,29 @@ function Install-WiFiDriversOffline {
         return $false
     }
 }
+function Test-InternetConnection { param([int]$timeoutMs = 3000)
+    $testUrls = @("8.8.8.8", "1.1.1.1", "www.google.com", "www.microsoft.com")
+    $success = $false
+    foreach ($url in $testUrls) {
+        try {
+            $ping = New-Object System.Net.NetworkInformation.Ping
+            $reply = $ping.Send($url, $timeoutMs)
+            if ($reply.Status -eq 'Success') {
+                $success = $true
+                break
+            }
+        } catch { continue }
+    }
+    if (-not $success) {
+        try {
+            $testWeb = Invoke-WebRequest -Uri "http://www.msftconnecttest.com/connecttest.txt" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
+            if ($testWeb.Content -eq "Microsoft Connect Test") {
+                $success = $true
+            }
+        } catch { return $false }
+    }
+    return $success
+}
 
 function Invoke-WiFiAutoConnection {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
@@ -449,10 +471,7 @@ function Invoke-WiFiAutoConnection {
             }
             Add-Status "Found $($wifiAdapters.Count) WiFi adapter(s)" $statusTextBox ([System.Drawing.Color]::Green)
         }
-        catch {
-            Add-Status "WiFi adapter detection failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-            return $false
-        }
+        catch { Add-Status "WiFi adapter detection failed: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 
         # Check current WiFi connection
         $targetSSID = "VietUnion_5.0GHz"
@@ -466,30 +485,16 @@ function Invoke-WiFiAutoConnection {
             $currentSSID = ""
 
             foreach ($line in $currentConnection) {
-                if ($line -match "^\s*State\s*:\s*connected\s*$") {
-                    $isConnected = $true
-                }
-                if ($line -match "^\s*SSID\s*:\s*(.+)$") {
-                    $currentSSID = $matches[1].Trim()
-                }
+                if ($line -match "^\s*State\s*:\s*connected\s*$") { $isConnected = $true }
+                if ($line -match "^\s*SSID\s*:\s*(.+)$") { $currentSSID = $matches[1].Trim() }
             }
 
             # Check if already connected to target network
-            if ($isConnected -and $currentSSID -eq $targetSSID) {
-                Add-Status "Already connected to $targetSSID - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Green)
-                return $true
-            }
-            elseif ($isConnected -and $currentSSID -ne "" -and $currentSSID -ne $targetSSID) {
-                Add-Status "Currently connected to: $currentSSID" $statusTextBox ([System.Drawing.Color]::Yellow)
-                Add-Status "Need to connect to: $targetSSID" $statusTextBox
-            }
-            else {
-                Add-Status "No active WiFi connection detected" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
+            if ($isConnected -and $currentSSID -eq $targetSSID) { Add-Status "Already connected to $targetSSID - skipping WiFi setup" $statusTextBox ([System.Drawing.Color]::Green); return $true }
+            elseif ($isConnected -and $currentSSID -ne "" -and $currentSSID -ne $targetSSID) { Add-Status "Currently connected to: $currentSSID" $statusTextBox ([System.Drawing.Color]::Yellow); Add-Status "Need to connect to: $targetSSID" $statusTextBox }
+            else { Add-Status "No active WiFi connection detected" $statusTextBox ([System.Drawing.Color]::Yellow) }
         }
-        catch {
-            Add-Status "Could not check current WiFi status - proceeding with setup" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
+        catch { Add-Status "Could not check current WiFi status - proceeding with setup" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
         # Create WiFi profile
         $SSID = "VietUnion_5.0GHz"
@@ -533,10 +538,7 @@ function Invoke-WiFiAutoConnection {
             [System.IO.File]::WriteAllText($profileFile, $profileXML, [System.Text.Encoding]::UTF8)
             Add-Status "WiFi profile created successfully" $statusTextBox ([System.Drawing.Color]::Green)
         }
-        catch {
-            Add-Status "Failed to create WiFi profile: $_" $statusTextBox ([System.Drawing.Color]::Red)
-            return $false
-        }
+        catch { Add-Status "Failed to create WiFi profile: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 
         # Add WiFi profile
         Add-Status "Adding WiFi profile to system..." $statusTextBox
@@ -546,19 +548,10 @@ function Invoke-WiFiAutoConnection {
 
             # Add new profile for all users
             $null = netsh wlan add profile filename="$profileFile" user=all
-            if ($LASTEXITCODE -eq 0) {
-                Add-Status "WiFi profile added successfully" $statusTextBox ([System.Drawing.Color]::Green)
-                # do not return here
-            }
-            else {
-                Add-Status "Failed to add WiFi profile" $statusTextBox ([System.Drawing.Color]::Red)
-                return $false
-            }
+            if ($LASTEXITCODE -eq 0) { Add-Status "WiFi profile added successfully" $statusTextBox ([System.Drawing.Color]::Green) }
+            else { Add-Status "Failed to add WiFi profile" $statusTextBox ([System.Drawing.Color]::Red); return $false }
         }
-        catch {
-            Add-Status "WiFi profile addition failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-            return $false
-        }
+        catch { Add-Status "WiFi profile addition failed: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 
         # Connect to WiFi (with retries)
         Add-Status "Connecting to WiFi network..." $statusTextBox
@@ -566,42 +559,20 @@ function Invoke-WiFiAutoConnection {
             $maxRetries = 3
             for ($i = 1; $i -le $maxRetries; $i++) {
                 $null = netsh wlan connect name="$SSID"
-                if ($LASTEXITCODE -eq 0) {
-                    Add-Status "WiFi connection attempt #$i initiated" $statusTextBox ([System.Drawing.Color]::Green)
-                }
-                else {
-                    Add-Status "WiFi connection attempt #$i failed to initiate" $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
-
+                if ($LASTEXITCODE -eq 0) { Add-Status "WiFi connection attempt #$i initiated" $statusTextBox ([System.Drawing.Color]::Green) }
+                else { Add-Status "WiFi connection attempt #$i failed to initiate" $statusTextBox ([System.Drawing.Color]::Yellow) }
                 Start-Sleep -Seconds (3 + $i * 2)
-
                 $verify = netsh wlan show interfaces | Out-String
-                if ($verify -match "State\s*:\s*connected" -and $verify -match ("SSID\s*:\s*{0}" -f [regex]::Escape($SSID))) {
-                    Add-Status "WiFi connected successfully to $SSID!" $statusTextBox ([System.Drawing.Color]::Green)
-                    return $true
-                }
-                else {
-                    Add-Status "WiFi verification attempt #$i not connected yet." $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
+                if ($verify -match "State\s*:\s*connected" -and $verify -match ("SSID\s*:\s*{0}" -f [regex]::Escape($SSID))) { Add-Status "WiFi connected successfully to $SSID!" $statusTextBox ([System.Drawing.Color]::Green); return $true }
+                else { Add-Status "WiFi verification attempt #$i not connected yet." $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
-
             Add-Status "WiFi connection verification failed after retries" $statusTextBox ([System.Drawing.Color]::Yellow)
             return $false
         }
-        catch {
-            Add-Status "WiFi connection error: $_" $statusTextBox ([System.Drawing.Color]::Red)
-            return $false
-        }
-        finally {
-            if (Test-Path $profileFile) {
-                Remove-Item $profileFile -Force -ErrorAction SilentlyContinue
-            }
-        }
+        catch { Add-Status "WiFi connection error: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
+        finally { if (Test-Path $profileFile) { Remove-Item $profileFile -Force -ErrorAction SilentlyContinue } }
     }
-    catch {
-        Add-Status "WiFi setup failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        return $false
-    }
+    catch { Add-Status "WiFi setup failed: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 }
 
 function Invoke-WindowsUpdateCheck {
@@ -613,10 +584,7 @@ function Invoke-WindowsUpdateCheck {
 
         # Test internet connectivity
         $testConnection = Test-NetConnection -ComputerName "8.8.8.8" -Port 53 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
-        if (-not $testConnection) {
-            Add-Status "No internet connection - skipping Windows Update" $statusTextBox ([System.Drawing.Color]::Yellow)
-            return $false
-        }
+        if (-not $testConnection) { Add-Status "No internet connection - skipping Windows Update" $statusTextBox ([System.Drawing.Color]::Yellow); return $false }
 
         # Trigger updates in background
         try {
@@ -624,29 +592,18 @@ function Invoke-WindowsUpdateCheck {
             Start-Process -FilePath "USOClient.exe" -ArgumentList "ScanInstallWait" -WindowStyle Hidden -ErrorAction Stop
             Start-Process -FilePath "USOClient.exe" -ArgumentList "StartDownload" -WindowStyle Hidden -ErrorAction SilentlyContinue
             Start-Process -FilePath "USOClient.exe" -ArgumentList "StartInstall" -WindowStyle Hidden -ErrorAction SilentlyContinue
-
-            Add-Status "Windows Update triggered successfully" $statusTextBox ([System.Drawing.Color]::Green)
             return $true
         }
-        catch {
-            # Fallback to wuauclt
+        catch { # Fallback to wuauclt
             try {
                 Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -WindowStyle Hidden -ErrorAction Stop
                 Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow" -WindowStyle Hidden -ErrorAction SilentlyContinue
-
-                Add-Status "Windows Update triggered via wuauclt" $statusTextBox ([System.Drawing.Color]::Green)
                 return $true
             }
-            catch {
-                Add-Status "Windows Update trigger failed" $statusTextBox ([System.Drawing.Color]::Yellow)
-                return $false
-            }
+            catch { Add-Status "Warning: Windows Update trigger failed" $statusTextBox ([System.Drawing.Color]::Yellow); return $false }
         }
     }
-    catch {
-        Add-Status "Windows Update setup failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        return $false
-    }
+    catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 }
 
 # STEP 2: Choose Device Type and Rename
@@ -798,6 +755,9 @@ function Invoke-SystemCleanup {
 
         # --- 4. Power Options Configuration ---
         Invoke-PowerOptionsConfiguration $statusTextBox
+
+        # --- 5. System Cleanup ---
+        Invoke-FirewallOff $statusTextBox
         return $true
     }
     catch {
@@ -1004,12 +964,8 @@ function Invoke-UserPasswordManagement {
         # --- 2. Show Password Management Dialog ---
         $passwordResult = Invoke-SetPasswordDialog -currentUser $currentUser -statusTextBox $statusTextBox -showMenuAfter $false
 
-        if ($passwordResult) {
-            Add-Status "User password management completed." $statusTextBox
-        }
-        else {
-            Add-Status "User password management was cancelled by user." $statusTextBox
-        }
+        if ($passwordResult) { Add-Status "User password management completed." $statusTextBox }
+        else { Add-Status "User password management was cancelled by user." $statusTextBox }
         return $true
     }
     catch {
@@ -1075,7 +1031,6 @@ function Invoke-RunAllOperations {
 
     try {
         # Pre-step: Device type selection to decide WiFi behavior
-        Add-Status "Select device type before network preparation..." $statusTextBox
         $deviceType = Select-DeviceType -Owner $statusForm
         if (-not $deviceType) {
             Show-MainMenu
@@ -1090,39 +1045,24 @@ function Invoke-RunAllOperations {
         if ($isLaptop) {
             Add-Status "STEP 0: Laptop detected — connecting to WiFi..." $statusTextBox
             $wifiResult = Invoke-WiFiAutoConnection $statusTextBox
-            if ($wifiResult) {
-                Add-Status "WiFi connection completed!" $statusTextBox
-            }
-            else {
-                Add-Status "WiFi connection failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
+            if ($wifiResult) { Add-Status "WiFi connection completed!" $statusTextBox }
+            else { Add-Status "WiFi connection failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow) }
         }
         else {
             Add-Status "STEP 0: Desktop detected — skipping WiFi, using Ethernet" $statusTextBox ([System.Drawing.Color]::Cyan)
-            try {
-                $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet
-            }
+            try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet }
             catch { $hasInternet = $false }
-        
-            if ($hasInternet) {
-                Add-Status "Internet reachable via Ethernet." $statusTextBox ([System.Drawing.Color]::Green)
-            }
+            if ($hasInternet) { Add-Status "Internet reachable via Ethernet." $statusTextBox ([System.Drawing.Color]::Green) }
             else {
                 Add-Status "No Internet via Ethernet. Attempting to install Ethernet driver..." $statusTextBox ([System.Drawing.Color]::Yellow)
                 $ok = Install-DriverExe -Path $Global:EthernetDriverExe -statusTextBox $statusTextBox -Type 'Ethernet'
                 if ($ok) {
                     # Re-check Internet
                     try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet } catch { $hasInternet = $false }
-                    if ($hasInternet) {
-                        Add-Status "Internet reachable after Ethernet driver installation." $statusTextBox ([System.Drawing.Color]::Green)
-                    }
-                    else {
-                        Add-Status "Still no Internet after Ethernet driver installation. Continuing offline-friendly steps." $statusTextBox ([System.Drawing.Color]::Yellow)
-                    }
+                    if ($hasInternet) { Add-Status "Internet reachable after Ethernet driver installation." $statusTextBox ([System.Drawing.Color]::Green) }
+                    else { Add-Status "Still no Internet after Ethernet driver installation. Continuing offline-friendly steps." $statusTextBox ([System.Drawing.Color]::Yellow) }
                 }
-                else {
-                    Add-Status "Ethernet driver installation failed or not applicable. Continuing offline-friendly steps." $statusTextBox ([System.Drawing.Color]::Yellow)
-                }
+                else { Add-Status "Ethernet driver installation failed or not applicable. Continuing offline-friendly steps." $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
         }
 
@@ -1689,8 +1629,8 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
 }
 function Install-Software {param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [array]$appsToInstall)
     try {
-        $tempDir = "$env:USERPROFILE\Downloads\SETUP"
-        $setupDir = "$tempDir\Software"
+        $setupDir = "$env:USERPROFILE\Downloads\SETUP"
+        $office2019Dir = "$setupDir\Office 2019"        
 
         # Take list of Ids to install
         $appIds = $appsToInstall | ForEach-Object { $_.Id }
@@ -1712,15 +1652,15 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                     $process = Start-Process -FilePath $sevenZipInstaller.FullName -ArgumentList "/S" -Wait -PassThru -WindowStyle Hidden
                     if ($process.ExitCode -eq 0) {
                         Add-Status "7-Zip: Installed successfully!" $statusTextBox 
-                    } else { Add-Status "7-Zip: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                    } else { Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
                 } catch [System.Exception] {
                     $errorMessage = $_.Exception.Message
-                    Add-Status "7-Zip: Installation failed: $errorMessage" $statusTextBox ([System.Drawing.Color]::Red)
+                    Add-Status "Error: $errorMessage" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             } else {
-                Add-Status "7-Zip: Installer not found in $setupDir" $statusTextBox ([System.Drawing.Color]::Red)
+                Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red)
             }
-        } else { Add-Status "7-Zip: Already installed. Skipping..." $statusTextBox }
+        } else { Add-Status "Already installed. Skipping..." $statusTextBox }
 
         # 3. Install Chrome
         if ($appIds -contains 'chrome') {
@@ -1732,12 +1672,12 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                     if ($process.ExitCode -eq 0) {
                         Add-Status "Chrome: Installed successfully!" $statusTextBox
                     } else {
-                        Add-Status "Chrome: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                        Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
                     }
                 } catch {
-                    Add-Status "Chrome: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                    Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
                 }
-            } else { Add-Status "Chrome: Installer not found in $setupDir" $statusTextBox ([System.Drawing.Color]::Red) }
+            } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
         } else { Add-Status "Chrome:       Already installed. Skipping..." $statusTextBox }
 
         # 4. Install LAPS - Skip on Windows 11 as it's built-in
@@ -1749,9 +1689,9 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                     Add-Status "LAPS: Installing..." $statusTextBox
                     try {
                         $result = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$lapsInstaller`" /qn /norestart" -Wait -PassThru
-                        if ($result.ExitCode -eq 0) { Add-Status "LAPS: Installed successfully!" $statusTextBox } else { Add-Status "LAPS: Installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                    } catch { Add-Status "LAPS: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
-                } else { Add-Status "LAPS: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
+                        if ($result.ExitCode -eq 0) { Add-Status "LAPS: Installed successfully!" $statusTextBox } else { Add-Status "Error: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                    } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+                } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
             } else { Add-Status "LAPS: Built-in on Windows 11, skipping installation" $statusTextBox }
         } else { Add-Status "LAPS:       Already installed. Skipping..." $statusTextBox }
 
@@ -1762,69 +1702,75 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                 Add-Status "Foxit Reader: Installing..." $statusTextBox
                 try {
                     $result = Start-Process -FilePath $foxitInstaller.FullName -ArgumentList "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES" -Wait -PassThru
-                    if ($result.ExitCode -eq 0) { Add-Status "Foxit Reader: Installed successfully!" $statusTextBox } else { Add-Status "Foxit Reader: Installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                } catch { Add-Status "Foxit Reader: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
-            } else { Add-Status "Foxit Reader: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
+                    if ($result.ExitCode -eq 0) { Add-Status "Foxit Reader: Installed successfully!" $statusTextBox } else { Add-Status "Error: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+            } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
         } else { Add-Status "Foxit Reader: Already installed. Skipping..." $statusTextBox }
 
         # 6. Install Office 2019 (Completely Silent)
         if ($appIds -contains 'office2019') {
-            $officeSetup = Join-Path $office2019Dir "setup.exe"
-            $configFile = Join-Path $office2019Dir "config.xml"
-            $silentConfigTemplate = Join-Path $office2019Dir "silent_config.xml"
-
-            if (Test-Path $officeSetup) {
-                Add-Status "Office 2019: Preparing silent installation..." $statusTextBox
-                
-                # Tạo file cấu hình nếu chưa tồn tại
-                if (-not (Test-Path $configFile) -and (Test-Path $silentConfigTemplate)) {
-                    try {
-                        Copy-Item -Path $silentConfigTemplate -Destination $configFile -Force
-                        Add-Status "Office 2019: Using silent installation configuration" $statusTextBox
-                    } catch {
-                        Add-Status "Office 2019: Failed to create configuration file: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                        return $false
-                    }
-                }
-
-                # Đảm bảo cấu hình im lặng
-                if (Test-Path $configFile) {
-                    try {
-                        Set-OfficeInstallationSilent -ConfigPath $configFile
-                        Add-Status "Office 2019: Silent configuration verified" $statusTextBox
-                    } catch {
-                        Add-Status "Office 2019: Warning - Could not verify silent configuration: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
-                    }
-
-                    # Thực hiện cài đặt
-                    Add-Status "Office 2019: Starting installation (this may take a while)..." $statusTextBox
-                    try {
-                        # Dừng các tiến trình Office đang chạy
-                        Get-Process | Where-Object { 
-                            $_.ProcessName -match "winword|excel|powerpnt|outlook|msaccess|mspub|onenote" 
-                        } | Stop-Process -Force -ErrorAction SilentlyContinue
-
-                        $process = Start-Process -FilePath $officeSetup -ArgumentList "/configure `"$configFile`"" -Wait -PassThru -WindowStyle Hidden
-                        
-                        if ($process.ExitCode -eq 0) {
-                            Add-Status "Office 2019: Installed successfully!" $statusTextBox
-                        } else {
-                            Add-Status "Office 2019: Installation completed with exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
-                            # Có thể thêm kiểm tra mã lỗi cụ thể ở đây nếu cần
-                        }
-                    } catch {
-                        Add-Status "Office 2019: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                        return $false
-                    }
-                } else {
-                    Add-Status "Office 2019: Configuration file not found" $statusTextBox ([System.Drawing.Color]::Red)
-                    return $false
-                }
-            } else {
-                Add-Status "Office 2019: Setup file not found" $statusTextBox ([System.Drawing.Color]::Red)
+            # Check if Office 2019 source directory exists
+            if (-not (Test-Path $office2019Dir)) {
+                Add-Status "Office 2019: Source directory not found at $office2019Dir" $statusTextBox ([System.Drawing.Color]::Red)
                 return $false
             }
-        } else {
+
+            $officeSetup = Join-Path $office2019Dir "setup.exe"
+            $configFile = Join-Path $office2019Dir "config.xml"
+    
+            # Check if setup.exe exists
+            if (-not (Test-Path $officeSetup)) {
+                Add-Status "Office 2019: Setup file not found at $officeSetup" $statusTextBox ([System.Drawing.Color]::Red)
+                return $false
+            }
+
+            Add-Status "Office 2019: Starting silent installation..." $statusTextBox
+    
+            try {
+                # Create a temporary configuration file if not exists
+                if (-not (Test-Path $configFile)) {
+                    $configContent = @"
+<Configuration>
+  <Add OfficeClientEdition="64" Channel="PerpetualVL2019">
+    <Product ID="ProPlus2019Volume" PIDKEY="V7YQT-3NBF9-CB4VM-24G6Q-6M8JK">
+      <Language ID="en-us" />
+      <ExcludeApp ID="Access" />
+      <ExcludeApp ID="Groove" />
+      <ExcludeApp ID="Lync" />
+      <ExcludeApp ID="OneNote" />
+      <ExcludeApp ID="Publisher" />
+    </Product>
+  </Add>
+  <Display Level="None" AcceptEULA="TRUE" />
+  <Property Name="AUTOACTIVATE" Value="1" />
+  <Property Name="FORCEAPPSHUTDOWN" Value="TRUE" />
+  <Property Name="SharedComputerLicensing" Value="0" />
+  <Property Name="PinIconsToTaskbar" Value="TRUE" />
+  <Logging Level="Standard" Path="%TEMP%" />
+  <RemoveMSI />
+</Configuration>
+"@
+                    Set-Content -Path $configFile -Value $configContent -Force
+                    Add-Status "Office 2019: Created configuration file" $statusTextBox
+                }
+
+                # Run Office setup
+                $process = Start-Process -FilePath $officeSetup -ArgumentList "/configure `"$configFile`"" -Wait -PassThru -NoNewWindow
+        
+                # Check installation result
+                if ($process.ExitCode -eq 0) {
+                    Add-Status "Office 2019: Successfully installed!" $statusTextBox
+                } else {
+                    Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red)
+                    return $false
+                }
+            }
+            catch {
+                Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+                return $false
+            }
+        }
+        else {
             Add-Status "Office 2019: Already installed. Skipping..." $statusTextBox
         }
 
@@ -1838,10 +1784,10 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                     if ($process.ExitCode -eq 0) {
                         Add-Status "Zoom: Installed successfully!" $statusTextBox
                     } else {
-                        Add-Status "Zoom: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                        Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
                     }
                 } catch {
-                    Add-Status "Zoom: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                    Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             } else {
                 Add-Status "Zoom: Installer not found" $statusTextBox ([System.Drawing.Color]::Red)
@@ -1860,10 +1806,10 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
                     if ($process.ExitCode -eq 0) {
                         Add-Status "CheckPoint VPN: Installed successfully!" $statusTextBox
                     } else {
-                        Add-Status "CheckPoint VPN: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                        Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
                     }
                 } catch {
-                    Add-Status "CheckPoint VPN: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                    Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             } else {
                 Add-Status "CheckPoint VPN: Installer not found" $statusTextBox ([System.Drawing.Color]::Red)
@@ -1891,7 +1837,7 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
             }
         }
         catch {
-            Add-Status "Warning: Failed to clean up temporary files: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
         }
     }
 }
@@ -1929,13 +1875,13 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
                     Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force
                     Add-Status "Desktop Agent has been copied" $statusTextBox
                 } else {
-                    Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             } else {
                 Add-Status "Desktop Agent existed. Skipped" $statusTextBox
             }
         } else {
-            Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
         }
     } 
     else {
@@ -1948,13 +1894,13 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
                     Copy-Item -Path $laptopAgent.FullName -Destination $agentDest -Force
                     Add-Status "Laptop Agent has been copied" $statusTextBox
                 } else {
-                    Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             } else {
                 Add-Status "Laptop Agent existed. Skipped" $statusTextBox
             }
         } else {
-            Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
         }
         
         # Copy ManageEngine MDM Laptop Enrollment
@@ -1977,7 +1923,7 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
                 }
             }
             else {
-                Add-Status "Warning: Not found source directory" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "Error: Not found source directory" $statusTextBox ([System.Drawing.Color]::Red)
             }
         }
         else { Add-Status "ManageEngine existed. Skipped" $statusTextBox }
@@ -2011,7 +1957,7 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
             # 6. Cài đặt phần mềm
             $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $plan.Pending
             if (-not $okInstall) { 
-                Add-Status "Warning: Some installations failed" $statusTextBox ([System.Drawing.Color]::Yellow)
+                Add-Status "Error: Some installations failed" $statusTextBox ([System.Drawing.Color]::Red)
                 return $false
             }
             Add-Status "All software installation completed successfully" $statusTextBox
