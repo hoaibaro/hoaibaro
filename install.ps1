@@ -669,7 +669,7 @@ function Invoke-RenamebyDevice {
 
         # Key Preview
         $renameForm.KeyPreview = $true
-        $renameForm.Add_KeyDown({ param($sender, $e)if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $renameForm.Close() }
+        $renameForm.Add_KeyDown({ param($s, $e)if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $renameForm.Close() }
                 elseif ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) { $okButton.PerformClick() } })
 
         # Current Name Label
@@ -705,7 +705,7 @@ function Invoke-RenamebyDevice {
         $renameForm.Controls.Add($nameTextBox)
 
         # Key Preview
-        $nameTextBox.Add_KeyDown({ param($sender, $e)if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) { $okButton.PerformClick() } })
+        $nameTextBox.Add_KeyDown({ param($s, $e)if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) { $okButton.PerformClick() } })
 
         # Preview Label
         $previewLabel = New-Object System.Windows.Forms.Label
@@ -805,7 +805,6 @@ function Invoke-SystemCleanup {
         return $false
     }
 }
-
 function Invoke-FileCleanup {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     Add-Status "Cleaning temporary files..." $statusTextBox
@@ -833,7 +832,6 @@ function Invoke-FileCleanup {
         Add-Status "Warning: Could not complete advanced cleanup" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
-
 function Invoke-StartupOptimization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     $startupPrograms = @("Microsoft Teams", "Microsoft Co-Pilot", "Microsoft Edge")
@@ -851,7 +849,6 @@ function Invoke-StartupOptimization {
         }
     }
 }
-
 function Invoke-TimezoneConfiguration {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -874,7 +871,6 @@ function Invoke-TimezoneConfiguration {
         Add-Status "Warning: Could not configure timezone settings: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
-
 function Invoke-PowerOptionsConfiguration {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -901,7 +897,6 @@ function Invoke-PowerOptionsConfiguration {
         Add-Status "Warning: Could not configure power options: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
-
 function Invoke-AdvancedTaskbarCustomization {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -1242,11 +1237,13 @@ function Invoke-RunAllOperations {
 }
 
 # [2] Install Software Functions
-function Test-7ZipInstalled {$paths = @("C:\Program Files\7-Zip\7z.exe", "C:\Program Files (x86)\7-Zip\7z.exe")
+function Test-7ZipInstalled {
+    $paths = @("C:\Program Files\7-Zip\7z.exe", "C:\Program Files (x86)\7-Zip\7z.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-ChromeInstalled {$paths = @("C:\Program Files\Google\Chrome\Application\chrome.exe", "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")
+function Test-ChromeInstalled {
+    $paths = @("C:\Program Files\Google\Chrome\Application\chrome.exe", "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
@@ -1301,23 +1298,28 @@ function Test-LAPSInstalledOrBuiltin {
         }
     }
 }
-function Test-FoxitInstalled {$paths = @("C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe", "C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe")
+function Test-FoxitInstalled {
+    $paths = @("C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe", "C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-Office2019Installed {$paths = @("C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")
+function Test-Office2019Installed {
+    $paths = @("C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-ZoomInstalled {$paths = @("$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe", "C:\Program Files\Zoom\bin\Zoom.exe", "C:\Program Files (x86)\Zoom\bin\Zoom.exe")
+function Test-ZoomInstalled {
+    $paths = @("$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe", "C:\Program Files\Zoom\bin\Zoom.exe", "C:\Program Files (x86)\Zoom\bin\Zoom.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-CheckPointVPNInstalled {$paths = @("C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")
+function Test-CheckPointVPNInstalled {
+    $paths = @("C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")
     foreach ($p in $paths) { if (Test-Path $p) { return $true } }
     return $false
 }
-function Test-OneDriveInstalled {$uninstallKeys = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*")
+function Test-OneDriveInstalled {
+    $uninstallKeys = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*")
     foreach ($keyPath in $uninstallKeys) {
         try {
             $programs = Get-ItemProperty $keyPath -ErrorAction SilentlyContinue | Where-Object {
@@ -1347,7 +1349,8 @@ function Test-OneDriveInstalled {$uninstallKeys = @("HKLM:\SOFTWARE\Microsoft\Wi
     }
     return $false
 }
-function Uninstall-OneDriveComplete {param([System.Windows.Forms.RichTextBox]$statusTextBox)
+function Uninstall-OneDriveComplete {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # First, verify OneDrive is actually installed
         if (-not (Test-OneDriveInstalled)) {
@@ -1517,7 +1520,6 @@ function Uninstall-OneDriveComplete {param([System.Windows.Forms.RichTextBox]$st
             catch { Add-Status "Could not clean up OneDrive registry entry" $statusTextBox ([System.Drawing.Color]::Red) }
             return $true
         }
-
     }
     catch {
         Add-Status "Critical error in OneDrive removal: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
@@ -1525,7 +1527,7 @@ function Uninstall-OneDriveComplete {param([System.Windows.Forms.RichTextBox]$st
     }
 }
 
-function Plan_SoftwareInstall {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+function PlanSoftwareInstall {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $pending = @()
     $skipped = @()
     $appsMeta = @(
@@ -1545,6 +1547,7 @@ function Plan_SoftwareInstall {param([ValidateSet('Desktop', 'Laptop')][string]$
 
         switch ($app.Id) {
             'onedrive' {
+                # OneDrive cần UNINSTALL nếu đã cài, skip nếu chưa cài
                 if (Test-OneDriveInstalled) { $pending += $app } else { $skipped += $app }
             }
             '7zip' {
@@ -1592,16 +1595,18 @@ function Plan_SoftwareInstall {param([ValidateSet('Desktop', 'Laptop')][string]$
 function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [array]$Apps, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $tempDir = "$env:USERPROFILE\Downloads\SETUP"
     $setupDir = Join-Path $tempDir "Software"
-    $office2019Dir = Join-Path $tempDir "Office2019"
+    $office2019Dir = Join-Path $tempDir "Office 2019"
 
     # Create directories if they don't exist
     if (-not (Test-Path $tempDir)) { New-Item -Path $tempDir -ItemType Directory -Force | Out-Null }
     if (-not (Test-Path $setupDir)) { New-Item -Path $setupDir -ItemType Directory -Force | Out-Null }
+    if (-not (Test-Path $office2019Dir)) { New-Item -Path $office2019Dir -ItemType Directory -Force | Out-Null }
 
     # Source directories
     $srcSETUP = "D:\SOFTWARE\PAYOO\SETUP"
-    $srcOffice = "D:\SOFTWARE\OFFICE\Office 2019"
-
+    $srcOffice = Join-Path $srcSETUP "Office 2019"
+    
+    # Copy Software installer files based on pending apps
     foreach ($app in $Apps) {
         switch ($app.Id) {
             '7zip' {
@@ -1609,7 +1614,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                     $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include '7z*.exe', '7-Zip*.exe', '7zip*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
                     if ($file) {
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
-                        Add-Status "Copy: 7-Zip -> $setupDir\$file" $statusTextBox
+                        Add-Status "Copying: 7-Zip" $statusTextBox
                     }
                     else {
                         Add-Status "Missing 7-Zip installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -1620,7 +1625,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                 $src = Join-Path $srcSETUP "ChromeSetup.exe"
                 if (Test-Path $src) {
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "ChromeSetup.exe") -Force
-                    Add-Status "Copy: Chrome -> $setupDir\ChromeSetup.exe" $statusTextBox
+                    Add-Status "Copying: Chrome" $statusTextBox
                 }
                 else {
                     Add-Status "Missing ChromeSetup.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -1630,7 +1635,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                 $src = Join-Path $srcSETUP "LAPS_x64.msi"
                 if (Test-Path $src) {
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "LAPS_x64.msi") -Force
-                    Add-Status "Copy: LAPS -> $setupDir\LAPS_x64.msi" $statusTextBox
+                    Add-Status "Copying: LAPS" $statusTextBox
                 }
                 else {
                     Add-Status "Missing LAPS_x64.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -1641,7 +1646,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                     $file = Get-ChildItem -Path (Join-Path $srcSETUP '*') -Include 'FoxitPDFReader*.exe', 'FoxitReader*.exe', 'Foxit*.exe' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -First 1
                     if ($file) {
                         Copy-Item -Path (Join-Path $srcSETUP $file) -Destination (Join-Path $setupDir $file) -Force
-                        Add-Status "Copy: Foxit -> $setupDir\$file" $statusTextBox
+                        Add-Status "Copying: Foxit" $statusTextBox
                     }
                     else {
                         Add-Status "Missing Foxit installer in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -1652,17 +1657,17 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                 if (Test-Path $srcOffice) {
                     if (-not (Test-Path $office2019Dir)) { New-Item -Path $office2019Dir -ItemType Directory -Force | Out-Null }
                     Copy-Item -Path (Join-Path $srcOffice "*") -Destination $office2019Dir -Recurse -Force
-                    Add-Status "Copy: Office2019 -> $office2019Dir" $statusTextBox
+                    Add-Status "Copying: Office2019" $statusTextBox
                 }
                 else {
-                    Add-Status "Missing Office 2019 source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    Add-Status "Missing Office2019 source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
             'zoom' {
                 $src = Join-Path $srcSETUP "ZoomInstallerFull.exe"
                 if (Test-Path $src) {
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "ZoomInstallerFull.exe") -Force
-                    Add-Status "Copy: Zoom -> $setupDir\ZoomInstallerFull.exe" $statusTextBox
+                    Add-Status "Copying: Zoom" $statusTextBox
                 }
                 else {
                     Add-Status "Missing ZoomInstallerFull.exe in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -1672,7 +1677,7 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
                 $src = Join-Path $srcSETUP "CheckPointVPN.msi"
                 if (Test-Path $src) {
                     Copy-Item -Path $src -Destination (Join-Path $setupDir "CheckPointVPN.msi") -Force
-                    Add-Status "Copy: CheckPointVPN -> $setupDir\CheckPointVPN.msi" $statusTextBox
+                    Add-Status "Copying: CheckPointVPN" $statusTextBox
                 }
                 else {
                     Add-Status "Missing CheckPointVPN.msi in $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -1682,27 +1687,10 @@ function Copy-SoftwareFilesSelective {param([ValidateSet('Desktop', 'Laptop')][s
     }
     return $true
 }
-function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
-    Add-Status "1. Detecting installed software..." $statusTextBox
-    $plan = Plan_SoftwareInstall -DeviceType $DeviceType -statusTextBox $statusTextBox
-
-    if (-not $plan.Pending -or $plan.Pending.Count -eq 0) { Add-Status "Nothing to install. Skipping copy and install steps." $statusTextBox ([System.Drawing.Color]::Green); return $true }
-
-    Add-Status "2. Copying installers for pending apps..." $statusTextBox
-    $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox
-
-    if (-not $okCopy) { Add-Status "Error: Failed to copy required installers. Aborting." $statusTextBox ([System.Drawing.Color]::Red); return $false }
-
-    Add-Status "3. Installing pending software..." $statusTextBox
-    $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $plan.Pending
-    if ($okInstall) { Add-Status "All pending software installation completed successfully!" $statusTextBox; return $true }
-    else { Add-Status "Warning: Some installations may have failed." $statusTextBox ([System.Drawing.Color]::Red); return $false }
-}
 function Install-Software {param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [array]$appsToInstall)
     try {
         $tempDir = "$env:USERPROFILE\Downloads\SETUP"
         $setupDir = "$tempDir\Software"
-        $office2019Dir = "$tempDir\Office2019"
 
         # Take list of Ids to install
         $appIds = $appsToInstall | ForEach-Object { $_.Id }
@@ -1717,15 +1705,20 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
 
         # 2. Install 7-Zip
         if ($appIds -contains '7zip') {
-            $sevenZipInstaller = Get-ChildItem -Path $setupDir -Include "7z*.exe","7-Zip*.exe","7zip*.exe" -Recurse | Select-Object -First 1
-            if ($sevenZipInstaller) { Add-Status "7-Zip: Installing..." $statusTextBox
-                try { $process = Start-Process -FilePath $sevenZipInstaller.FullName -ArgumentList "/S" -Wait -PassThru -WindowStyle Hidden
-                    if ($process.ExitCode -eq 0) { Add-Status "7-Zip: Installed successfully!" $statusTextBox 
-                    } else { Add-Status "7-Zip: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)}
-                } catch [System.Exception] { $errorMessage = $_.Exception.Message
+            $sevenZipInstaller = Get-ChildItem -Path $setupDir -Include "7z*.exe", "7-Zip*.exe", "7zip*.exe" -Recurse | Select-Object -First 1
+            if ($sevenZipInstaller) {
+                Add-Status "7-Zip: Installing..." $statusTextBox
+                try {
+                    $process = Start-Process -FilePath $sevenZipInstaller.FullName -ArgumentList "/S" -Wait -PassThru -WindowStyle Hidden
+                    if ($process.ExitCode -eq 0) {
+                        Add-Status "7-Zip: Installed successfully!" $statusTextBox 
+                    } else { Add-Status "7-Zip: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                } catch [System.Exception] {
+                    $errorMessage = $_.Exception.Message
                     Add-Status "7-Zip: Installation failed: $errorMessage" $statusTextBox ([System.Drawing.Color]::Red)
                 }
-            } else { Add-Status "7-Zip: Installer not found in $setupDir" $statusTextBox ([System.Drawing.Color]::Red)
+            } else {
+                Add-Status "7-Zip: Installer not found in $setupDir" $statusTextBox ([System.Drawing.Color]::Red)
             }
         } else { Add-Status "7-Zip: Already installed. Skipping..." $statusTextBox }
 
@@ -1752,8 +1745,10 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
             $osInfo = Get-ComputerInfo
             if ($osInfo.WindowsProductName -match "Windows 10") {
                 $lapsInstaller = Join-Path $setupDir "LAPS_x64.msi"
-                if (Test-Path $lapsInstaller) { Add-Status "LAPS: Installing..." $statusTextBox
-                    try { $result = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$lapsInstaller`" /qn /norestart" -Wait -PassThru
+                if (Test-Path $lapsInstaller) {
+                    Add-Status "LAPS: Installing..." $statusTextBox
+                    try {
+                        $result = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$lapsInstaller`" /qn /norestart" -Wait -PassThru
                         if ($result.ExitCode -eq 0) { Add-Status "LAPS: Installed successfully!" $statusTextBox } else { Add-Status "LAPS: Installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
                     } catch { Add-Status "LAPS: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
                 } else { Add-Status "LAPS: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
@@ -1763,161 +1758,123 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
         # 5. Install Foxit Reader
         if ($appIds -contains 'foxit') {
             $foxitInstaller = Get-ChildItem -Path $setupDir -Include "Foxit*.exe" -Recurse | Select-Object -First 1
-            if ($foxitInstaller) { Add-Status "Foxit Reader: Installing..." $statusTextBox
-                try { $result = Start-Process -FilePath $foxitInstaller.FullName -ArgumentList "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES" -Wait -PassThru
+            if ($foxitInstaller) {
+                Add-Status "Foxit Reader: Installing..." $statusTextBox
+                try {
+                    $result = Start-Process -FilePath $foxitInstaller.FullName -ArgumentList "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES" -Wait -PassThru
                     if ($result.ExitCode -eq 0) { Add-Status "Foxit Reader: Installed successfully!" $statusTextBox } else { Add-Status "Foxit Reader: Installation returned exit code: $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
                 } catch { Add-Status "Foxit Reader: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
             } else { Add-Status "Foxit Reader: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
         } else { Add-Status "Foxit Reader: Already installed. Skipping..." $statusTextBox }
 
         # 6. Install Office 2019 (Completely Silent)
-        if (-not (Test-Path "C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")) {
-            $officeSetup = "$office2019Dir\setup.exe"
-            $configFile = "$office2019Dir\configuration.xml"
-            
-            # Check if we have a silent config template
-            $silentConfigTemplate = Join-Path $PSScriptRoot "config\office2019-silent-config.xml"
-            if (Test-Path $silentConfigTemplate) {
-                Copy-Item -Path $silentConfigTemplate -Destination $configFile -Force
-                Add-Status "Using silent installation configuration for Office 2019" $statusTextBox ([System.Drawing.Color]::Cyan)
-            }
-            
-            # Ensure the configuration is set for completely silent installation
-            if (Test-Path $configFile) {
-                Set-OfficeInstallationSilent -ConfigPath $configFile
-                Add-Status "Configuration verified for silent installation (no UI will be shown)" $statusTextBox ([System.Drawing.Color]::Cyan)
-            }
-            
+        if ($appIds -contains 'office2019') {
+            $officeSetup = Join-Path $office2019Dir "setup.exe"
+            $configFile = Join-Path $office2019Dir "config.xml"
+            $silentConfigTemplate = Join-Path $office2019Dir "silent_config.xml"
+
             if (Test-Path $officeSetup) {
-                Add-Status "Office 2019: Installing silently (no progress window will be shown)..." $statusTextBox
+                Add-Status "Office 2019: Preparing silent installation..." $statusTextBox
+                
+                # Tạo file cấu hình nếu chưa tồn tại
+                if (-not (Test-Path $configFile) -and (Test-Path $silentConfigTemplate)) {
+                    try {
+                        Copy-Item -Path $silentConfigTemplate -Destination $configFile -Force
+                        Add-Status "Office 2019: Using silent installation configuration" $statusTextBox
+                    } catch {
+                        Add-Status "Office 2019: Failed to create configuration file: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                        return $false
+                    }
+                }
+
+                # Đảm bảo cấu hình im lặng
+                if (Test-Path $configFile) {
+                    try {
+                        Set-OfficeInstallationSilent -ConfigPath $configFile
+                        Add-Status "Office 2019: Silent configuration verified" $statusTextBox
+                    } catch {
+                        Add-Status "Office 2019: Warning - Could not verify silent configuration: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    }
+
+                    # Thực hiện cài đặt
+                    Add-Status "Office 2019: Starting installation (this may take a while)..." $statusTextBox
+                    try {
+                        # Dừng các tiến trình Office đang chạy
+                        Get-Process | Where-Object { 
+                            $_.ProcessName -match "winword|excel|powerpnt|outlook|msaccess|mspub|onenote" 
+                        } | Stop-Process -Force -ErrorAction SilentlyContinue
+
+                        $process = Start-Process -FilePath $officeSetup -ArgumentList "/configure `"$configFile`"" -Wait -PassThru -WindowStyle Hidden
+                        
+                        if ($process.ExitCode -eq 0) {
+                            Add-Status "Office 2019: Installed successfully!" $statusTextBox
+                        } else {
+                            Add-Status "Office 2019: Installation completed with exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                            # Có thể thêm kiểm tra mã lỗi cụ thể ở đây nếu cần
+                        }
+                    } catch {
+                        Add-Status "Office 2019: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                        return $false
+                    }
+                } else {
+                    Add-Status "Office 2019: Configuration file not found" $statusTextBox ([System.Drawing.Color]::Red)
+                    return $false
+                }
+            } else {
+                Add-Status "Office 2019: Setup file not found" $statusTextBox ([System.Drawing.Color]::Red)
+                return $false
+            }
+        } else {
+            Add-Status "Office 2019: Already installed. Skipping..." $statusTextBox
+        }
+
+        # 7. Install Zoom (for Laptop only)
+        if ($deviceType -eq "Laptop" -and $appIds -contains 'zoom') {
+            $zoomInstaller = Join-Path $setupDir "ZoomInstaller.exe"
+            if (Test-Path $zoomInstaller) {
+                Add-Status "Zoom: Installing..." $statusTextBox
                 try {
-                    # Kill any existing Office processes
-                    Get-Process | Where-Object { $_.ProcessName -match "winword|excel|powerpnt|outlook|msaccess|mspub|onenote" } | Stop-Process -Force -ErrorAction SilentlyContinue
-                    
-                    # Hide any potential Office installation windows
-                    Add-Type -TypeDefinition @"
-                        using System;
-                        using System.Runtime.InteropServices;
-                        public class WindowHelper {
-                            [DllImport("user32.dll")]
-                            public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-                            [DllImport("user32.dll")]
-                            public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
-                        }
-"@ -ErrorAction SilentlyContinue
-                    
-                    # Start completely silent installation
-                    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-                    $startInfo.FileName = $officeSetup
-                    $startInfo.Arguments = "/configure `"$configFile`""
-                    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-                    $startInfo.CreateNoWindow = $true
-                    $startInfo.UseShellExecute = $false
-                    
-                    $installProcess = [System.Diagnostics.Process]::Start($startInfo)
-                    
-                    # Monitor installation progress without showing UI
-                    $timeout = 1800 # 30 minutes timeout
-                    $elapsed = 0
-                    $checkInterval = 10
-                    
-                    while (-not $installProcess.HasExited -and $elapsed -lt $timeout) {
-                        Start-Sleep -Seconds $checkInterval
-                        $elapsed += $checkInterval
-                        
-                        # Update status every minute
-                        if ($elapsed % 60 -eq 0) {
-                            $minutes = [math]::Round($elapsed/60)
-                            Add-Status "Office 2019 installation in progress... ($minutes minutes elapsed)" $statusTextBox ([System.Drawing.Color]::Yellow)
-                        }
-                        
-                        # Refresh UI
-                        [System.Windows.Forms.Application]::DoEvents()
+                    $process = Start-Process -FilePath $zoomInstaller -ArgumentList "/silent /norestart /zoom" -Wait -PassThru
+                    if ($process.ExitCode -eq 0) {
+                        Add-Status "Zoom: Installed successfully!" $statusTextBox
+                    } else {
+                        Add-Status "Zoom: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
                     }
-                    
-                    if ($installProcess.HasExited) {
-                        if ($installProcess.ExitCode -eq 0) {
-                            Add-Status "Office 2019 installed successfully! (Silent installation completed)" $statusTextBox ([System.Drawing.Color]::Green)
-                        }
-                        else {
-                            Add-Status "Office 2019 installation completed with exit code: $($installProcess.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
-                        }
-                    }
-                    else {
-                        Add-Status "Office 2019 installation timeout - process may still be running in background" $statusTextBox ([System.Drawing.Color]::Yellow)
-                        $installProcess.Kill()
-                    }
+                } catch {
+                    Add-Status "Zoom: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
                 }
-                catch {
-                    Add-Status "ERROR: Office 2019 installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
+            } else {
+                Add-Status "Zoom: Installer not found" $statusTextBox ([System.Drawing.Color]::Red)
             }
-            else {
-                Add-Status "Office 2019: Setup not found at $officeSetup" $statusTextBox ([System.Drawing.Color]::Red)
-            }
-        }
-        else {
-            Add-Status "Office 2019: Already installed. Skipping..." $statusTextBox 
+        } elseif ($deviceType -eq "Laptop") {
+            Add-Status "Zoom:       Already installed. Skipping..." $statusTextBox
         }
 
-        # 7. Install Zoom
-        if ($deviceType -eq "Laptop") {
-            $zoomCheck = @(
-                "$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe",
-                "C:\Program Files\Zoom\bin\Zoom.exe",
-                "C:\Program Files (x86)\Zoom\bin\Zoom.exe"
-            )
-            $zoomInstalled = $false
-            foreach ($path in $zoomCheck) {
-                if (Test-Path $path) {
-                    $zoomInstalled = $true
-                    break
-                }
-            }
-            if (-not $zoomInstalled) {
-                $zoomInstaller = "$setupDir\ZoomInstallerFull.exe"
-                if (Test-Path $zoomInstaller) {
-                    Add-Status "Installing Zoom..." $statusTextBox
-                    try {
-                        Start-Process -FilePath $zoomInstaller -ArgumentList "/silent" -Wait
-                        Add-Status "Zoom installed successfully!" $statusTextBox
+        # 8. Install CheckPoint VPN (for Laptop only)
+        if ($deviceType -eq "Laptop" -and $appIds -contains 'checkpointvpn') {
+            $vpnInstaller = Join-Path $setupDir "CheckPointVPN.msi"
+            if (Test-Path $vpnInstaller) {
+                Add-Status "CheckPoint VPN: Installing..." $statusTextBox
+                try {
+                    $process = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$vpnInstaller`" /qn /norestart" -Wait -PassThru
+                    if ($process.ExitCode -eq 0) {
+                        Add-Status "CheckPoint VPN: Installed successfully!" $statusTextBox
+                    } else {
+                        Add-Status "CheckPoint VPN: Installation returned exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
                     }
-                    catch { Add-Status "ERROR: Zoom installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+                } catch {
+                    Add-Status "CheckPoint VPN: Installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
                 }
-                else {
-                    Add-Status "Zoom:         Installer not found at $zoomInstaller" $statusTextBox ([System.Drawing.Color]::Red)
-                }
+            } else {
+                Add-Status "CheckPoint VPN: Installer not found" $statusTextBox ([System.Drawing.Color]::Red)
             }
-            else {
-                Add-Status "Zoom:         Already installed. Skipping..." $statusTextBox
-            }
-
-            # 8. Install CheckPointVPN
-            if (-not (Test-Path "C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")) {
-                $vpnInstaller = "$setupDir\CheckPointVPN.msi"
-                if (Test-Path $vpnInstaller) {
-                    Add-Status "Installing CheckPointVPN..." $statusTextBox
-                    try {
-                        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$vpnInstaller`" /quiet" -Wait
-                        Add-Status "CheckPointVPN installed successfully!" $statusTextBox
-                    }
-                    catch {
-                        Add-Status "ERROR: CheckPointVPN installation failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                    }
-                }
-                else {
-                    Add-Status "ERROR: CheckPointVPN installer not found at $vpnInstaller" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "CheckPointVPN:Already installed. Skipping..." $statusTextBox
-            }
+        } elseif ($deviceType -eq "Laptop") {
+            Add-Status "CheckPoint VPN: Already installed. Skipping..." $statusTextBox
         }
         return $true
     }
     catch {
-        Add-Status "ERROR: $_" $statusTextBox ([System.Drawing.Color]::Red)
-        Add-Status "Error details: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+        Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
     finally {
@@ -1935,6 +1892,146 @@ function Install-Software {param ([string]$deviceType, [System.Windows.Forms.Ric
         }
         catch {
             Add-Status "Warning: Failed to clean up temporary files: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+    }
+}
+function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+    $srcSETUP = "D:\SOFTWARE\PAYOO\SETUP"
+    $destSETUP = "$env:USERPROFILE\Downloads\SETUP"
+    $destCopy = "$env:USERPROFILE\Downloads"
+
+    # Copy SC-* files (for both Desktop and Laptop)
+    $scFiles = Get-ChildItem -Path (Join-Path $srcSETUP 'SC-*') -File -ErrorAction SilentlyContinue
+    if ($scFiles) {
+        $scDest = Join-Path $destCopy $scFiles.Name
+        if (-not (Test-Path $scDest)) {
+            if (Test-Path $scFiles.FullName) {
+                Copy-Item -Path $scFiles.FullName -Destination $scDest -Force
+                Add-Status "ForceScout has been copied" $statusTextBox
+            } else {
+                Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } else {
+            Add-Status "ForceScout   existed. Skipped" $statusTextBox
+        }
+    } else {
+        Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+    }
+
+    # Copy Desktop/Laptop specific files
+    if ($DeviceType -eq "Desktop") {
+        # Copy Desktop Agent
+        $desktopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Desktop Agent*.exe') -File -ErrorAction SilentlyContinue
+        if ($desktopAgent) {
+            $agentDest = Join-Path $destCopy $desktopAgent.Name
+            if (-not (Test-Path $agentDest)) {
+                if (Test-Path $desktopAgent.FullName) {
+                    Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force
+                    Add-Status "Desktop Agent has been copied" $statusTextBox
+                } else {
+                    Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            } else {
+                Add-Status "Desktop Agent existed. Skipped" $statusTextBox
+            }
+        } else {
+            Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+    } 
+    else {
+        # Copy Laptop Agent
+        $laptopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Laptop Agent*.exe') -File -ErrorAction SilentlyContinue
+        if ($laptopAgent) {
+            $agentDest = Join-Path $destCopy $laptopAgent.Name
+            if (-not (Test-Path $agentDest)) {
+                if (Test-Path $laptopAgent.FullName) {
+                    Copy-Item -Path $laptopAgent.FullName -Destination $agentDest -Force
+                    Add-Status "Laptop Agent has been copied" $statusTextBox
+                } else {
+                    Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            } else {
+                Add-Status "Laptop Agent existed. Skipped" $statusTextBox
+            }
+        } else {
+            Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        
+        # Copy ManageEngine MDM Laptop Enrollment
+        $mdmSource = Join-Path $srcSETUP "ManageEngine_MDMLaptopEnrollment"
+        $mdmDest = Join-Path $destCopy "ManageEngine_MDMLaptopEnrollment"
+
+        # Chỉ copy nếu thư mục đích chưa tồn tại
+        if (-not (Test-Path $mdmDest)) {
+            if (Test-Path $mdmSource) {
+                try {
+                    # Tạo thư mục đích
+                    $null = New-Item -Path $mdmDest -ItemType Directory -Force -ErrorAction Stop
+                    
+                    # Copy toàn bộ nội dung
+                    Copy-Item -Path "$mdmSource\*" -Destination $mdmDest -Recurse -Force
+                    Add-Status "ManageEngine has been copied" $statusTextBox
+                }
+                catch {
+                    Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
+                }
+            }
+            else {
+                Add-Status "Warning: Not found source directory" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        }
+        else { Add-Status "ManageEngine existed. Skipped" $statusTextBox }
+    }    
+    
+    try {        
+        # 1. Kiểm tra thư mục nguồn
+        if (-not (Test-Path $srcSETUP)) {
+            Add-Status "Error: Source directory not found" $statusTextBox ([System.Drawing.Color]::Red)
+            return $false
+        }
+
+        # 2. Kiểm tra phần mềm cần cài đặt
+        Add-Status "Checking installed software..." $statusTextBox
+        $plan = PlanSoftwareInstall -DeviceType $DeviceType -statusTextBox $statusTextBox
+
+        # 3. Chỉ xử lý nếu có phần mềm cần cài
+        if ($plan.Pending.Count -gt 0) {
+            Add-Status "Found $($plan.Pending.Count) software(s) to install" $statusTextBox
+            
+            # 4. Tạo thư mục đích
+            if (-not (Test-Path $destSETUP)) { New-Item -Path $destSETUP -ItemType Directory -Force | Out-Null }
+
+            # 5. Copy file cài đặt phần mềm
+            $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox
+            if (-not $okCopy) { 
+                Add-Status "Error: Failed to copy installers" $statusTextBox ([System.Drawing.Color]::Red)
+                return $false 
+            }
+
+            # 6. Cài đặt phần mềm
+            $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $plan.Pending
+            if (-not $okInstall) { 
+                Add-Status "Warning: Some installations failed" $statusTextBox ([System.Drawing.Color]::Yellow)
+                return $false
+            }
+            Add-Status "All software installation completed successfully" $statusTextBox
+            return $true
+        } else {
+            Add-Status "All required software is already installed." $statusTextBox
+            return $true
+        }
+    }
+    catch {
+        Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
+        return $false
+    }
+    finally {
+        # 8. Chỉ xóa thư mục tạm nếu không phải là thư mục MDM
+        if ($tempDir -and (Test-Path $tempDir) -and (-not $tempDir.Contains("MDM_Setup"))) {
+            try {
+                Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+                Add-Status "Đã dọn dẹp thư mục tạm" $statusTextBox
+            } catch { }
         }
     }
 }
@@ -1982,25 +2079,13 @@ function Show-InstallSoftwareDialog {
 
     $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Desktop setup workflow..." $statusTextBox
-        $result = Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox
-        if ($result) {
-            Add-Status "Desktop workflow finished." $statusTextBox
-        }
-        else {
-            Add-Status "Desktop workflow finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
+        Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox
     }
     $deviceTypeForm.Controls.Add($btnDesktop)
 
     $btnLaptop = New-DynamicButton -text "LAPTOP" -x 260 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Laptop setup workflow..." $statusTextBox
-        $result = Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox
-        if ($result) {
-            Add-Status "Laptop workflow finished." $statusTextBox
-        }
-        else {
-            Add-Status "Laptop workflow finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
+        Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox
     }
     $deviceTypeForm.Controls.Add($btnLaptop)
 
@@ -2183,7 +2268,7 @@ function Invoke-PowerOptionsDialog {
 
     # Press ESC to close form
     $powerForm.Add_KeyDown({
-            param($sender, $e)
+            param($s, $e)
             if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Escape) {
                 $powerForm.Close()
             }
@@ -2220,7 +2305,6 @@ function Update-DriveList {
 
     return $drives.Count
 }
-
 function Invoke-VolumeManagementDialog {
     Hide-MainMenu
     # Create volume management form
@@ -2698,7 +2782,6 @@ function New-ShrinkVolumeTitle {
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $contentPanel.Controls.Add($titleLabel)
 }
-
 function New-ShrinkVolumeDriveSelector {
     param([System.Windows.Forms.Panel]$contentPanel)
 
@@ -2724,7 +2807,6 @@ function New-ShrinkVolumeDriveSelector {
     $script:selectedDriveTextBox.TextAlign = [System.Windows.Forms.HorizontalAlignment]::Center
     $contentPanel.Controls.Add($script:selectedDriveTextBox)
 }
-
 function New-ShrinkVolumePartitionSizeOptions {
     param ([System.Windows.Forms.Panel]$contentPanel, [System.Windows.Forms.TextBox]$selectedDriveTextBox)
 
@@ -2823,7 +2905,6 @@ function New-ShrinkVolumePartitionSizeOptions {
             }
         })
 }
-
 function New-ShrinkVolumeNewLabelInput {
     param([System.Windows.Forms.Panel]$contentPanel, [System.Windows.Forms.TextBox]$selectedDriveTextBox)
 
@@ -2846,7 +2927,6 @@ function New-ShrinkVolumeNewLabelInput {
     $script:newLabelTextBox.Text = "DATA"
     $contentPanel.Controls.Add($script:newLabelTextBox)
 }
-
 function Get-ShrinkVolumePartitionSize {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
     # Determine partition size based on selected radio button
@@ -2894,7 +2974,6 @@ function Get-ShrinkVolumePartitionSize {
 
     return $sizeMB
 }
-
 function Test-ShrinkVolumeSpace {
     param([string]$driveLetter, [int]$sizeMB)
 
@@ -2941,7 +3020,6 @@ function Test-ShrinkVolumeSpace {
 
     return $true
 }
-
 function Invoke-ShrinkVolumeOperation {
     param([string]$driveLetter, [int]$sizeMB, [string]$newLabel)
 
@@ -3119,7 +3197,6 @@ echo Operation completed successfully. >> shrink_status.txt
         }
     }
 }
-
 function New-ShrinkVolumeActionButton {
     param([System.Windows.Forms.Panel]$contentPanel)
 
@@ -3169,7 +3246,6 @@ function New-RenameVolumeTitle {
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $parentPanel.Controls.Add($titleLabel)
 }
-
 function New-RenameVolumeGroupBox {
     param([System.Windows.Forms.Panel]$parentPanel, [System.Windows.Forms.ListBox]$driveListBox)
     $groupBox = New-Object System.Windows.Forms.GroupBox
@@ -3228,7 +3304,6 @@ function New-RenameVolumeGroupBox {
         NewLabelTextBox    = $script:renameNewLabelTextBox
     }
 }
-
 function New-RenameActionButton {
     param([System.Windows.Forms.GroupBox]$groupBox, [System.Windows.Forms.ListBox]$driveListBox)
     $renameButton = New-DynamicButton -text "Rename" -x 100 -y 100 -width 200 -height 40 -clickAction {
@@ -3266,7 +3341,6 @@ function New-ExtendVolumeTitle {
     $titleLabel.BackColor = [System.Drawing.Color]::Transparent
     $parentPanel.Controls.Add($titleLabel)
 }
-
 function New-ExtendVolumeGroupBox {
     param([System.Windows.Forms.Panel]$parentPanel)
 
@@ -3364,7 +3438,6 @@ function New-ExtendVolumeGroupBox {
         TargetDriveTextBox = $script:extendTargetDriveTextBox
     }
 }
-
 function New-ExtendActionButton {
     param([hashtable]$extendControls, [System.Windows.Forms.RichTextBox]$statusTextBox)
     $groupBox = $extendControls.GroupBox
@@ -3418,7 +3491,6 @@ function New-ExtendActionButton {
         })
     return $mergeButton
 }
-
 function Test-ExtendVolumeInput {
     param([string]$sourceDrive, [string]$targetDrive, [System.Windows.Forms.TextBox]$statusTextBox)
 
@@ -3476,7 +3548,6 @@ function Test-ExtendVolumeInput {
 
     return $true
 }
-
 function Invoke-ExtendVolumeOperation {
     param([string]$sourceDrive, [string]$targetDrive, [System.Windows.Forms.RichTextBox]$statusTextBox)
 
@@ -3657,7 +3728,6 @@ function Get-WindowsVersionShort {
         return "Unknown Windows Version"
     }
 }
-
 function Invoke-ActivateWindows10Pro {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -3692,7 +3762,6 @@ function Invoke-ActivateWindows10Pro {
         Add-Status "Error activating Windows: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
-
 function Invoke-ActivateOffice2019 {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -3774,7 +3843,6 @@ function Invoke-ActivateOffice2019 {
         Add-Status "ERROR: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
-
 function Invoke-UpgradeWindowsHomeToPro {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -3816,7 +3884,6 @@ function Invoke-UpgradeWindowsHomeToPro {
         Add-Status "Error upgrading Windows: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
-
 function Invoke-ActivationDialog {
     Hide-MainMenu
     # Create activation form
@@ -3905,7 +3972,6 @@ function Invoke-WindowsFeaturesConfiguration {
         return $false
     }
 }
-
 function Invoke-FeaturesDialog {
     Hide-MainMenu
     # Create features configuration form
@@ -4019,7 +4085,6 @@ function Invoke-FeaturesDialog {
     # Show the dialog
     $featuresForm.ShowDialog()
 }
-
 function Invoke-EnableWindowsFeatures {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     # Danh sách các features cần enable
@@ -4081,7 +4146,6 @@ function Invoke-EnableWindowsFeatures {
         }
     }
 }
-
 function Invoke-DisableWindowsFeatures {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     # Take OS version
@@ -4602,7 +4666,6 @@ function Show-SetPasswordForm {
     $form.ShowDialog()
     return $dialogResult
 }
-
 function Set-UserPassword {
     param ([string]$user, [SecureString]$password)
     try {
@@ -4741,7 +4804,6 @@ function Set-UserPassword {
         return $false
     }
 }
-
 function Remove-UserPassword {
     param([string]$user)
     try {
@@ -4752,7 +4814,6 @@ function Remove-UserPassword {
         return $false
     }
 }
-
 function Invoke-SetPasswordDialog {
     param([string]$currentUser, [System.Windows.Forms.RichTextBox]$statusTextBox, [bool]$showMenuAfter = $false)$result = Show-SetPasswordForm -currentUser $currentUser -statusTextBox $statusTextBox
     if ($result.Action -eq "set") {
@@ -5496,7 +5557,7 @@ function Invoke-CrowdStrikeDialog {
         $selectedDept = $deptComboBox.SelectedItem.ToString()
 
         # Filter out section headers and empty lines
-        if ($selectedDept -like "---*" -or $selectedDept -eq "" -or $selectedDept -eq $null) {
+        if ($selectedDept -like $null -or "---*" -or $selectedDept -eq "" -or $selectedDept) {
             [System.Windows.Forms.MessageBox]::Show(
                 "Please select a valid department (not a section header).",
                 "Invalid Selection",
@@ -5623,7 +5684,7 @@ function Invoke-InstallCrowdStrike {
         Add-Status "   Path: $scriptPath" $statusTextBox ([System.Drawing.Color]::Gray)
 
         # Check for installer executable
-        $installerDir = Join-Path $PSScriptRoot "..\CrowdStrike\core"
+        $installerDir = Join-Path $PSScriptRoot "CrowdStrike\core"
         $installerPath = Join-Path $installerDir "FalconSensor_Windows.exe"
 
         if (-not (Test-Path $installerPath)) {
@@ -5683,7 +5744,6 @@ function Invoke-InstallCrowdStrike {
         Add-Status "Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
-
 function Invoke-CheckCrowdStrikeStatus {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
@@ -5818,7 +5878,6 @@ function Invoke-CheckCrowdStrikeStatus {
         Add-Status "Error checking CrowdStrike status: $_" $statusTextBox ([System.Drawing.Color]::Red)
     }
 }
-
 function Set-CrowdStrikeGroupingTag {
     param([Parameter(Mandatory = $true)][string]$Tag, [Parameter(Mandatory = $true)][string]$Token, [System.Windows.Forms.RichTextBox]$StatusTextBox)
     try {
@@ -5884,7 +5943,6 @@ function Set-CrowdStrikeGroupingTag {
         return $false
     }
 }
-
 function Invoke-CrowdStrikeGroupTagDialog {
     param([string[]]$Departments)
     $form = New-Object System.Windows.Forms.Form
@@ -6028,7 +6086,6 @@ function Invoke-CrowdStrikeGroupTagDialog {
 
     $form.ShowDialog() | Out-Null
 }
-
 function Get-DepartmentRecommendation {
     param ([string]$Department)
     # EDR Departments
@@ -6068,7 +6125,6 @@ function Get-DepartmentRecommendation {
         }
     }
 }
-
 function Get-DepartmentFromGroupTag {
     param ([string]$GroupTag)
     # Map group tags to departments based on our department list
@@ -6126,7 +6182,6 @@ function Get-DepartmentFromGroupTag {
 
     return $GroupTag  # Return original if no mapping found
 }
-
 function Get-CrowdStrikeProductCode {
     try {
         $uninstallRoots = @(
@@ -6160,7 +6215,6 @@ function Get-CrowdStrikeProductCode {
     catch {}
     return $null
 }
-
 function Get-CrowdStrikeUninstallString {
     try {
         $roots = @(
@@ -6185,7 +6239,6 @@ function Get-CrowdStrikeUninstallString {
     catch {}
     return $null
 }
-
 function Uninstall-CrowdStrikeSensor {
     param([Parameter(Mandatory = $true)][string]$Token, [Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox)
     if (-not $Token.Trim()) { Add-Status "Maintenance token is required." $statusTextBox ([System.Drawing.Color]::Red); return }
@@ -6267,7 +6320,6 @@ function Uninstall-CrowdStrikeSensor {
     }
     catch { Add-Status ("Uninstall error: " + $_.Exception.Message) $statusTextBox ([System.Drawing.Color]::Red) }
 }
-
 function Invoke-CrowdStrikeUninstallDialog {
     param([Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox)
     $form = New-Object System.Windows.Forms.Form
@@ -6384,12 +6436,10 @@ function Update-MenuLayout {
 }
 
 # Add resize event handler to update menu layout
-$script:form.Add_Resize({ Update-MenuLayout })
-Update-MenuLayout
+$script:form.Add_Resize({ Update-MenuLayout }); Update-MenuLayout
 
 # Add escape handler to close the form
-$script:form.KeyPreview = $true
-$script:form.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $script:form.Close() } })
+$script:form.KeyPreview = $true; $script:form.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $script:form.Close() } })
 
 # Show the form
 $script:form.ShowDialog()
