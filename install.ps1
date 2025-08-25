@@ -61,36 +61,8 @@ catch { Write-Host "Error loading Windows Forms and Drawing assemblies." -Foregr
 $Global:EthernetDriverExe = 'D:\DRIVER\Ethernet\Intel-PCIe-Ethernet-Controller-Driver_99KJH_WIN64_12.19.2.50_A27_01.exe'
 $Global:WifiDriverExe = 'D:\DRIVER\Wifi\WiFi-23.120.0-Driver64-Win10-Win11.exe'
 
-# Function to ensure Office installation is completely silent
-function Set-OfficeInstallationSilent {param([string]$ConfigPath)
-    try {
-        if (Test-Path $ConfigPath) {
-            # Read existing config
-            [xml]$config = Get-Content $ConfigPath
-            
-            # Ensure Display Level is None for completely silent installation
-            if ($config.Configuration.Display) {
-                $config.Configuration.Display.Level = "None"
-                $config.Configuration.Display.AcceptEULA = "TRUE"
-            }
-            else {
-                # Create Display element if it doesn't exist
-                $displayElement = $config.CreateElement("Display")
-                $displayElement.SetAttribute("Level", "None")
-                $displayElement.SetAttribute("AcceptEULA", "TRUE")
-                $config.Configuration.AppendChild($displayElement)
-            }
-            
-            # Save the modified config
-            $config.Save($ConfigPath)
-            return $true
-        }
-    }
-    catch {
-        Write-Host "Warning: Could not modify Office configuration for silent install: $_" -ForegroundColor Yellow
-    }
-    return $false
-}
+# Global variable to store CrowdStrike installation info
+$Global:CrowdStrikeInstallInfo = @{Department = $null; InstallType = $null}
 
 # Global function to add gradient background to any form
 function Add-GradientBackground {
@@ -140,7 +112,7 @@ function Add-GradientBackground {
 $script:form = New-Object System.Windows.Forms.Form
 $script:form.Text = "BAOPROVIP - SYSTEM MANAGEMENT"
 $script:form.Size = New-Object System.Drawing.Size(500, 400)
-$script:form.MinimumSize = New-Object System.Drawing.Size(500, 400)  # Kích thước tối thiểu
+$script:form.MinimumSize = New-Object System.Drawing.Size(500, 400)  # Minimum 
 $script:form.StartPosition = "CenterScreen"
 $script:form.BackColor = [System.Drawing.Color]::Black
 $script:form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
@@ -630,8 +602,8 @@ function Invoke-RenamebyDevice {
 
         # Prefix
         $prefix = ""
-        if ($deviceType -eq "Desktop") { $prefix = "HOD" }
-        elseif ($deviceType -eq "Laptop") { $prefix = "HOL" }
+        if ($deviceType -eq "Desktop") { $prefix = "HOD100" }
+        elseif ($deviceType -eq "Laptop") { $prefix = "HOL100" }
 
         # Instruction Label
         $instructionLabel = New-Object System.Windows.Forms.Label
@@ -1829,19 +1801,27 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
             if (Test-Path $scFiles.FullName) {
                 Copy-Item -Path $scFiles.FullName -Destination $scDest -Force
                 Add-Status "ForceScout has been copied" $statusTextBox
-            } else {
-                Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        } else {
-            Add-Status "ForceScout   existed. Skipped" $statusTextBox
-        }
-    } else {
-        Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow)
-    }
+            } else { Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+        } else { Add-Status "ForceScout    existed. Skipped" $statusTextBox }
+    } else { Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+
+    # Copy unikey folder (for both Desktop and Laptop)
+    $unikeyFolder = Get-ChildItem -Path (Join-Path $srcSETUP 'unikey*') -Directory -ErrorAction SilentlyContinue
+    if ($unikeyFolder) {
+        $unikeyDest = "C:\" + $unikeyFolder.Name
+        if (-not (Test-Path $unikeyDest)) {
+            if (Test-Path $unikeyFolder.FullName) {
+                # Create destination directory if it doesn't exist
+                New-Item -ItemType Directory -Path $unikeyDest -Force | Out-Null
+                # Copy all contents from source to destination
+                Copy-Item -Path "$($unikeyFolder.FullName)\*" -Destination $unikeyDest -Recurse -Force
+                Add-Status "Unikey has been copied" $statusTextBox
+            } else { Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red) }
+        } else { Add-Status "Unikey       existed. Skipped" $statusTextBox }
+    } else { Add-Status "Warning: Not found source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
     # Copy Desktop/Laptop specific files
-    if ($DeviceType -eq "Desktop") {
-        # Copy Desktop Agent
+    if ($DeviceType -eq "Desktop") { # Copy Desktop Agent
         $desktopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Desktop Agent*.exe') -File -ErrorAction SilentlyContinue
         if ($desktopAgent) {
             $agentDest = Join-Path $destCopy $desktopAgent.Name
@@ -1849,18 +1829,11 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
                 if (Test-Path $desktopAgent.FullName) {
                     Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force
                     Add-Status "DesktopAgent has been copied" $statusTextBox
-                } else {
-                    Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            } else {
-                Add-Status "DesktopAgent existed. Skipped" $statusTextBox
-            }
-        } else {
-            Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
-        }
+                } else { Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red) }
+            } else { Add-Status "DesktopAgent existed. Skipped" $statusTextBox }
+        } else { Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red) }
     } 
-    else {
-        # Copy Laptop Agent
+    else { # Copy Laptop Agent
         $laptopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Laptop Agent*.exe') -File -ErrorAction SilentlyContinue
         if ($laptopAgent) {
             $agentDest = Join-Path $destCopy $laptopAgent.Name
@@ -1868,15 +1841,9 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
                 if (Test-Path $laptopAgent.FullName) {
                     Copy-Item -Path $laptopAgent.FullName -Destination $agentDest -Force
                     Add-Status "Laptop Agent has been copied" $statusTextBox
-                } else {
-                    Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            } else {
-                Add-Status "Laptop Agent existed. Skipped" $statusTextBox
-            }
-        } else {
-            Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red)
-        }
+                } else { Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red) }
+            } else { Add-Status "Laptop Agent existed. Skipped" $statusTextBox }
+        } else { Add-Status "Error: Not found source file" $statusTextBox ([System.Drawing.Color]::Red) }
         
         # Copy ManageEngine MDM Laptop Enrollment
         $mdmSource = Join-Path $srcSETUP "ManageEngine_MDMLaptopEnrollment"
@@ -1892,16 +1859,9 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
                     # Copy toàn bộ nội dung
                     Copy-Item -Path "$mdmSource\*" -Destination $mdmDest -Recurse -Force
                     Add-Status "ManageEngine has been copied" $statusTextBox
-                }
-                catch {
-                    Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
-                }
-            }
-            else {
-                Add-Status "Error: Not found source directory" $statusTextBox ([System.Drawing.Color]::Red)
-            }
-        }
-        else { Add-Status "ManageEngine existed. Skipped" $statusTextBox }
+                } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+            } else { Add-Status "Error: Not found source directory" $statusTextBox ([System.Drawing.Color]::Red) }
+        } else { Add-Status "ManageEngine existed. Skipped" $statusTextBox }
     }    
     
     try {        
@@ -1952,7 +1912,7 @@ function Invoke-InstallSoftware {param([ValidateSet('Desktop', 'Laptop')][string
             try {
                 Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
                 Add-Status "Đã dọn dẹp thư mục tạm" $statusTextBox
-            } catch { }
+            } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
         }
     }
 }
@@ -4245,19 +4205,19 @@ function Invoke-RenameDialog {
     $newNameTextBox.Location = New-Object System.Drawing.Point(180, 200)
     $newNameTextBox.BackColor = [System.Drawing.Color]::White
     $newNameTextBox.ForeColor = [System.Drawing.Color]::Black
-    $newNameTextBox.Text = "HOD" # Default to Desktop
+    $newNameTextBox.Text = "HOD100" # Default to Desktop
     $renameForm.Controls.Add($newNameTextBox)
 
     # Event handlers for radio buttons to update the default name
     $radioDesktop.Add_CheckedChanged({
             if ($radioDesktop.Checked) {
-                $newNameTextBox.Text = "HOD"
+                $newNameTextBox.Text = "HOD100"
             }
         })
 
     $radioLaptop.Add_CheckedChanged({
             if ($radioLaptop.Checked) {
-                $newNameTextBox.Text = "HOL"
+                $newNameTextBox.Text = "HOL100"
             }
         })
 
@@ -5450,7 +5410,7 @@ function Invoke-CrowdStrikeDialog {
         $selectedDept = $deptComboBox.SelectedItem.ToString()
 
         # Filter out section headers and empty lines
-        if ($selectedDept -like $null -or "---*" -or $selectedDept -eq "" -or $selectedDept) {
+        if ($null -eq $selectedDept -or $selectedDept -eq "" -or $selectedDept -like "---*") {
             [System.Windows.Forms.MessageBox]::Show(
                 "Please select a valid department (not a section header).",
                 "Invalid Selection",
@@ -5532,6 +5492,8 @@ function Invoke-CrowdStrikeDialog {
 }
 function Invoke-InstallCrowdStrike {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox, [string]$Department, [string]$InstallType)
+    $Global:CrowdStrikeInstallInfo.Department = $Department
+    $Global:CrowdStrikeInstallInfo.InstallType = $InstallType
     try {
         $statusTextBox.Clear()
         Add-Status "=== CROWDSTRIKE INSTALLATION STARTED ===" $statusTextBox ([System.Drawing.Color]::Cyan)
@@ -5563,7 +5525,7 @@ function Invoke-InstallCrowdStrike {
 
         # Check for installer script
         Add-Status "2. Locating CrowdStrike installer..." $statusTextBox ([System.Drawing.Color]::Yellow)
-        $scriptPath = Join-Path $PSScriptRoot "..\CrowdStrike\core\auto_installer_integrated.ps1"
+        $scriptPath = Join-Path $PSScriptRoot "CrowdStrike\core\auto_installer_integrated.ps1"
 
         if (-not (Test-Path $scriptPath)) {
             Add-Status "   ✗ CrowdStrike installer script not found!" $statusTextBox ([System.Drawing.Color]::Red)
@@ -5657,6 +5619,24 @@ function Invoke-CheckCrowdStrikeStatus {
 
         # 2. Department Assignment (IMPORTANT)
         Add-Status "2. Department Assignment:" $statusTextBox ([System.Drawing.Color]::White)
+        
+        # Use stored department info if available
+        if ($global:CrowdStrikeInstallInfo.Department) {
+            $department = $global:CrowdStrikeInstallInfo.Department
+            $installType = $global:CrowdStrikeInstallInfo.InstallType
+            
+            Add-Status "   ✓ Department: $department" $statusTextBox ([System.Drawing.Color]::Green)
+            Add-Status "   ✓ Installation Type: $installType" $statusTextBox ([System.Drawing.Color]::Green)
+            
+            # Get policy recommendation
+            $recommendation = Get-DepartmentRecommendation -Department $department
+            $policyColor = if ($recommendation.Type -eq "EDR") { [System.Drawing.Color]::Orange } else { [System.Drawing.Color]::Cyan }
+            Add-Status "   Policy: $($recommendation.Type) - $($recommendation.Reason)" $statusTextBox $policyColor
+        }
+        else {
+            Add-Status "   ⚠ No department assignment found" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "   Device may not be properly deployed" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
 
         try {
             if ($csagentService.Status -eq "Running") {
@@ -5749,7 +5729,7 @@ function Invoke-CheckCrowdStrikeStatus {
             }
         }
 
-        if (-not $csagentService.Tag) {
+        if (-not $global:CrowdStrikeInstallInfo.Department) {
             $issues += "No department assignment"
             if ($overallStatus -eq "HEALTHY") {
                 $overallStatus = "WARNING"
@@ -6179,29 +6159,18 @@ function Invoke-CrowdStrikeUninstallDialog {
     if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
         $token = $textBox.Text.Trim()
         if ([string]::IsNullOrEmpty($token)) {
-            [System.Windows.Forms.MessageBox]::Show("Please enter token!", "Error", 
-                [System.Windows.Forms.MessageBoxButtons]::OK, 
-                [System.Windows.Forms.MessageBoxIcon]::Error)
+            [System.Windows.Forms.MessageBox]::Show("Please enter token!", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
             return
         }
 
         # Xác nhận trước khi gỡ
-        $confirm = [System.Windows.Forms.MessageBox]::Show(
-            "Are you sure you want to uninstall CrowdStrike?",
-            "Confirm Uninstall",
-            [System.Windows.Forms.MessageBoxButtons]::YesNo,
-            [System.Windows.Forms.MessageBoxIcon]::Warning)
+        $confirm = [System.Windows.Forms.MessageBox]::Show("Are you sure you want to uninstall CrowdStrike?", "Confirm Uninstall", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Warning)
 
-        if ($confirm -eq [System.Windows.Forms.DialogResult]::Yes) {
-            Uninstall-CrowdStrikeSensor -Token $token -statusTextBox $statusTextBox
-        }
+        if ($confirm -eq [System.Windows.Forms.DialogResult]::Yes) { Uninstall-CrowdStrikeSensor -Token $token -statusTextBox $statusTextBox }
     }
 }
 function Uninstall-CrowdStrikeSensor {
-    param(
-        [Parameter(Mandatory = $true)][string]$Token,
-        [Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox
-    )
+    param([Parameter(Mandatory = $true)][string]$Token, [Parameter(Mandatory = $true)][System.Windows.Forms.RichTextBox]$statusTextBox)
 
     # Kiểm tra token
     if ($Token.Length -lt 8) {
@@ -6238,9 +6207,7 @@ function Uninstall-CrowdStrikeSensor {
                 Start-Sleep -Seconds 2
             }
         }
-        catch {
-            Add-Status "Cannot stop service $service $_" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
+        catch { Add-Status "Cannot stop service $service $_" $statusTextBox ([System.Drawing.Color]::Yellow) }
     }
 
     # Thực hiện gỡ cài đặt
@@ -6248,13 +6215,8 @@ function Uninstall-CrowdStrikeSensor {
     $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -PassThru -WindowStyle Hidden
 
     # Kiểm tra kết quả
-    if ($process.ExitCode -eq 0) {
-        Add-Status "CrowdStrike uninstalled successfully." $statusTextBox ([System.Drawing.Color]::Green)
-    }
-    else {
-        Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red)
-        Add-Status "View log at: $logFile" $statusTextBox
-    }
+    if ($process.ExitCode -eq 0) { Add-Status "CrowdStrike uninstalled successfully." $statusTextBox ([System.Drawing.Color]::Green) }
+    else { Add-Status "Error: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red) Add-Status "View log at: $logFile" $statusTextBox }
 }
 
 # Các nút menu

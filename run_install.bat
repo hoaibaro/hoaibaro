@@ -11,9 +11,38 @@ set "RESET=%ESC%[0m"
 
 title BAOPROVIP - Install Launcher
 
-:: Step 1: Copy install.ps1
-echo %BLUE%Step 1: Copying install.ps1 to Downloads folder...%RESET%
-set "SOURCE_PATH=E:\LAB\CODING\baroTool\test_gui\install.ps1"
+:: Step 1: Find and copy install.ps1
+echo %BLUE%Step 1: Searching for install.ps1...%RESET%
+
+set "SOURCE_PATH="
+
+:: Search all drives for install.ps1
+for %%d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
+    if exist %%d:\ (
+        if exist "%%d:\install.ps1" (
+            set "SOURCE_PATH=%%d:\install.ps1"
+            echo Found install.ps1 at: !SOURCE_PATH!
+            goto :FOUND_FILE
+        )
+        dir /s /b "%%d:\install.ps1" >nul 2>&1 && (
+            for /f "delims=" %%f in ('dir /s /b "%%d:\install.ps1" 2^>nul') do (
+                set "SOURCE_PATH=%%f"
+                echo Found install.ps1 at: !SOURCE_PATH!
+                goto :FOUND_FILE
+            )
+        )
+    )
+)
+
+:NOT_FOUND
+echo %RED%Error: Could not find install.ps1 on any drive.%RESET%
+pause
+exit /b 1
+
+:FOUND_FILE
+if "%SOURCE_PATH%"=="" goto NOT_FOUND
+
+echo %GREEN%Found install.ps1 at: %SOURCE_PATH%%RESET%
 set "DEST_PATH=%USERPROFILE%\Downloads\"
 set "DEST_FILE=%USERPROFILE%\Downloads\install.ps1"
 
@@ -66,7 +95,6 @@ echo.
 
 :: Step 3: Execute PowerShell script
 echo %BLUE%Step 3: Launching PowerShell script...%RESET%
-
 
 @REM powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force"
 powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force"
