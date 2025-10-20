@@ -1,0 +1,24 @@
+{
+  "sourcePaths": {
+    "software": "D:\\SOFTWARE\\PAYOO\\SETUP",
+    "drivers": "D:\\DRIVER",
+    "ethernetDriver": "D:\\DRIVER\\Ethernet\\Intel-PCIe-Ethernet-Controller-Driver_99KJH_WIN64_12.19.2.50_A27_01.exe",
+    "wifiDriver": "D:\\DRIVER\\Wifi\\WiFi-23.120.0-Driver64-Win10-Win11.exe"
+  },
+  "wifi": {
+    "ssid": "VietUnion_5.0GHz",
+    "password": "Pay00@17Years$"
+  },
+  "computerNamePrefixes": {
+    "desktop": "HOD100",
+    "laptop": "HOL100"
+  },
+  "timezone": "SE Asia Standard Time",
+  "startupProgramsToRemove": [
+    "Microsoft Teams",
+    "Microsoft Co-Pilot"
+  ],
+  "officeActivation": {
+    "productKey": "V7YQT-3NBF9-CB4VM-24G6Q-6M8JK"
+  }
+}
