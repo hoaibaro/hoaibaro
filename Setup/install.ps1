@@ -92,13 +92,13 @@ $menuButtons = @(
     @{text = '[1] Run All'; action = { Invoke-RunAllOperations -mainForm $script:form } },
     @{text = '[6] Features'; action = { Invoke-FeaturesDialog -mainForm $script:form } },
     @{text = '[2] Software'; action = { Show-InstallSoftwareDialog -mainForm $script:form } },
-    @{text = '[7] Rename'; action = { Invoke-RenameDialog } },
-    @{text = '[3] Power'; action = { Invoke-PowerOptionsDialog } },
-    @{text = '[8] Password'; action = { Show-SetPasswordForm -currentUser $env:USERNAME } },
-    @{text = '[4] Volume'; action = { Invoke-VolumeManagementDialog } },
-    @{text = '[9] Domain'; action = { Show-DomainManagementForm } },
-    @{text = '[5] Activate'; action = { Invoke-ActivationDialog } },
-    @{text = '[10] CrowdStrike'; action = { Invoke-CrowdStrikeDialog } }
+    @{text = '[7] Rename'; action = { Invoke-RenameDialog -mainForm $script:form } },
+    @{text = '[3] Power'; action = { Invoke-PowerOptionsDialog -mainForm $script:form } },
+    @{text = '[8] Password'; action = { Show-SetPasswordForm -currentUser $env:USERNAME -mainForm $script:form } },
+    @{text = '[4] Volume'; action = { Invoke-VolumeManagementDialog -mainForm $script:form } },
+    @{text = '[9] Domain'; action = { Show-DomainManagementForm -mainForm $script:form } },
+    @{text = '[5] Activate'; action = { Invoke-ActivationDialog -mainForm $script:form } },
+    @{text = '[10] CrowdStrike'; action = { Invoke-CrowdStrikeDialog -mainForm $script:form } }
 )
 
 try { $buttonHeight = 60; $buttonSpacingY = 10; $buttonTop = 80; $buttonLeft = 30; $buttonControls = @() }
