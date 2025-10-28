@@ -1,5 +1,3 @@
-# Module for shared GUI functions
-
 # HIDE MAIN MENU
 function Hide-MainMenu {
     param([System.Windows.Forms.Form]$mainForm)
@@ -48,17 +46,44 @@ function New-DynamicButton {
 # GRADIENT BACKGROUND FOR FORMS
 function Add-GradientBackground {
     param([System.Windows.Forms.Form]$form, [System.Drawing.Color]$topColor = [System.Drawing.Color]::FromArgb(0, 0, 0), [System.Drawing.Color]$bottomColor = [System.Drawing.Color]::FromArgb(0, 50, 0))
-    
-    $paintScript = {
-        param($sender, $paintArgs)
-        $graphics = $paintArgs.Graphics
-        $rect = $sender.ClientRectangle
-        $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush($rect, $topColor, $bottomColor, [System.Drawing.Drawing2D.LinearGradientMode]::Vertical)
-        $graphics.FillRectangle($brush, $rect)
-        $brush.Dispose()
-    }
+    # Extract ARGB values for reliable color recreation
+    $topA = $topColor.A
+    $topR = $topColor.R
+    $topG = $topColor.G
+    $topB = $topColor.B
 
+    $bottomA = $bottomColor.A
+    $bottomR = $bottomColor.R
+    $bottomG = $bottomColor.G
+    $bottomB = $bottomColor.B
+
+    # Create scriptblock with embedded color values
+    $paintScript = [ScriptBlock]::Create(@"
+        param(`$formSender, `$paintArgs)
+        `$graphics = `$paintArgs.Graphics
+        `$graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+
+        # Use ClientRectangle for better rendering
+        `$rect = `$formSender.ClientRectangle
+
+        # Create gradient brush with embedded color values
+        `$topColor = [System.Drawing.Color]::FromArgb($topA, $topR, $topG, $topB)
+        `$bottomColor = [System.Drawing.Color]::FromArgb($bottomA, $bottomR, $bottomG, $bottomB)
+
+        `$brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+            `$rect,
+            `$topColor,
+            `$bottomColor,
+            [System.Drawing.Drawing2D.LinearGradientMode]::Vertical
+        )
+
+        `$graphics.FillRectangle(`$brush, `$rect)
+        `$brush.Dispose()
+"@)
+
+    # Add the paint event
     $form.Add_Paint($paintScript)
+
     if ($form.PSObject.Properties['DoubleBuffered']) { $form.DoubleBuffered = $true }
 }
 
@@ -97,9 +122,7 @@ function Add-TitleAnimation {
 # ADD STATUS TO A RICH TEXT BOX
 function Add-Status {
     param([string]$message, [System.Windows.Forms.RichTextBox]$rtb, [System.Drawing.Color]$color = [System.Drawing.Color]::Lime)
-    
-    if ($rtb.IsDisposed) { return }
-
+    if ($rtb.Text -eq "Please select a device type..." -or $rtb.Text -eq "Status messages will appear here...") { $rtb.Clear() }
     $timestamp = Get-Date -Format "HH:mm:ss"
     $rtb.SelectionStart = $rtb.TextLength
     $rtb.SelectionLength = 0
