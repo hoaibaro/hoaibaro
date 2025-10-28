@@ -20,5 +20,111 @@
   ],
   "officeActivation": {
     "productKey": "V7YQT-3NBF9-CB4VM-24G6Q-6M8JK"
-  }
+  },
+  "software": [
+    {
+      "id": "7zip",
+      "displayName": "7-Zip",
+      "enabled": true,
+      "device": "All",
+      "installerName": "7z*.exe",
+      "installerType": "exe",
+      "installArgs": "/S",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files\\7-Zip\\7z.exe",
+        "C:\\Program Files (x86)\\7-Zip\\7z.exe"
+      ]
+    },
+    {
+      "id": "chrome",
+      "displayName": "Google Chrome",
+      "enabled": true,
+      "device": "All",
+      "installerName": "ChromeSetup.exe",
+      "installerType": "exe",
+      "installArgs": "/silent /install",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+      ]
+    },
+    {
+      "id": "laps",
+      "displayName": "LAPS",
+      "enabled": true,
+      "device": "All",
+      "installerName": "LAPS_x64.msi",
+      "installerType": "msi",
+      "installArgs": "/i \"{installerPath}\" /qn /norestart",
+      "checkType": "function",
+      "checkFunction": "Test-LAPSInstalledOrBuiltin"
+    },
+    {
+      "id": "foxit",
+      "displayName": "Foxit Reader",
+      "enabled": true,
+      "device": "All",
+      "installerName": "Foxit*.exe",
+      "installerType": "exe",
+      "installArgs": "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files (x86)\\Foxit Software\\Foxit PDF Reader\\FoxitPDFReader.exe",
+        "C:\\Program Files\\Foxit Software\\Foxit PDF Reader\\FoxitPDFReader.exe",
+        "C:\\Program Files (x86)\\Foxit Software\\Foxit Reader\\FoxitReader.exe",
+        "C:\\Program Files\\Foxit Software\\Foxit Reader\\FoxitReader.exe"
+      ]
+    },
+    {
+      "id": "office2019",
+      "displayName": "Office 2019",
+      "enabled": true,
+      "device": "All",
+      "installerName": "setup.exe",
+      "installerType": "office",
+      "sourceSubDir": "Office 2019",
+      "checkType": "path",
+      "checkPaths": [ "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE" ]
+    },
+    {
+      "id": "zoom",
+      "displayName": "Zoom",
+      "enabled": true,
+      "device": "Laptop",
+      "installerName": "ZoomInstallerFull.exe",
+      "installerType": "exe",
+      "installArgs": "/silent /norestart",
+      "checkType": "path",
+      "checkPaths": [
+        "$env:APPDATA\\Zoom\\bin\\Zoom.exe",
+        "C:\\Program Files\\Zoom\\bin\\Zoom.exe",
+        "C:\\Program Files (x86)\\Zoom\\bin\\Zoom.exe"
+      ]
+    },
+    {
+      "id": "checkpointvpn",
+      "displayName": "CheckPoint VPN",
+      "enabled": true,
+      "device": "Laptop",
+      "installerName": "CheckPointVPN.msi",
+      "installerType": "msi",
+      "installArgs": "/i \"{installerPath}\" /qn /norestart",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files (x86)\\CheckPoint\\Endpoint Connect\\trac.exe"
+      ]
+    },
+    {
+      "id": "onedrive",
+      "displayName": "OneDrive",
+      "enabled": true,
+      "device": "All",
+      "task": "uninstall",
+      "checkType": "function",
+      "checkFunction": "Test-OneDriveInstalled",
+      "uninstallFunction": "Uninstall-OneDriveComplete"
+    }
+  ]
 }
