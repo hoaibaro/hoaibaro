@@ -444,77 +444,80 @@ function Invoke-InstallSoftware {
     $destSETUP = "$env:USERPROFILE\Downloads\SETUP"
     $tempDir = $destSETUP
 
-    $scFiles = Get-ChildItem -Path (Join-Path $srcSETUP 'SC-*') -File -ErrorAction SilentlyContinue
-    if ($scFiles) {
-        $scDest = Join-Path $destCopy $scFiles.Name
-        if (-not (Test-Path $scDest)) {
-            if (Test-Path $scFiles.FullName) { Copy-Item -Path $scFiles.FullName -Destination $scDest -Force; Add-Status "Copying: ForceScout" $statusTextBox }
-            else { Add-Status "Warning: Not found ForceScout source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
-        } else { Add-Status "Existed: ForceScout" $statusTextBox }
-    } else { Add-Status "Warning: Not found ForceScout source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
-
-    $unikeyFolder = Get-ChildItem -Path (Join-Path $srcSETUP 'unikey*') -Directory -ErrorAction SilentlyContinue
-    if ($unikeyFolder) {
-        $unikeyDest = "C:\" + $unikeyFolder.Name
-        if (-not (Test-Path $unikeyDest)) {
-            if (Test-Path $unikeyFolder.FullName) {
-                New-Item -ItemType Directory -Path $unikeyDest -Force | Out-Null
-                Copy-Item -Path "$($unikeyFolder.FullName)\*" -Destination $unikeyDest -Recurse -Force
-                Add-Status "Copying: Unikey" $statusTextBox
-            } else { Add-Status "Error: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Red) }
-        } else { Add-Status "Existed: Unikey" $statusTextBox }
-    } else { Add-Status "Warning: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
-
-    $csFolder = Get-ChildItem -Path (Join-Path $srcSETUP 'CrowdStrike*') -Directory -ErrorAction SilentlyContinue
-    if ($csFolder) {
-        $csDest = Join-Path $destCopy $csFolder.Name
-        if (-not (Test-Path $csDest)) {
-            if (Test-Path $csFolder.FullName) {
-                New-Item -ItemType Directory -Path $csDest -Force | Out-Null
-                Copy-Item -Path "$($csFolder.FullName)\*" -Destination $csDest -Recurse -Force
-                Add-Status "Copying: CrowdStrike" $statusTextBox
-            } else { Add-Status "Error: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Red) }
-        } else { Add-Status "Existed: CrowdStrike" $statusTextBox }
-    } else { Add-Status "Warning: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
-
-    if ($DeviceType -eq "Desktop") {
-        $desktopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Desktop Agent*.exe') -File -ErrorAction SilentlyContinue
-        if ($desktopAgent) {
-            $agentDest = Join-Path $destCopy $desktopAgent.Name
-            if (-not (Test-Path $agentDest)) {
-                if (Test-Path $desktopAgent.FullName) { Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force; Add-Status "Copying: DesktopAgent" $statusTextBox }
-                else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
-            } else { Add-Status "Existed: DesktopAgent" $statusTextBox }
-        } else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
-    }
-    else {
-        $laptopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Laptop Agent*.exe') -File -ErrorAction SilentlyContinue
-        if ($laptopAgent) {
-            $agentDest = Join-Path $destCopy $laptopAgent.Name
-            if (-not (Test-Path $agentDest)) {
-                if (Test-Path $laptopAgent.FullName) { Copy-Item -Path $laptopAgent.FullName -Destination $agentDest -Force; Add-Status "Copying: Laptop Agent" $statusTextBox }
-                else { Add-Status "Error: Not found LaptopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
-            } else { Add-Status "Existed: Laptop Agent" $statusTextBox }
-        } else { Add-Status "Error: Not found LaptopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
-
-        $mdmSource = Join-Path $srcSETUP "ManageEngine_MDMLaptopEnrollment"
-        $mdmDest = Join-Path $destCopy "ManageEngine_MDMLaptopEnrollment"
-        if (-not (Test-Path $mdmDest)) {
-            if (Test-Path $mdmSource) {
-                try {
-                    $null = New-Item -Path $mdmDest -ItemType Directory -Force -ErrorAction Stop
-                    Copy-Item -Path "$mdmSource\*" -Destination $mdmDest -Recurse -Force
-                    Add-Status "Copying: ManageEngine" $statusTextBox
-                } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
-            } else { Add-Status "Error: Not found ManageEngine source directory" $statusTextBox ([System.Drawing.Color]::Red) }
-        } else { Add-Status "Existed: ManageEngine" $statusTextBox }
-    }
+    
 
     try {
-        if (-not (Test-Path $srcSETUP)) { Add-Status "Error: Not found $srcSETUP" $statusTextBox ([System.Drawing.Color]::Red); return $false }
         Add-Status "Checking installed software..." $statusTextBox
         $plan = PlanSoftwareInstall -DeviceType $DeviceType -statusTextBox $statusTextBox
         if ($plan.Pending.Count -gt 0) {
+            if (-not (Test-Path $srcSETUP)) { Add-Status "Error: Not found $srcSETUP" $statusTextBox ([System.Drawing.Color]::Red); return $false }
+
+            # Perform ancillary copies only when installation is needed
+            $scFiles = Get-ChildItem -Path (Join-Path $srcSETUP 'SC-*') -File -ErrorAction SilentlyContinue
+            if ($scFiles) {
+                $scDest = Join-Path $destCopy $scFiles.Name
+                if (-not (Test-Path $scDest)) {
+                    if (Test-Path $scFiles.FullName) { Copy-Item -Path $scFiles.FullName -Destination $scDest -Force; Add-Status "Copying: ForceScout" $statusTextBox }
+                    else { Add-Status "Warning: Not found ForceScout source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                } else { Add-Status "Existed: ForceScout" $statusTextBox }
+            } else { Add-Status "Warning: Not found ForceScout source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+
+            $unikeyFolder = Get-ChildItem -Path (Join-Path $srcSETUP 'unikey*') -Directory -ErrorAction SilentlyContinue
+            if ($unikeyFolder) {
+                $unikeyDest = "C:\" + $unikeyFolder.Name
+                if (-not (Test-Path $unikeyDest)) {
+                    if (Test-Path $unikeyFolder.FullName) {
+                        New-Item -ItemType Directory -Path $unikeyDest -Force | Out-Null
+                        Copy-Item -Path "$($unikeyFolder.FullName)\*" -Destination $unikeyDest -Recurse -Force
+                        Add-Status "Copying: Unikey" $statusTextBox
+                    } else { Add-Status "Error: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Red) }
+                } else { Add-Status "Existed: Unikey" $statusTextBox }
+            } else { Add-Status "Warning: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+
+            $csFolder = Get-ChildItem -Path (Join-Path $srcSETUP 'CrowdStrike*') -Directory -ErrorAction SilentlyContinue
+            if ($csFolder) {
+                $csDest = Join-Path $destCopy $csFolder.Name
+                if (-not (Test-Path $csDest)) {
+                    if (Test-Path $csFolder.FullName) {
+                        New-Item -ItemType Directory -Path $csDest -Force | Out-Null
+                        Copy-Item -Path "$($csFolder.FullName)\*" -Destination $csDest -Recurse -Force
+                        Add-Status "Copying: CrowdStrike" $statusTextBox
+                    } else { Add-Status "Error: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Red) }
+                } else { Add-Status "Existed: CrowdStrike" $statusTextBox }
+            } else { Add-Status "Warning: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+
+            if ($DeviceType -eq "Desktop") {
+                $desktopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Desktop Agent*.exe') -File -ErrorAction SilentlyContinue
+                if ($desktopAgent) {
+                    $agentDest = Join-Path $destCopy $desktopAgent.Name
+                    if (-not (Test-Path $agentDest)) {
+                        if (Test-Path $desktopAgent.FullName) { Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force; Add-Status "Copying: DesktopAgent" $statusTextBox }
+                        else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
+                    } else { Add-Status "Existed: DesktopAgent" $statusTextBox }
+                } else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
+            }
+            else {
+                $laptopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Laptop Agent*.exe') -File -ErrorAction SilentlyContinue
+                if ($laptopAgent) {
+                    $agentDest = Join-Path $destCopy $laptopAgent.Name
+                    if (-not (Test-Path $agentDest)) {
+                        if (Test-Path $laptopAgent.FullName) { Copy-Item -Path $laptopAgent.FullName -Destination $agentDest -Force; Add-Status "Copying: Laptop Agent" $statusTextBox }
+                        else { Add-Status "Error: Not found LaptopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
+                    } else { Add-Status "Existed: Laptop Agent" $statusTextBox }
+                } else { Add-Status "Error: Not found LaptopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
+
+                $mdmSource = Join-Path $srcSETUP "ManageEngine_MDMLaptopEnrollment"
+                $mdmDest = Join-Path $destCopy "ManageEngine_MDMLaptopEnrollment"
+                if (-not (Test-Path $mdmDest)) {
+                    if (Test-Path $mdmSource) {
+                        try {
+                            $null = New-Item -Path $mdmDest -ItemType Directory -Force -ErrorAction Stop
+                            Copy-Item -Path "$mdmSource\*" -Destination $mdmDest -Recurse -Force
+                            Add-Status "Copying: ManageEngine" $statusTextBox
+                        } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+                    } else { Add-Status "Error: Not found ManageEngine source directory" $statusTextBox ([System.Drawing.Color]::Red) }
+                } else { Add-Status "Existed: ManageEngine" $statusTextBox }
+            }
             Add-Status "Found $($plan.Pending.Count) software(s) to install" $statusTextBox
             if (-not (Test-Path $destSETUP)) { New-Item -Path $destSETUP -ItemType Directory -Force | Out-Null }
             $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox -SourceSetupPath $srcSETUP
