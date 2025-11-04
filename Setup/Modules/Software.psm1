@@ -270,38 +270,67 @@ function Copy-SoftwareFilesSelective {
         switch ($app.Id) {
             '7zip' {
                 $file = Get-ChildItem -Path $SourceSetupPath -Filter '7z*.exe' | Select-Object -First 1
-                if ($file) { try { Copy-Item -Path $file.FullName -Destination $setupDir -Force } catch { $allCopied = $false; Add-Status "Failed : 7-Zip ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                if ($file) {
+                    $dest = Join-Path $setupDir $file.Name
+                    if (Test-Path $dest) { Add-Status "Existed : 7-Zip installer" $statusTextBox }
+                    else { try { Copy-Item -Path $file.FullName -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : 7-Zip ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                }
                 else { $allCopied = $false; Add-Status "Missing 7-Zip installer in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'chrome' {
                 $src = Join-Path $SourceSetupPath 'ChromeSetup.exe'
-                if (Test-Path $src) { try { Copy-Item -Path $src -Destination (Join-Path $setupDir 'ChromeSetup.exe') -Force } catch { $allCopied = $false; Add-Status "Failed : Chrome ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                if (Test-Path $src) {
+                    $dest = Join-Path $setupDir 'ChromeSetup.exe'
+                    if (Test-Path $dest) { Add-Status "Existed : Chrome installer" $statusTextBox }
+                    else { try { Copy-Item -Path $src -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : Chrome ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                }
                 else { $allCopied = $false; Add-Status "Missing ChromeSetup.exe in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'laps' {
                 $src = Join-Path $SourceSetupPath 'LAPS_x64.msi'
-                if (Test-Path $src) { try { Copy-Item -Path $src -Destination (Join-Path $setupDir 'LAPS_x64.msi') -Force } catch { $allCopied = $false; Add-Status "Failed : LAPS ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                if (Test-Path $src) {
+                    $dest = Join-Path $setupDir 'LAPS_x64.msi'
+                    if (Test-Path $dest) { Add-Status "Existed : LAPS installer" $statusTextBox }
+                    else { try { Copy-Item -Path $src -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : LAPS ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                }
                 else { $allCopied = $false; Add-Status "Missing LAPS_x64.msi in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'foxit' {
                 $file = Get-ChildItem -Path $SourceSetupPath -Filter 'FoxitPDFReader*.exe' | Select-Object -First 1
-                if ($file) { try { Copy-Item -Path $file.FullName -Destination $setupDir -Force } catch { $allCopied = $false; Add-Status "Failed : Foxit ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                if ($file) {
+                    $dest = Join-Path $setupDir $file.Name
+                    if (Test-Path $dest) { Add-Status "Existed : Foxit installer" $statusTextBox }
+                    else { try { Copy-Item -Path $file.FullName -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : Foxit ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                }
                 else { $allCopied = $false; Add-Status "Missing Foxit installer in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'office2019' {
                 if (Test-Path $srcOffice) {
-                    if (-not (Test-Path $office2019Dir)) { New-Item -Path $office2019Dir -ItemType Directory -Force | Out-Null }
-                    try { Copy-Item -Path (Join-Path $srcOffice '*') -Destination $office2019Dir -Recurse -Force } catch { $allCopied = $false; Add-Status "Failed : Office 2019 ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) }
+                    if (Test-Path $office2019Dir -and (Test-Path (Join-Path $office2019Dir 'setup.exe'))) {
+                        Add-Status "Existed : Office 2019 source" $statusTextBox
+                    }
+                    else {
+                        if (-not (Test-Path $office2019Dir)) { New-Item -Path $office2019Dir -ItemType Directory -Force | Out-Null }
+                        try { Copy-Item -Path (Join-Path $srcOffice '*') -Destination $office2019Dir -Recurse -Force } catch { $allCopied = $false; Add-Status "Failed : Office 2019 ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) }
+                    }
                 } else { $allCopied = $false; Add-Status "Missing Office 2019 source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'zoom' {
                 $src = Join-Path $SourceSetupPath 'ZoomInstallerFull.exe'
-                if (Test-Path $src) { try { Copy-Item -Path $src -Destination (Join-Path $setupDir 'ZoomInstallerFull.exe') -Force } catch { $allCopied = $false; Add-Status "Failed : Zoom ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                if (Test-Path $src) {
+                    $dest = Join-Path $setupDir 'ZoomInstallerFull.exe'
+                    if (Test-Path $dest) { Add-Status "Existed : Zoom installer" $statusTextBox }
+                    else { try { Copy-Item -Path $src -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : Zoom ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                }
                 else { $allCopied = $false; Add-Status "Missing ZoomInstallerFull.exe in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             'checkpointvpn' {
                 $src = Join-Path $SourceSetupPath 'CheckPointVPN.msi'
-                if (Test-Path $src) { try { Copy-Item -Path $src -Destination (Join-Path $setupDir 'CheckPointVPN.msi') -Force } catch { $allCopied = $false; Add-Status "Failed : CheckPointVPN ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                if (Test-Path $src) {
+                    $dest = Join-Path $setupDir 'CheckPointVPN.msi'
+                    if (Test-Path $dest) { Add-Status "Existed : CheckPointVPN installer" $statusTextBox }
+                    else { try { Copy-Item -Path $src -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : CheckPointVPN ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+                }
                 else { $allCopied = $false; Add-Status "Missing CheckPointVPN.msi in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             default { Add-Status "Error: '$($app.Id)'" $statusTextBox ([System.Drawing.Color]::Yellow) }
