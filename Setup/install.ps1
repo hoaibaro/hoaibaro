@@ -75,7 +75,7 @@ Add-GradientBackground $script:form
 # Title label
 $titleLabel = New-Object System.Windows.Forms.Label
 $titleLabel.Text = "WELCOME TO BAOPROVIP"
-$titleLabel.Font = New-Object System.Drawing.Font("Arial", 20, [System.Drawing.FontStyle]::Bold)
+$titleLabel.Font = New-Object System.Drawing.Font("Tahoma", 20, [System.Drawing.FontStyle]::Bold)
 $titleLabel.ForeColor = [System.Drawing.Color]::Lime
 $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $titleLabel.Size = New-Object System.Drawing.Size($script:form.ClientSize.Width, 60)

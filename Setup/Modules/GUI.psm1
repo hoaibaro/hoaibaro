@@ -23,7 +23,7 @@ function New-DynamicButton {
         [System.Drawing.Color]$hoverColor = [System.Drawing.Color]::FromArgb(0, 180, 0),
         [System.Drawing.Color]$pressColor = [System.Drawing.Color]::FromArgb(0, 100, 0),
         [System.Drawing.Color]$textColor = [System.Drawing.Color]::White,
-        [string]$fontName = "Arial",
+        [string]$fontName = "Tahoma",
         [int]$fontSize = 12,
         [System.Drawing.FontStyle]$fontStyle = [System.Drawing.FontStyle]::Bold
     )

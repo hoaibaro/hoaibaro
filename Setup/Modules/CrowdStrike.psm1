@@ -207,8 +207,8 @@ function Invoke-CrowdStrikeDialog {
     # Uninstall button
     $btnUninstall = New-DynamicButton -text "Uninstall" -x 490 -y 180 -width 150 -height 50 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         $confirm = [System.Windows.Forms.MessageBox]::Show(
-            "B?n có mu?n m? c?a s? CrowdStrike Falcon Sensor Setup ð? g? cài ð?t?",
-            "Xác nh?n",
+            "B?n cï¿½ mu?n m? c?a s? CrowdStrike Falcon Sensor Setup ï¿½? g? cï¿½i ï¿½?t?",
+            "Xï¿½c nh?n",
             [System.Windows.Forms.MessageBoxButtons]::YesNo,
             [System.Windows.Forms.MessageBoxIcon]::Question
         )
@@ -262,8 +262,10 @@ function Invoke-CrowdStrikeDialog {
 # [10.1] CrowdStrike Installation Funtions
 function Invoke-InstallCrowdStrike {
     param ([System.Windows.Forms.RichTextBox]$statusTextBox, [string]$Department, [string]$InstallType)
-    $Global:CrowdStrikeInstallInfo.Department = $Department
-    $Global:CrowdStrikeInstallInfo.InstallType = $InstallType
+    # Ensure global install info object has properties before assignment
+    if (-not $Global:CrowdStrikeInstallInfo) { $Global:CrowdStrikeInstallInfo = [pscustomobject]@{} }
+    $Global:CrowdStrikeInstallInfo | Add-Member -NotePropertyName Department -NotePropertyValue $Department -Force
+    $Global:CrowdStrikeInstallInfo | Add-Member -NotePropertyName InstallType -NotePropertyValue $InstallType -Force
     try {
         $statusTextBox.Clear()
         Add-Status "=== CROWDSTRIKE INSTALLATION STARTED ===" $statusTextBox ([System.Drawing.Color]::Cyan)
@@ -320,14 +322,21 @@ function Invoke-InstallCrowdStrike {
 
         # Prepare installation command
         Add-Status "3. Preparing installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
-        $arguments = @("-Department", "`"$Department`"", "-InstallType", "`"$InstallType`"", "-Silent")
+        $psArgs = @(
+            "-ExecutionPolicy", "Bypass",
+            "-NoProfile",
+            "-File", "`"$scriptPath`"",
+            "-Department", "`"$Department`"",
+            "-InstallType", "`"$InstallType`"",
+            "-Silent"
+        )
 
-        Add-Status "   Command: $($arguments -join ' ')" $statusTextBox ([System.Drawing.Color]::Gray)
+        Add-Status "   Command: powershell.exe $($psArgs -join ' ')" $statusTextBox ([System.Drawing.Color]::Gray)
 
         # Start installation
         Add-Status "4. Starting CrowdStrike installation..." $statusTextBox ([System.Drawing.Color]::Yellow)
         $startTime = Get-Date
-        $process = Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+        $process = Start-Process -FilePath "powershell.exe" -ArgumentList $psArgs -Wait -PassThru -WindowStyle Hidden
         $endTime = Get-Date
         $duration = ($endTime - $startTime).TotalMinutes
 
@@ -336,7 +345,7 @@ function Invoke-InstallCrowdStrike {
 
         if ($process.ExitCode -eq 0) {
             Add-Status "   ? Installation completed successfully!" $statusTextBox ([System.Drawing.Color]::Green)
-            # Lýu persistent vào Registry cho l?n ki?m tra sau
+            # Lï¿½u persistent vï¿½o Registry cho l?n ki?m tra sau
             try {
                 $regPath = "HKLM:\SOFTWARE\BAOPROVIP\CrowdStrike"
                 if (-not (Test-Path $regPath)) {
@@ -362,22 +371,24 @@ function Invoke-InstallCrowdStrike {
             else { Add-Status "   ? Service verification failed" $statusTextBox ([System.Drawing.Color]::Yellow)
                 Add-Status "   The installation may need time to complete" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
+
+            # Cleanup only after successful installation
+            try {
+                $csDownloadsPath = Join-Path $env:USERPROFILE "Downloads\CrowdStrike"
+                if (Test-Path -LiteralPath $csDownloadsPath -PathType Container) {
+                    Remove-Item -LiteralPath $csDownloadsPath -Recurse -Force -ErrorAction Stop
+                    Add-Status "   ? Cleaned up CrowdStrike folder from Downloads." $statusTextBox ([System.Drawing.Color]::Green)
+                }
+            }
+            catch {
+                Add-Status "   ? Could not remove CrowdStrike folder: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+
+            Add-Status "=== INSTALLATION SUCCESSFUL ===" $statusTextBox ([System.Drawing.Color]::Green)
         }
         else { Add-Status "   ? Installation failed!" $statusTextBox ([System.Drawing.Color]::Red)
             Add-Status "   Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
-
-        try {
-            $csDownloadsPath = Join-Path $env:USERPROFILE "Downloads\CrowdStrike"
-            if (Test-Path -LiteralPath $csDownloadsPath -PathType Container) {
-                Remove-Item -LiteralPath $csDownloadsPath -Recurse -Force -ErrorAction Stop
-                Add-Status "   ? Cleaned up CrowdStrike folder from Downloads." $statusTextBox ([System.Drawing.Color]::Green)
-            }
-        }
-        catch {
-            Add-Status "   ? Could not remove CrowdStrike folder: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
-        }
-        Add-Status "=== INSTALLATION SUCCESSFUL ===" $statusTextBox ([System.Drawing.Color]::Green)
     }
     catch { Add-Status "Error during CrowdStrike installation: $_" $statusTextBox ([System.Drawing.Color]::Red)
         Add-Status "Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -444,11 +455,11 @@ function Get-CrowdStrikeAssignment {
         Add-Status "Error reading assignment registry: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 
-    # NEW: c? g?ng ð?c t? CSSensorSettings.exe (n?u có)
+    # NEW: c? g?ng ï¿½?c t? CSSensorSettings.exe (n?u cï¿½)
     try {
         $exePath = "C:\Program Files\CrowdStrike\CSSensorSettings.exe"
         if (Test-Path $exePath) {
-            # Nhi?u b?n h? tr? "show" ho?c "get". Th? "show" trý?c, r?i fallback "get"
+            # Nhi?u b?n h? tr? "show" ho?c "get". Th? "show" trï¿½?c, r?i fallback "get"
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = $exePath
             $psi.Arguments = "show --grouping-tags"
@@ -465,7 +476,7 @@ function Get-CrowdStrikeAssignment {
             
             $output = $out1
             if ([string]::IsNullOrWhiteSpace($out1) -and $p.ExitCode -ne 0) {
-                # Fallback: dùng "get --grouping-tags"
+                # Fallback: dï¿½ng "get --grouping-tags"
                 $psi.Arguments = "get --grouping-tags"
                 $p = New-Object System.Diagnostics.Process
                 $p.StartInfo = $psi
@@ -479,19 +490,19 @@ function Get-CrowdStrikeAssignment {
                 # Parse ch?c ch?n d?ng Grouping Tags
                 $lines = ($output -split "`r?`n") | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
 
-                # Ýu tiên d?ng có "Grouping Tags:"
+                # ï¿½u tiï¿½n d?ng cï¿½ "Grouping Tags:"
                 $line = $lines | Where-Object { $_ -match '^(?i)\s*Grouping\s*Tags\s*:' } | Select-Object -First 1
 
-                # Fallback: d?ng có "Tags:" (m?t s? phiên b?n có th? ð?i nh?n)
+                # Fallback: d?ng cï¿½ "Tags:" (m?t s? phiï¿½n b?n cï¿½ th? ï¿½?i nh?n)
                 if (-not $line) {
                     $line = $lines | Where-Object { $_ -match '^(?i)\s*Tags\s*:' } | Select-Object -First 1
                 }
 
-                # Fallback cu?i: t?m d?ng có v? ch? ch?a danh sách tag (ch?a d?u ph?y ho?c kho?ng tr?ng phân tách, nhýng KHÔNG ch?a “Tool”, “Version”, “CrowdStrike”)
+                # Fallback cu?i: t?m d?ng cï¿½ v? ch? ch?a danh sï¿½ch tag (ch?a d?u ph?y ho?c kho?ng tr?ng phï¿½n tï¿½ch, nhï¿½ng KHï¿½NG ch?a ï¿½Toolï¿½, ï¿½Versionï¿½, ï¿½CrowdStrikeï¿½)
                 if (-not $line) {
                     $line = $lines |
                         Where-Object {
-                            ($_ -match ',') -or ($_ -match '\s+') # có phân tách
+                            ($_ -match ',') -or ($_ -match '\s+') # cï¿½ phï¿½n tï¿½ch
                         } |
                         Where-Object {
                             $_ -notmatch '(?i)crowdstrike|sensor|settings|tool|version|copyright'
@@ -499,19 +510,19 @@ function Get-CrowdStrikeAssignment {
                         Select-Object -First 1
                 }
 
-                # L?y ph?n sau d?u “:”, n?u có; n?u không có ":" th? l?y nguyên d?ng
+                # L?y ph?n sau d?u ï¿½:ï¿½, n?u cï¿½; n?u khï¿½ng cï¿½ ":" th? l?y nguyï¿½n d?ng
                 $rawTags = if ($line -match ':(.*)$') { $Matches[1].Trim() } else { $line }
 
-                # Chu?n hoá và tách tags
+                # Chu?n hoï¿½ vï¿½ tï¿½ch tags
                 $tags = $rawTags -split '\s*,\s*'
                 $tags = $tags | Where-Object { $_ -and ($_ -notmatch '^(?i)(crowdstrike.*|sensor|settings|tool|version.*)$') }
 
-                # Suy ra InstallType và Department
+                # Suy ra InstallType vï¿½ Department
                 $installType = $null
                 if ($tags | Where-Object { $_ -match '^(?i)EDR$' }) { $installType = 'EDR' }
                 elseif ($tags | Where-Object { $_ -match '^(?i)AV$' }) { $installType = 'AV' }
 
-                # Department: l?y tag khác AV/EDR ð?u tiên
+                # Department: l?y tag khï¿½c AV/EDR ï¿½?u tiï¿½n
                 $department = ($tags | Where-Object { $_ -notmatch '^(?i:AV|EDR)$' } | Select-Object -First 1)
 
                 if ($department -or $installType) {
@@ -531,10 +542,10 @@ function Get-CrowdStrikeAssignment {
             }
         }
     } catch {
-        # B? qua: nhi?u b?n có th? không h? tr? get/show mà không c?n token
+        # B? qua: nhi?u b?n cï¿½ th? khï¿½ng h? tr? get/show mï¿½ khï¿½ng c?n token
     }
 
-    # Fallback: thông tin lýu trong phiên hi?n t?i (n?u có)
+    # Fallback: thï¿½ng tin lï¿½u trong phiï¿½n hi?n t?i (n?u cï¿½)
     if ($global:CrowdStrikeInstallInfo -and ($global:CrowdStrikeInstallInfo.Department -or $global:CrowdStrikeInstallInfo.InstallType)) {
         return @{
             Department = $global:CrowdStrikeInstallInfo.Department
@@ -548,7 +559,7 @@ function Get-CrowdStrikeAssignment {
 function Set-CrowdStrikeGroupingTag {
     param([Parameter(Mandatory = $true)][string]$Tag, [Parameter(Mandatory = $true)][string]$Token, [System.Windows.Forms.RichTextBox]$StatusTextBox)
     try {
-        # Ensure we’re elevated
+        # Ensure weï¿½re elevated
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = New-Object Security.Principal.WindowsPrincipal($identity)
         if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -858,21 +869,21 @@ function Get-CrowdStrikeUninstallCommand {
 
                     $name = "$($p.DisplayName) $($p.DisplayVersion)"
                     if ($name -match '(?i)crowdstrike.*(windows|falcon).*sensor') {
-                        # Ýu tiên ModifyPath (m? UI), n?u có
+                        # ï¿½u tiï¿½n ModifyPath (m? UI), n?u cï¿½
                         $cmd = $p.ModifyPath
                         if ([string]::IsNullOrWhiteSpace($cmd)) {
                             $cmd = $p.UninstallString
                         }
                         if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
 
-                        # N?u là MsiExec và có GUID ? dùng /I ð? m? Maintenance UI
+                        # N?u lï¿½ MsiExec vï¿½ cï¿½ GUID ? dï¿½ng /I ï¿½? m? Maintenance UI
                         if ($cmd -match '(?i)msiexec(\.exe)?' -and $cmd -match '\{[0-9A-Fa-f\-]{36}\}') {
                             $guid = $Matches[0]
                             return "msiexec.exe /I $guid"
                         }
 
-                        # Không ph?i MSI ho?c không b?t GUID:
-                        # Lo?i b? tham s? silent ð? ép m? UI
+                        # Khï¿½ng ph?i MSI ho?c khï¿½ng b?t GUID:
+                        # Lo?i b? tham s? silent ï¿½? ï¿½p m? UI
                         $uiCmd = $cmd -replace '(?i)\s*/(qn|qb|quiet|passive|norestart)\b', ''
                         $uiCmd = $uiCmd.Trim()
                         return $uiCmd
