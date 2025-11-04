@@ -345,7 +345,7 @@ function Invoke-InstallCrowdStrike {
 
         if ($process.ExitCode -eq 0) {
             Add-Status "   ? Installation completed successfully!" $statusTextBox ([System.Drawing.Color]::Green)
-            # L�u persistent v�o Registry cho l?n ki?m tra sau
+            # Save 
             try {
                 $regPath = "HKLM:\SOFTWARE\BAOPROVIP\CrowdStrike"
                 if (-not (Test-Path $regPath)) {
@@ -592,6 +592,9 @@ function Set-CrowdStrikeGroupingTag {
 
         $null = $proc.Start()
 
+        # Give the tool a moment to initialize before writing token
+        Start-Sleep -Milliseconds 200
+
         # Feed maintenance token (followed by newline)
         $proc.StandardInput.WriteLine($Token)
         $proc.StandardInput.Flush()
@@ -611,10 +614,33 @@ function Set-CrowdStrikeGroupingTag {
             if ($StatusTextBox) { Add-Status "CrowdStrike grouping tag updated successfully." $StatusTextBox }
             return $true
         }
-        else {
-            if ($StatusTextBox) { Add-Status "ERROR: CSSensorSettings exited with code $exitCode." $StatusTextBox ([System.Drawing.Color]::Red) }
-            return $false
+
+        # Retry: some versions require --maintenance-token argument instead of stdin
+        if ($StatusTextBox) { Add-Status "Retrying with --maintenance-token argument..." $StatusTextBox ([System.Drawing.Color]::Yellow) }
+        $psi2 = New-Object System.Diagnostics.ProcessStartInfo
+        $psi2.FileName = $exePath
+        $psi2.Arguments = "set --grouping-tags `"$Tag`" --maintenance-token `"$Token`""
+        $psi2.UseShellExecute = $false
+        $psi2.RedirectStandardOutput = $true
+        $psi2.RedirectStandardError = $true
+        $psi2.CreateNoWindow = $true
+        $proc2 = New-Object System.Diagnostics.Process
+        $proc2.StartInfo = $psi2
+        $null = $proc2.Start()
+        $out2 = $proc2.StandardOutput.ReadToEnd()
+        $err2 = $proc2.StandardError.ReadToEnd()
+        $proc2.WaitForExit()
+        $code2 = $proc2.ExitCode
+        if ($out2) { if ($StatusTextBox) { Add-Status ($out2.Trim()) $StatusTextBox } }
+        if ($err2) { if ($StatusTextBox) { Add-Status ("[stderr] " + $err2.Trim()) $StatusTextBox ([System.Drawing.Color]::Yellow) } }
+
+        if ($code2 -eq 0) {
+            if ($StatusTextBox) { Add-Status "CrowdStrike grouping tag updated successfully (argument mode)." $StatusTextBox }
+            return $true
         }
+
+        if ($StatusTextBox) { Add-Status "ERROR: CSSensorSettings exited with code $exitCode (stdin) / $code2 (arg)." $StatusTextBox ([System.Drawing.Color]::Red) }
+        return $false
     }
     catch {
         if ($StatusTextBox) { Add-Status ("ERROR: " + $_.Exception.Message) $StatusTextBox ([System.Drawing.Color]::Red) }
@@ -638,19 +664,36 @@ function Invoke-CheckCrowdStrikeStatus {
         }
         else { Add-Status "   ? CrowdStrike not installed!" $statusTextBox ([System.Drawing.Color]::Red); return }
 
-        # 2. Department Assignment (IMPORTANT)
-        Add-Status "2. Department Assignment:" $statusTextBox ([System.Drawing.Color]::White)
+        # 2. Sensor Info (VERSION / TAGS / IDs)
+        Add-Status "2. Sensor Info:" $statusTextBox ([System.Drawing.Color]::White)
+        $sensor = Get-CrowdStrikeSensorInfo
+        if ($sensor) {
+            if ($sensor.Version)     { Add-Status "   ? Version: $($sensor.Version)" $statusTextBox ([System.Drawing.Color]::Green) }
+            if ($sensor.AgentId)     { Add-Status "   ? Agent ID: $($sensor.AgentId)" $statusTextBox ([System.Drawing.Color]::Gray) }
+            if ($sensor.CustomerId)  { Add-Status "   ? Customer ID: $($sensor.CustomerId)" $statusTextBox ([System.Drawing.Color]::Gray) }
+            if ($sensor.Grouping)    { Add-Status "   ? Grouping Tags: $($sensor.Grouping -join ', ')" $statusTextBox ([System.Drawing.Color]::Gray) }
+            if ($sensor.CloudStatus) {
+                $cloudColor = [System.Drawing.Color]::Yellow
+                if ($sensor.CloudStatus -eq 'Connected') { $cloudColor = [System.Drawing.Color]::Green }
+                Add-Status "   ? Cloud: $($sensor.CloudStatus)" $statusTextBox $cloudColor
+            }
+        } else {
+            Add-Status "   ? Could not query CSSensorSettings.exe" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+
+        # 3. Department Assignment (IMPORTANT)
+        Add-Status "3. Department Assignment:" $statusTextBox ([System.Drawing.Color]::White)
 
         $assign = Get-CrowdStrikeAssignment
         if ($assign) {
-            if ($assign.Department) { Add-Status "   ? Department: $($assign.Department) ($($assign.Source))" $statusTextBox ([System.Drawing.Color]::Green) }
+            if ($assign.Department)  { Add-Status "   ? Department: $($assign.Department) ($($assign.Source))" $statusTextBox ([System.Drawing.Color]::Green) }
             if ($assign.InstallType) { Add-Status "   ? Installation Type: $($assign.InstallType) ($($assign.Source))" $statusTextBox ([System.Drawing.Color]::Green) }
         } else {
             Add-Status "   ? Assignment: Unknown (not configured or not yet synced)" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
-        # 3. Protection Status (CRITICAL)
-        Add-Status "3. Protection Status:" $statusTextBox ([System.Drawing.Color]::White)
+        # 4. Protection Status (CRITICAL)
+        Add-Status "4. Protection Status:" $statusTextBox ([System.Drawing.Color]::White)
 
         # Check key processes
         $criticalProcesses = @("CSFalconService", "CSFalconContainer")
@@ -669,15 +712,30 @@ function Invoke-CheckCrowdStrikeStatus {
         }
         else { Add-Status "   ? Installation directory not found" $statusTextBox ([System.Drawing.Color]::Red) }
 
-        # 4. Cloud Connectivity (IMPORTANT)
-        Add-Status "4. Cloud Connectivity:" $statusTextBox ([System.Drawing.Color]::White)
+        # 5. Cloud Connectivity (IMPORTANT)
+        Add-Status "5. Cloud Connectivity:" $statusTextBox ([System.Drawing.Color]::White)
         try { $testResult = Test-NetConnection -ComputerName "ts01-b.cloudsink.net" -Port 443 -InformationLevel Quiet -ErrorAction SilentlyContinue
             if ($testResult) { Add-Status "   ? CrowdStrike cloud: Connected" $statusTextBox ([System.Drawing.Color]::Green) }
             else { Add-Status "   ? CrowdStrike cloud: Disconnected" $statusTextBox ([System.Drawing.Color]::Yellow) }
         }
         catch { Add-Status "   ? Could not test connectivity" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
-        # 5. Overall Status (SUMMARY)
+        # 6. Registry Signals
+        Add-Status "6. Registry Signals:" $statusTextBox ([System.Drawing.Color]::White)
+        try {
+            $csReg = 'HKLM:\SOFTWARE\CrowdStrike'
+            if (Test-Path $csReg) {
+                $regObj = Get-ItemProperty -Path $csReg -ErrorAction SilentlyContinue
+                $props = @()
+                foreach ($n in @('CustomerID','AgentId','SensorId','DeviceID')) { if ($regObj.$n) { $props += "$n=$($regObj.$n)" } }
+                if ($props.Count -gt 0) { Add-Status "   ? $($props -join '; ')" $statusTextBox ([System.Drawing.Color]::Gray) }
+                else { Add-Status "   ? Registry present (no public IDs exposed)" $statusTextBox ([System.Drawing.Color]::Gray) }
+            } else {
+                Add-Status "   ? CrowdStrike registry key not found" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        } catch { Add-Status "   ? Registry read error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+
+        # 7. Overall Status (SUMMARY)
         $issues = @()
         $overallStatus = "HEALTHY"
         $statusColor = [System.Drawing.Color]::Green
@@ -695,10 +753,15 @@ function Invoke-CheckCrowdStrikeStatus {
             }
         }
 
-        if (-not $global:CrowdStrikeInstallInfo.Department) { $issues += "No department assignment"
+        if (-not $global:CrowdStrikeInstallInfo.Department -and -not $assign.Department) { $issues += "No department assignment"
             if ($overallStatus -eq "HEALTHY") { $overallStatus = "WARNING"
                 $statusColor = [System.Drawing.Color]::Yellow
             }
+        }
+
+        if ($sensor -and $sensor.CloudStatus -and $sensor.CloudStatus -ne 'Connected') {
+            $issues += "Cloud not connected"
+            if ($overallStatus -eq "HEALTHY") { $overallStatus = "WARNING"; $statusColor = [System.Drawing.Color]::Yellow }
         }
 
         Add-Status "   Status: $overallStatus" $statusTextBox $statusColor
@@ -707,6 +770,51 @@ function Invoke-CheckCrowdStrikeStatus {
         else { Add-Status "   Issues found: $issues" $statusTextBox ([System.Drawing.Color]::Yellow) }
     }
     catch { Add-Status "Error checking CrowdStrike status: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+}
+
+# Helper: Parse CSSensorSettings.exe to extract sensor info
+function Get-CrowdStrikeSensorInfo {
+    try {
+        $exePath = "C:\Program Files\CrowdStrike\CSSensorSettings.exe"
+        if (-not (Test-Path $exePath)) { return $null }
+
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $exePath
+        $psi.Arguments = "show --status"
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError  = $true
+        $psi.CreateNoWindow = $true
+
+        $p = New-Object System.Diagnostics.Process
+        $p.StartInfo = $psi
+        $null = $p.Start()
+        $output = $p.StandardOutput.ReadToEnd()
+        $p.WaitForExit()
+
+        if (-not $output) { return $null }
+
+        $lines = ($output -split "`r?`n") | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
+        $result = @{}
+
+        foreach ($line in $lines) {
+            # generic parse: Key: Value
+            if ($line -match '^(?i)version\s*:\s*(.+)$') { $result.Version = $Matches[1].Trim() ; continue }
+            if ($line -match '^(?i)agent\s*id\s*:\s*(.+)$') { $result.AgentId = $Matches[1].Trim() ; continue }
+            if ($line -match '^(?i)customer\s*id\s*:\s*(.+)$') { $result.CustomerId = $Matches[1].Trim() ; continue }
+            if ($line -match '^(?i)grouping\s*tags\s*:\s*(.+)$') { $result.Grouping = ($Matches[1] -split '\s*,\s*') ; continue }
+            if ($line -match '^(?i)cloud\s*:\s*(connected|disconnected)') { $result.CloudStatus = ($Matches[1].Substring(0,1).ToUpper() + $Matches[1].Substring(1).ToLower()) ; continue }
+        }
+
+        # Fallback for older output where tags appear under 'Tags:'
+        if (-not $result.Grouping) {
+            $tagLine = $lines | Where-Object { $_ -match '^(?i)tags\s*:' } | Select-Object -First 1
+            if ($tagLine -and $tagLine -match ':(.*)$') { $result.Grouping = ($Matches[1].Trim() -split '\s*,\s*') }
+        }
+
+        return $result
+    }
+    catch { return $null }
 }
 
 # [10.3] CrowdStrike GroupTag Functions

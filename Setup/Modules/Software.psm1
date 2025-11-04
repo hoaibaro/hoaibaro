@@ -15,17 +15,17 @@ function Install-DriverExe {
             '/qn'
         )
         $installed = $false
-        foreach ($args in $commonArgs) {
+        foreach ($silentArgs in $commonArgs) {
             try {
-                $p = Start-Process -FilePath $Path -ArgumentList $args -Wait -PassThru -NoNewWindow
+                $p = Start-Process -FilePath $Path -ArgumentList $silentArgs -Wait -PassThru -NoNewWindow
                 if ($p.ExitCode -in 0, 3010) {
                     Add-Status "$Type driver installer finished with code $($p.ExitCode)" $statusTextBox ([System.Drawing.Color]::Green)
                     $installed = $true
                     break
                 }
-                else { Add-Status "$Type driver installer returned code $($p.ExitCode) with args: $args" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                else { Add-Status "$Type driver installer returned code $($p.ExitCode) with args: $silentArgs" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
-            catch { Add-Status "$Type driver install attempt failed with args '$args': $_" $statusTextBox ([System.Drawing.Color]::Yellow) }
+            catch { Add-Status "$Type driver install attempt failed with args '$silentArgs': $_" $statusTextBox ([System.Drawing.Color]::Yellow) }
         }
 
         if (-not $installed) {
@@ -184,8 +184,8 @@ function Uninstall-OneDriveComplete {
                     try {
                         Add-Status "Using: $setupPath" $statusTextBox
                         $setupCommands = @("/uninstall /allusers", "/uninstall", "/uninstall /quiet")
-                        foreach ($args in $setupCommands) {
-                            $process = Start-Process -FilePath $setupPath -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
+                        foreach ($silentArgs in $setupCommands) {
+                            $process = Start-Process -FilePath $setupPath -ArgumentList $silentArgs -Wait -PassThru -WindowStyle Hidden
                             if ($process.ExitCode -eq 0) {
                                 Start-Sleep -Seconds 3
                                 if (-not (Test-OneDriveInstalled -statusTextBox $statusTextBox)) { return $true }
@@ -311,7 +311,7 @@ function Copy-SoftwareFilesSelective {
 }
 
 function Install-Software {
-    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [array]$appsToInstall)
+    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [array]$appsToInstall, [switch]$CleanupTemp)
     try {
         $setupDir = "$env:USERPROFILE\Downloads\SETUP"
         $office2019Dir = "$setupDir\Office 2019"
@@ -422,12 +422,14 @@ function Install-Software {
     catch { Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red); return $false }
     finally {
         try {
-            $tempDir = "$env:USERPROFILE\Downloads\SETUP"
-            if (Test-Path $tempDir) {
-                Add-Status "Cleaning up temporary files..." $statusTextBox
-                Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-                if (-not (Test-Path $tempDir)) { Add-Status "Temporary folders cleaned up successfully!" $statusTextBox }
-                else { Add-Status "Warning: Could not fully remove temporary directory." $statusTextBox ([System.Drawing.Color]::Yellow) }
+            if ($CleanupTemp) {
+                $tempDir = "$env:USERPROFILE\Downloads\SETUP"
+                if (Test-Path $tempDir) {
+                    Add-Status "Cleaning up temporary files..." $statusTextBox
+                    Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+                    if (-not (Test-Path $tempDir)) { Add-Status "Temporary folders cleaned up successfully!" $statusTextBox }
+                    else { Add-Status "Warning: Could not fully remove temporary directory." $statusTextBox ([System.Drawing.Color]::Yellow) }
+                }
             }
         }
         catch {Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)}
@@ -435,11 +437,12 @@ function Install-Software {
 }
 
 function Invoke-InstallSoftware {
-    param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+    param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [switch]$CleanupTemp)
     
     $destCopy = "$env:USERPROFILE\Downloads"
     $srcSETUP = $Global:config.sourcePaths.software
     $destSETUP = "$env:USERPROFILE\Downloads\SETUP"
+    $tempDir = $destSETUP
 
     $scFiles = Get-ChildItem -Path (Join-Path $srcSETUP 'SC-*') -File -ErrorAction SilentlyContinue
     if ($scFiles) {
@@ -516,7 +519,7 @@ function Invoke-InstallSoftware {
             if (-not (Test-Path $destSETUP)) { New-Item -Path $destSETUP -ItemType Directory -Force | Out-Null }
             $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox -SourceSetupPath $srcSETUP
             if (-not $okCopy) { Add-Status "Error: Failed to copy installers" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-            $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $plan.Pending
+            $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $plan.Pending -CleanupTemp:$CleanupTemp
             if (-not $okInstall) { Add-Status "Error: Some installations failed" $statusTextBox ([System.Drawing.Color]::Red); return $false }
             Add-Status "All software installation completed successfully" $statusTextBox
             return $true
@@ -527,7 +530,7 @@ function Invoke-InstallSoftware {
     }
     catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
     finally {
-        if ($tempDir -and (Test-Path $tempDir) -and (-not $tempDir.Contains("MDM_Setup"))) {
+        if ($CleanupTemp -and $tempDir -and (Test-Path $tempDir) -and (-not $tempDir.Contains("MDM_Setup"))) {
             try { Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue; Add-Status "Temporary files cleaned up successfully!" $statusTextBox }
             catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
         }
