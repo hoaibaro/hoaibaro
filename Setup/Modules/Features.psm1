@@ -1,6 +1,6 @@
 # [6] Features Functions
 function Invoke-WindowsFeaturesConfiguration {
-    param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+    param ([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
         # --- 1. Check and Enable Required Features ---
         Invoke-EnableWindowsFeatures $statusTextBox
@@ -80,7 +80,7 @@ function Invoke-FeaturesDialog {
                 [System.Windows.Forms.Application]::DoEvents()
 
                 # Run Windows Features Configuration
-                $result = Invoke-WindowsFeaturesConfiguration -deviceType "General" -statusTextBox $statusTextBox
+                $result = Invoke-WindowsFeaturesConfiguration -statusTextBox $statusTextBox
 
                 if ($result) {
                     Add-Status "Windows Features configuration completed !!!" $statusTextBox
@@ -137,17 +137,14 @@ function Invoke-EnableWindowsFeatures {
         @{
             Name        = "NetFx3"
             DisplayName = ".NET 3.5    "
-            Command     = "dism /online /enable-feature /featurename:NetFx3 /all /norestart"
         },
         @{
             Name        = "WCF-HTTP-Activation"
             DisplayName = "WCF HTTP    "
-            Command     = "DISM /Online /Enable-Feature /FeatureName:WCF-HTTP-Activation /All /Quiet /NoRestart"
         },
         @{
             Name        = "WCF-NonHTTP-Activation"
             DisplayName = "WCF Non-HTTP"
-            Command     = "DISM /Online /Enable-Feature /FeatureName:WCF-NonHTTP-Activation /All /Quiet /NoRestart"
         }
     )
 
@@ -161,7 +158,6 @@ function Invoke-DisableWindowsFeatures {
         @{
             Name        = "Internet-Explorer-Optional-amd64"
             DisplayName = "IExplorer 11"
-            Command     = "dism /online /disable-feature /featurename:Internet-Explorer-Optional-amd64 /norestart"
             SupportedOS = "Windows 10"
         }
     )
