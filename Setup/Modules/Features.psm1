@@ -206,16 +206,27 @@ function Set-WindowsFeatureState {
             elseif ($currentFeature.State -eq $oppositeState) {
                 Add-Status "$($feature.DisplayName): Currently $oppositeState. $($actionVerb)..." $statusTextBox ([System.Drawing.Color]::Gray)
 
-                $dismArgs = $feature.Command.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries) | Select-Object -Skip 1
-                $dismResult = Start-Process -FilePath "dism" -ArgumentList $dismArgs -Wait -PassThru -WindowStyle Hidden
+                try {
+                    $result = $null
+                    if ($TargetState -eq "Enabled") {
+                        # Sử dụng cmdlet Enable-WindowsOptionalFeature. Tham số -All tương đương với /all của DISM.
+                        $result = Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -NoRestart -PassThru
+                    }
+                    else { # TargetState is "Disabled"
+                        # Sử dụng cmdlet Disable-WindowsOptionalFeature.
+                        $result = Disable-WindowsOptionalFeature -Online -FeatureName $feature.Name -NoRestart -PassThru
+                    }
 
-                if ($dismResult.ExitCode -in 0, 3010) {
                     $statusMsg = "$($feature.DisplayName): $actionVerbPast completed."
-                    if ($dismResult.ExitCode -eq 3010) { $statusMsg += " (Restart required)" }
+                    # Kiểm tra thuộc tính RestartNeeded từ kết quả trả về
+                    if ($result.RestartNeeded) {
+                        $statusMsg += " (Restart required)"
+                    }
                     Add-Status $statusMsg $statusTextBox ([System.Drawing.Color]::Gray)
                 }
-                else {
-                    Add-Status "WARNING: Failed to change state for $($feature.DisplayName) (Exit code: $($dismResult.ExitCode))" $statusTextBox ([System.Drawing.Color]::Yellow)
+                catch {
+                    # Báo lỗi cụ thể hơn từ Exception message
+                    Add-Status "ERROR: Failed to change state for $($feature.DisplayName): $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             }
             else {
