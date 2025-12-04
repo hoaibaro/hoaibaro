@@ -27,7 +27,7 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 # CONFIGURATION LOADING
 try {
-    $configPath = Join-Path $PSScriptRoot "config.json"
+    $configPath = Join-Path $PSScriptRoot "config\config.json"
     if (-not (Test-Path $configPath)) {
         throw "FATAL: config.json not found at $configPath. Please create it."
     }
@@ -49,12 +49,12 @@ catch {
 $Global:destCopy = "$env:USERPROFILE\Downloads"
 
 # Import Modules
-Import-Module $PSScriptRoot\Modules\GUI.psm1 -Global
-Import-Module $PSScriptRoot\Modules\WindowsFeatures.psm1 -Global
-Import-Module $PSScriptRoot\Modules\Software.psm1 -Global
-Import-Module $PSScriptRoot\Modules\System.psm1 -Global
-Import-Module $PSScriptRoot\Modules\Disk.psm1 -Global
-Import-Module $PSScriptRoot\Modules\CrowdStrike.psm1 -Global
+Import-Module $PSScriptRoot\modules\GUI.psm1 -Global
+Import-Module $PSScriptRoot\modules\Features.psm1 -Global
+Import-Module $PSScriptRoot\modules\Software.psm1 -Global
+Import-Module $PSScriptRoot\modules\System.psm1 -Global
+Import-Module $PSScriptRoot\modules\Disk.psm1 -Global
+Import-Module $PSScriptRoot\modules\CrowdStrike.psm1 -Global
 
 # Load Windows Forms Funtions
 try { Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop; Add-Type -AssemblyName System.Drawing -ErrorAction Stop }
