@@ -98,7 +98,7 @@ $menuButtons = @(
     @{text = '[4] Volume'; action = { Invoke-VolumeManagementDialog -mainForm $script:form } },
     @{text = '[9] Domain'; action = { Show-DomainManagementForm -mainForm $script:form } },
     @{text = '[5] Activate'; action = { Invoke-ActivationDialog -mainForm $script:form } },
-    @{text = '[10] CrowdStrike'; action = { Invoke-CrowdStrikeDialog -mainForm $script:form } }
+    @{text = '[0] CrowdStrike'; action = { Invoke-CrowdStrikeDialog -mainForm $script:form } }
 )
 
 try { $buttonHeight = 60; $buttonSpacingY = 10; $buttonTop = 80; $buttonLeft = 30; $buttonControls = @() }
@@ -106,15 +106,13 @@ catch { Write-Host "Error: $_" -ForegroundColor Red; Stop-Transcript -ErrorActio
 
 for ($i = 0; $i -lt $menuButtons.Count; $i += 2) {
     # Left buttons
-    if ($menuButtons[$i].text -eq '[0] CrowStrike') { $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action -normalColor ([System.Drawing.Color]::FromArgb(255, 140, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 165, 0)) -pressColor ([System.Drawing.Color]::FromArgb(200, 100, 0)) }
-    else { $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action }
+    $btnL = New-DynamicButton -text $menuButtons[$i].text -x $buttonLeft -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i].action
     $btnL.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $script:form.Controls.Add($btnL)
     $buttonControls += $btnL
     # Right buttons
     if ($i + 1 -lt $menuButtons.Count) {
-        if ($menuButtons[$i + 1].text -eq '[0] CrowStrike') { $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action -normalColor ([System.Drawing.Color]::FromArgb(255, 140, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 165, 0)) -pressColor ([System.Drawing.Color]::FromArgb(200, 100, 0)) }
-        else { $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action }
+        $btnR = New-DynamicButton -text $menuButtons[$i + 1].text -x 0 -y ($buttonTop + [math]::Floor($i / 2) * ($buttonHeight + $buttonSpacingY)) -width 1 -height $buttonHeight -clickAction $menuButtons[$i + 1].action
         $btnR.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
         $script:form.Controls.Add($btnR)
         $buttonControls += $btnR
