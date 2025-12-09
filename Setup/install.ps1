@@ -49,12 +49,20 @@ catch {
 $Global:destCopy = "$env:USERPROFILE\Downloads"
 
 # Import Modules
+
 Import-Module $PSScriptRoot\modules\GUI.psm1 -Global
 Import-Module $PSScriptRoot\modules\Features.psm1 -Global
 Import-Module $PSScriptRoot\modules\Software.psm1 -Global
+Import-Module $PSScriptRoot\modules\Activation.psm1 -Global
+Import-Module $PSScriptRoot\modules\PowerConfig.psm1 -Global
+Import-Module $PSScriptRoot\modules\Network.psm1 -Global
+Import-Module $PSScriptRoot\modules\DeviceManagement.psm1 -Global
 Import-Module $PSScriptRoot\modules\System.psm1 -Global
 Import-Module $PSScriptRoot\modules\Disk.psm1 -Global
 Import-Module $PSScriptRoot\modules\CrowdStrike.psm1 -Global
+
+
+
 
 # Load Windows Forms Funtions
 try { Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop; Add-Type -AssemblyName System.Drawing -ErrorAction Stop }

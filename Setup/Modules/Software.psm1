@@ -120,35 +120,6 @@ function Test-OneDriveInstalled {
 }
 
 function Invoke-InstallerWithTimeout {
-    <#
-    .SYNOPSIS
-    Executes an installer with a timeout to prevent hanging processes.
-    
-    .PARAMETER FilePath
-    Path to the installer executable.
-    
-    .PARAMETER ArgumentList
-    Arguments to pass to the installer.
-    
-    .PARAMETER TimeoutSeconds
-    Maximum time in seconds to wait for the installer to complete. Default: 900 (15 minutes).
-    
-    .PARAMETER WindowStyle
-    Window style for the process. Default: Hidden.
-    
-    .PARAMETER StatusTextBox
-    RichTextBox control for status updates.
-    
-    .PARAMETER AppName
-    Name of the application being installed (for logging).
-    
-    .OUTPUTS
-    PSCustomObject with properties:
-    - Success: Boolean indicating if installation succeeded
-    - ExitCode: Process exit code (null if timeout)
-    - TimedOut: Boolean indicating if timeout occurred
-    - Process: Process object (null if timeout)
-    #>
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
         [Parameter(Mandatory = $false)][string]$ArgumentList = "",

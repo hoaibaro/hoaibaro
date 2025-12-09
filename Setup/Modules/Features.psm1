@@ -171,9 +171,9 @@ function Invoke-DisableWindowsFeatures {
 
 function Set-WindowsFeatureState {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [array]$Features,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("Enabled", "Disabled")]
         [string]$TargetState,
         [System.Windows.Forms.RichTextBox]$statusTextBox
@@ -209,23 +209,20 @@ function Set-WindowsFeatureState {
                 try {
                     $result = $null
                     if ($TargetState -eq "Enabled") {
-                        # Sử dụng cmdlet Enable-WindowsOptionalFeature. Tham số -All tương đương với /all của DISM.
-                        $result = Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -NoRestart -PassThru
+                        # Added -LimitAccess to prevent Windows Update hangs
+                        $result = Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -LimitAccess -NoRestart -PassThru
                     }
-                    else { # TargetState is "Disabled"
-                        # Sử dụng cmdlet Disable-WindowsOptionalFeature.
+                    else {
                         $result = Disable-WindowsOptionalFeature -Online -FeatureName $feature.Name -NoRestart -PassThru
                     }
 
                     $statusMsg = "$($feature.DisplayName): $actionVerbPast completed."
-                    # Kiểm tra thuộc tính RestartNeeded từ kết quả trả về
                     if ($result.RestartNeeded) {
                         $statusMsg += " (Restart required)"
                     }
                     Add-Status $statusMsg $statusTextBox ([System.Drawing.Color]::Gray)
                 }
                 catch {
-                    # Báo lỗi cụ thể hơn từ Exception message
                     Add-Status "ERROR: Failed to change state for $($feature.DisplayName): $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
                 }
             }
