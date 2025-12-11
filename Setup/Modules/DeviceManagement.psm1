@@ -1,6 +1,15 @@
 # [7] Rename Device Functions
 function Invoke-RenameDialog {
-    Hide-MainMenu
+    param(
+        [string]$DeviceType = $null,
+        [System.Windows.Forms.RichTextBox]$StatusTextBox = $null,
+        [bool]$IsChildWindow = $false
+    )
+
+    if (-not $IsChildWindow) {
+        Hide-MainMenu
+    }
+
     # Create device rename form
     $renameForm = New-Object System.Windows.Forms.Form
     $renameForm.Text = "Rename Device"
@@ -30,7 +39,7 @@ function Invoke-RenameDialog {
     # Get current computer name
     $currentName = $env:COMPUTERNAME
 
-    # Create a colored label for the current name (not $currentLabel, but $currentName itself)
+    # Create a colored label for the current name
     $currentNameLabel = New-Object System.Windows.Forms.Label
     $currentNameLabel.Text = $currentName
     $currentNameLabel.Font = New-Object System.Drawing.Font("Consolas", 14, [System.Drawing.FontStyle]::Bold)
@@ -113,6 +122,16 @@ function Invoke-RenameDialog {
     $newNameTextBox.Text = "HOD100" # Default to Desktop
     $renameForm.Controls.Add($newNameTextBox)
 
+    # Pre-select based on DeviceType param
+    if ($DeviceType -eq "Laptop") {
+        $radioLaptop.Checked = $true
+        $newNameTextBox.Text = "HOL100"
+    }
+    elseif ($DeviceType -eq "Desktop") {
+        $radioDesktop.Checked = $true
+        $newNameTextBox.Text = "HOD100"
+    }
+
     # Event handlers for radio buttons to update the default name
     $radioDesktop.Add_CheckedChanged({
             if ($radioDesktop.Checked) {
@@ -144,20 +163,20 @@ function Invoke-RenameDialog {
     $renameButton.Add_Click({
             $newName = $newNameTextBox.Text.Trim()
 
-            # Disable button ? trnh click nhi?u l?n
+            # Disable button
             $renameButton.Enabled = $false
 
-            # Clear status tr?c khi b?t ?u
-            $statusTextBox.Clear()
+            # Clear status if standalone
+            if (-not $IsChildWindow) { $statusTextBox.Clear() }
 
-            # Validation c b?n
+            # Validation
             if ([string]::IsNullOrWhiteSpace($newName)) {
-                Add-Status "Error: Please enter a new device name!" $statusTextBox ([System.Drawing.Color]::Red)
+                if ($StatusTextBox) { Add-Status "Error: Please enter a new device name!" $StatusTextBox ([System.Drawing.Color]::Red) }
+                else { [System.Windows.Forms.MessageBox]::Show("Please enter a new device name!", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error) }
                 $renameButton.Enabled = $true
                 return
             }
 
-            # L?y tn my hi?n t?i
             $currentName = $env:COMPUTERNAME
 
             if ($newName -eq $currentName) {
@@ -166,7 +185,7 @@ function Invoke-RenameDialog {
                 return
             }
 
-            # Xc nh?n v?i user
+            # Confirm
             $confirmResult = [System.Windows.Forms.MessageBox]::Show(
                 "Are you sure you want to rename this device from '$currentName' to '$newName'?`n`nThis operation requires a restart.",
                 "Confirm Rename",
@@ -176,10 +195,11 @@ function Invoke-RenameDialog {
 
             if ($confirmResult -eq [System.Windows.Forms.DialogResult]::Yes) {
                 try {
-                    # S? d?ng Rename-Computer tr?c ti?p
                     Rename-Computer -NewName $newName -Force -ErrorAction Stop
+                    
+                    if ($StatusTextBox) { Add-Status "Device renamed to '$newName'. Restart required." $StatusTextBox ([System.Drawing.Color]::Green) }
 
-                    # H?i user c mu?n restart ngay khng
+                    # Ask for restart
                     $restartResult = [System.Windows.Forms.MessageBox]::Show(
                         "Do you want to restart your device now?",
                         "Restart Confirmation",
@@ -191,32 +211,32 @@ function Invoke-RenameDialog {
                         Start-Sleep -Seconds 2
                         Restart-Computer -Force
                     }
+                    $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::OK
+                    $renameForm.Close()
                 }
                 catch {
-                    Add-Status "Error renaming device: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+                    if ($StatusTextBox) { Add-Status "Error renaming device: $($_.Exception.Message)" $StatusTextBox ([System.Drawing.Color]::Red) }
+                    else { [System.Windows.Forms.MessageBox]::Show("Error renaming device: $($_.Exception.Message)", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error) }
                 }
             }
             else {
-                Add-Status "Rename operation cancelled by user." $statusTextBox ([System.Drawing.Color]::Yellow)
+                if ($StatusTextBox) { Add-Status "Rename operation cancelled by user." $StatusTextBox ([System.Drawing.Color]::Yellow) }
             }
-            # Re-enable button
             $renameButton.Enabled = $true
         })
     $renameForm.Controls.Add($renameButton)
 
     # Cancel button
-    $cancelButton = New-DynamicButton  -text "Cancel" -x 250 -y 240 -width 200 -height 40 -clickAction { $renameForm.Close() } -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0))
+    $cancelButton = New-DynamicButton  -text "Cancel" -x 250 -y 240 -width 200 -height 40 -clickAction { $renameForm.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $renameForm.Close() } -normalColor ([System.Drawing.Color]::FromArgb(200, 0, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(255, 50, 50)) -pressColor ([System.Drawing.Color]::FromArgb(150, 0, 0))
     $renameForm.Controls.Add($cancelButton)
 
-    # Set the accept button (Enter key)
     $renameForm.AcceptButton = $renameButton
-    # Set the cancel button (Escape key)
     $renameForm.CancelButton = $cancelButton
 
-    # When the form is closed, show the main menu again
-    $renameForm.Add_FormClosed({ Show-MainMenu })
+    if (-not $IsChildWindow) {
+        $renameForm.Add_FormClosed({ Show-MainMenu })
+    }
 
-    # Show the form
     $renameForm.ShowDialog()
 }
 
@@ -295,11 +315,11 @@ function Show-SetPasswordForm {
     $presetComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
 
     # Add preset password options
-    $presetComboBox.Items.AddRange(@(
-            "Custom (enter below)",
-            "Pr0t3ct10c@1@VU",
-            "Aa1234567890"
-        ))
+    $presetComboBox.Items.Add("Custom (enter below)")
+    if ($Global:config.userManagement.presetPasswords) {
+        $Global:config.userManagement.presetPasswords | ForEach-Object { $presetComboBox.Items.Add($_) }
+    }
+
     $presetComboBox.SelectedIndex = 0
     $form.Controls.Add($presetComboBox)
 
@@ -630,6 +650,7 @@ function Invoke-SetPasswordDialog {
 # [9] Domain Management Functions
 $script:DomainConfig = @{FormWidth = 500; FormHeight = 450; FormHeightMinimal = 380; ButtonY = 350; ButtonYMinimal = 280; ControlSpacing = 40; DefaultWorkgroup = "WORKGROUP" }
 
+
 function Get-ComputerDomainInfo {
     try {
         $computerSystem = Get-WmiObject -Class Win32_ComputerSystem -ErrorAction Stop
@@ -699,13 +720,13 @@ function Set-DomainFormLayout {
             # Set domain name - reset to default if it's workgroup name or empty
             $currentText = $FormControls.NameTextBox.Text.Trim()
             if ([string]::IsNullOrWhiteSpace($currentText) -or $currentText -eq "WORKGROUP") {
-                $FormControls.NameTextBox.Text = "vietunion.local"
+                $FormControls.NameTextBox.Text = $Global:config.domain.name
             }
             $FormControls.UsernameLabel.Visible = $true
             $FormControls.UsernameTextBox.Visible = $true
             # Set username - reset to default if empty
             if ([string]::IsNullOrWhiteSpace($FormControls.UsernameTextBox.Text)) {
-                $FormControls.UsernameTextBox.Text = "-hdk-hieudang"
+                $FormControls.UsernameTextBox.Text = $Global:config.domain.defaultUser
             }
             $FormControls.PasswordLabel.Visible = $true
             $FormControls.PasswordTextBox.Visible = $true
@@ -1061,12 +1082,12 @@ function Show-DomainManagementForm {
     $nameLabel = New-DomainManagementLabel -Text "Domain Name:" -X 10 -Y 230 -Width 150 -Height 30
     $nameLabel.BackColor = [System.Drawing.Color]::Transparent
     $nameTextBox = New-DomainManagementTextBox -X 170 -Y 230 -Width 300 -Height 30
-    $nameTextBox.Text = "vietunion.local"  # Default domain name
+    $nameTextBox.Text = $Global:config.domain.name  # Default domain name
 
     $usernameLabel = New-DomainManagementLabel -Text "Username:" -X 10 -Y 270 -Width 150 -Height 30
     $usernameLabel.BackColor = [System.Drawing.Color]::Transparent
     $usernameTextBox = New-DomainManagementTextBox -X 170 -Y 270 -Width 300 -Height 30
-    $usernameTextBox.Text = "-hdk-hieudang"  # Default username
+    $usernameTextBox.Text = $Global:config.domain.defaultUser  # Default username
 
     $passwordLabel = New-DomainManagementLabel -Text "Password:" -X 10 -Y 310 -Width 150 -Height 30
     $passwordLabel.BackColor = [System.Drawing.Color]::Transparent
@@ -1142,8 +1163,8 @@ function Show-DomainManagementForm {
 
 function Invoke-RenamebyDevice {
     param($deviceType, $statusTextBox)
-    Add-Status "Renaming device based on type '$deviceType'..." $statusTextBox
-    Add-Status "Rename logic not implemented." $statusTextBox ([System.Drawing.Color]::Yellow)
+    Add-Status "Starting Rename Device dialog..." $statusTextBox
+    Invoke-RenameDialog -DeviceType $deviceType -StatusTextBox $statusTextBox -IsChildWindow $true
     return $true
 }
 
@@ -1156,12 +1177,78 @@ function Invoke-UserPasswordManagement {
 
 function Select-DeviceType {
     param($Owner)
-    # Simple detection
-    $chassis = Get-WmiObject Win32_SystemEnclosure
-    if ($chassis.ChassisTypes -contains 9 -or $chassis.ChassisTypes -contains 10) {
-        return "Laptop"
+    
+    # 1. Auto-detect
+    $detectedType = "Desktop"
+    try {
+        $chassis = Get-WmiObject Win32_SystemEnclosure -ErrorAction SilentlyContinue
+        if ($chassis.ChassisTypes -contains 9 -or $chassis.ChassisTypes -contains 10) {
+            $detectedType = "Laptop"
+        }
     }
-    return "Desktop"
+    catch {}
+
+    # 2. Show Confirmation Dialog
+    $dialog = New-Object System.Windows.Forms.Form
+    $dialog.Text = "Device Type Selection"
+    $dialog.Size = New-Object System.Drawing.Size(400, 220)
+    $dialog.StartPosition = "CenterScreen"
+    $dialog.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+    $dialog.MaximizeBox = $false
+    $dialog.MinimizeBox = $false
+    $dialog.BackColor = [System.Drawing.Color]::Black
+    
+    # Gradient background
+    Add-GradientBackground -form $dialog
+
+    # Label
+    $label = New-Object System.Windows.Forms.Label
+    $label.Text = "Detected System Type: $detectedType`n`nPlease confirm or select the correct device type:"
+    $label.Font = New-Object System.Drawing.Font("Arial", 11)
+    $label.ForeColor = [System.Drawing.Color]::White
+    $label.Location = New-Object System.Drawing.Point(20, 20)
+    $label.Size = New-Object System.Drawing.Size(350, 60)
+    $label.BackColor = [System.Drawing.Color]::Transparent
+    $dialog.Controls.Add($label)
+
+    # Radio Buttons
+    $radioDesktop = New-Object System.Windows.Forms.RadioButton
+    $radioDesktop.Text = "Desktop"
+    $radioDesktop.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
+    $radioDesktop.ForeColor = [System.Drawing.Color]::Lime
+    $radioDesktop.Location = New-Object System.Drawing.Point(50, 90)
+    $radioDesktop.Size = New-Object System.Drawing.Size(120, 30)
+    $radioDesktop.BackColor = [System.Drawing.Color]::Transparent
+    
+    $radioLaptop = New-Object System.Windows.Forms.RadioButton
+    $radioLaptop.Text = "Laptop"
+    $radioLaptop.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
+    $radioLaptop.ForeColor = [System.Drawing.Color]::Lime
+    $radioLaptop.Location = New-Object System.Drawing.Point(200, 90)
+    $radioLaptop.Size = New-Object System.Drawing.Size(120, 30)
+    $radioLaptop.BackColor = [System.Drawing.Color]::Transparent
+
+    if ($detectedType -eq "Laptop") { $radioLaptop.Checked = $true } else { $radioDesktop.Checked = $true }
+
+    $dialog.Controls.Add($radioDesktop)
+    $dialog.Controls.Add($radioLaptop)
+
+    # Buttons
+    $btnOK = New-DynamicButton -text "OK" -x 80 -y 130 -width 100 -height 35 -normalColor ([System.Drawing.Color]::FromArgb(0, 128, 0)) -clickAction { $dialog.DialogResult = [System.Windows.Forms.DialogResult]::OK; $dialog.Close() }
+    $btnCancel = New-DynamicButton -text "Cancel" -x 200 -y 130 -width 100 -height 35 -normalColor ([System.Drawing.Color]::FromArgb(128, 0, 0)) -clickAction { $dialog.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $dialog.Close() }
+    
+    $dialog.Controls.Add($btnOK)
+    $dialog.Controls.Add($btnCancel)
+    $dialog.AcceptButton = $btnOK
+    $dialog.CancelButton = $btnCancel
+
+    if ($Owner) { $result = $dialog.ShowDialog($Owner) } else { $result = $dialog.ShowDialog() }
+
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        if ($radioLaptop.Checked) { return "Laptop" }
+        return "Desktop"
+    }
+    return $null
 }
 
 Export-ModuleMember -Function Invoke-RenameDialog, Show-SetPasswordForm, Set-UserPassword, Remove-UserPassword, Invoke-SetPasswordDialog, Get-ComputerDomainInfo, New-DomainManagementLabel, New-DomainManagementTextBox, New-DomainManagementRadioButton, Set-DomainFormLayout, Test-DomainJoinInputs, Test-WorkgroupInputs, Invoke-ElevatedDomainCommand, Invoke-DomainJoinOperation, Invoke-WorkgroupJoinOperation, Show-DomainManagementForm, Invoke-RenamebyDevice, Invoke-UserPasswordManagement, Select-DeviceType

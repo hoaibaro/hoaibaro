@@ -63,7 +63,8 @@ function Invoke-ActivateWindows10Pro {
         }
 
         Add-Status "Windows not activated. Activating Windows 10 Pro..." $statusTextBox
-        $command = "slmgr /ipk R84N4-RPC7Q-W8TKM-VM7Y4-7H66Y && slmgr /ato"
+        $key = $Global:config.windowsActivation.productKey
+        $command = "slmgr /ipk $key && slmgr /ato"
 
         # Create a process to run the command with elevated privileges
         $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -127,7 +128,8 @@ function Invoke-ActivateOffice2019 {
         Add-Status "Office not activated. Starting activate..." $statusTextBox
         # Install the product key
         try {
-            & cscript //nologo "$officePath" /inpkey:Q2NKY-J42YJ-X2KVK-9Q9PT-MKP63 2>&1
+            $key = $Global:config.officeActivation.productKey
+            & cscript //nologo "$officePath" /inpkey:$key 2>&1
         }
         catch {
             Add-Status "Error installing product key: $_" $statusTextBox ([System.Drawing.Color]::Red)
@@ -185,7 +187,8 @@ function Invoke-UpgradeWindowsHomeToPro {
         }
 
         Add-Status "Upgrading $currentWindowsVersion to Pro..." $statusTextBox
-        $command = "sc config LicenseManager start= auto & net start LicenseManager & sc config wuauserv start= auto & net start wuauserv & changepk.exe /productkey VK7JG-NPHTM-C97JM-9MPGT-3V66T"
+        $key = $Global:config.windowsActivation.upgradeKey
+        $command = "sc config LicenseManager start= auto & net start LicenseManager & sc config wuauserv start= auto & net start wuauserv & changepk.exe /productkey $key"
 
         # Create a process to run the command with elevated privileges
         $psi = New-Object System.Diagnostics.ProcessStartInfo

@@ -28,10 +28,45 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 # CONFIGURATION LOADING
 try {
     $configPath = Join-Path $PSScriptRoot "config\config.json"
-    if (-not (Test-Path $configPath)) {
-        throw "FATAL: config.json not found at $configPath. Please create it."
+    
+    # Import Validation Module
+    Import-Module $PSScriptRoot\modules\ConfigValidation.psm1 -Global
+
+    # Validate Config
+    $validation = Test-BaroConfig -ConfigPath $configPath
+
+    if (-not $validation.IsValid) {
+        # Check if it's just missing
+        if (-not (Test-Path $configPath)) {
+            # Auto-create template
+            $configDir = [System.IO.Path]::GetDirectoryName($configPath)
+            if (-not (Test-Path $configDir)) { New-Item -Path $configDir -ItemType Directory -Force | Out-Null }
+            
+            New-BaroConfigTemplate -Path $configPath
+            
+            $msg = "Configuration file was missing. A new template has been created at:`n$configPath`n`nPlease edit this file with your specific settings (Keys, Paths) and restart the application."
+            try { 
+                Add-Type -AssemblyName System.Windows.Forms
+                [System.Windows.Forms.MessageBox]::Show($msg, "Configuration Created", "OK", "Information")
+            }
+            catch { Write-Host $msg -ForegroundColor Yellow }
+            exit 0
+        }
+        else {
+            # Invalid content
+            $errorMsg = "Configuration Error(s):`n" + ($validation.Errors -join "`n")
+            throw $errorMsg
+        }
     }
-    $Global:config = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+
+    # Load valid config
+    $Global:config = $validation.Config
+
+    # Show warnings if any
+    if ($validation.Warnings.Count -gt 0) {
+        $warnMsg = "Configuration Warnings:`n" + ($validation.Warnings -join "`n")
+        Write-Host $warnMsg -ForegroundColor Yellow
+    }
 }
 catch {
     # If GUI is not loaded yet, just write to host and exit.
@@ -49,7 +84,6 @@ catch {
 $Global:destCopy = "$env:USERPROFILE\Downloads"
 
 # Import Modules
-
 Import-Module $PSScriptRoot\modules\GUI.psm1 -Global
 Import-Module $PSScriptRoot\modules\Features.psm1 -Global
 Import-Module $PSScriptRoot\modules\Software.psm1 -Global
@@ -61,16 +95,48 @@ Import-Module $PSScriptRoot\modules\System.psm1 -Global
 Import-Module $PSScriptRoot\modules\Disk.psm1 -Global
 Import-Module $PSScriptRoot\modules\CrowdStrike.psm1 -Global
 
-
-
-
 # Load Windows Forms Funtions
 try { Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop; Add-Type -AssemblyName System.Drawing -ErrorAction Stop }
 catch { Write-Host "Error loading Windows Forms and Drawing assemblies." -ForegroundColor Red; exit 1 }
 
+# Set AppUserModelID to separate from PowerShell taskbar group
+try {
+    $code = @"
+    using System;
+    using System.Runtime.InteropServices;
+    public class Win32Helper {
+        [DllImport("shell32.dll", SetLastError=true)]
+        public static extern void SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);
+    }
+"@
+    Add-Type -TypeDefinition $code -PassThru | Out-Null
+    [Win32Helper]::SetCurrentProcessExplicitAppUserModelID("BaroTool.App")
+}
+catch {
+    Write-Warning "Could not set AppUserModelID: $_"
+}
+
 # Create main form
 $script:form = New-Object System.Windows.Forms.Form
 $script:form.Text = "BAOPROVIP - SYSTEM MANAGEMENT"
+# Set Icon
+$iconPath = Join-Path $PSScriptRoot "config\logo.ico"
+if (Test-Path $iconPath) {
+    try { 
+        $script:form.Icon = New-Object System.Drawing.Icon($iconPath) 
+    } 
+    catch { 
+        # Fallback: Try loading as Image/Bitmap (e.g. if it's a PNG renamed to .ico)
+        try {
+            $img = [System.Drawing.Bitmap]::FromFile($iconPath)
+            $handle = $img.GetHicon()
+            $script:form.Icon = [System.Drawing.Icon]::FromHandle($handle)
+        }
+        catch {
+            Write-Warning "Could not load icon from $iconPath. Error: $_"
+        }
+    }
+}
 $script:form.Size = New-Object System.Drawing.Size(500, 400)
 $script:form.MinimumSize = New-Object System.Drawing.Size(500, 400)  # Minimum 
 $script:form.StartPosition = "CenterScreen"

@@ -39,19 +39,39 @@ function Install-DriverExe {
     catch { Add-Status "$Type driver installation error: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 }
 
-function Test-7ZipInstalled {
-    $paths = @("C:\Program Files\7-Zip\7z.exe", "C:\Program Files (x86)\7-Zip\7z.exe")
-    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
-    return $false
-}
-function Test-ChromeInstalled {
-    $paths = @("C:\Program Files\Google\Chrome\Application\chrome.exe", "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")
-    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
+function Test-AppInstalled {
+    param($appConfig, [System.Windows.Forms.RichTextBox]$statusTextBox)
+
+    if ($appConfig.checkType -eq 'function') {
+        $cmd = $appConfig.checkFunction
+        if (Get-Command $cmd -ErrorAction SilentlyContinue) {
+            try {
+                $result = & $cmd -statusTextBox $statusTextBox
+                if ($result -is [bool]) { return $result }
+                if ($result -is [hashtable] -and $result.ContainsKey('Installed')) { return $result.Installed }
+                if ($result.PSObject.Properties['Installed']) { return $result.Installed }
+                return [bool]$result
+            }
+            catch {
+                return $false
+            }
+        }
+        return $false
+    }
+    elseif ($appConfig.checkType -eq 'path') {
+        if ($appConfig.checkPaths) {
+            foreach ($path in $appConfig.checkPaths) {
+                $expandedPath = $ExecutionContext.InvokeCommand.ExpandString($path)
+                if (Test-Path $expandedPath) { return $true }
+            }
+        }
+        return $false
+    }
     return $false
 }
 function Test-LAPSInstalledOrBuiltin {
     [CmdletBinding()]
-    param()
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
 
     try {
         $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
@@ -79,26 +99,7 @@ function Test-LAPSInstalledOrBuiltin {
         return @{ BuiltIn = $false; Installed = (Test-Path $lapsDll); Version = $null; SupportsCSP = $false }
     }
 }
-function Test-FoxitInstalled {
-    $paths = @("C:\Program Files (x86)\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files\Foxit Software\Foxit PDF Reader\FoxitPDFReader.exe", "C:\Program Files (x86)\Foxit Software\Foxit Reader\FoxitReader.exe", "C:\Program Files\Foxit Software\Foxit Reader\FoxitReader.exe")
-    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
-    return $false
-}
-function Test-Office2019Installed {
-    $paths = @("C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE")
-    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
-    return $false
-}
-function Test-ZoomInstalled {
-    $paths = @("$env:USERPROFILE\AppData\Roaming\Zoom\bin\Zoom.exe", "C:\Program Files\Zoom\bin\Zoom.exe", "C:\Program Files (x86)\Zoom\bin\Zoom.exe")
-    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
-    return $false
-}
-function Test-CheckPointVPNInstalled {
-    $paths = @("C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe")
-    foreach ($p in $paths) { if (Test-Path $p) { return $true } }
-    return $false
-}
+
 function Test-OneDriveInstalled {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
     $uninstallKeys = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*")
@@ -107,7 +108,7 @@ function Test-OneDriveInstalled {
             $programs = Get-ItemProperty $keyPath -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like "*OneDrive*" -or $_.DisplayName -like "*Microsoft OneDrive*" }
             if ($programs) { return $true }
         }
-        catch { if($statusTextBox) {Add-Status "ERROR: OneDrive installation check failed: $_" $statusTextBox ([System.Drawing.Color]::Red)} }
+        catch { if ($statusTextBox) { Add-Status "ERROR: OneDrive installation check failed: $_" $statusTextBox ([System.Drawing.Color]::Red) } }
     }
     $oneDrivePaths = @("$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe", "$env:PROGRAMFILES\Microsoft OneDrive\OneDrive.exe", "$env:PROGRAMFILES(x86)\Microsoft OneDrive\OneDrive.exe")
     foreach ($path in $oneDrivePaths) { if (Test-Path $path) { return $true } }
@@ -153,7 +154,8 @@ function Invoke-InstallerWithTimeout {
             try {
                 $process.Kill()
                 Start-Sleep -Seconds 1
-            } catch { }
+            }
+            catch { }
             
             if ($StatusTextBox) { Add-Status "$AppName : Installation timed out after $TimeoutSeconds seconds" $StatusTextBox ([System.Drawing.Color]::Red) }
             return @{ Success = $false; ExitCode = $null; TimedOut = $true; Process = $null }
@@ -163,10 +165,10 @@ function Invoke-InstallerWithTimeout {
         $success = ($exitCode -eq 0 -or $exitCode -eq 3010) # 3010 = Success restart required
         
         return @{
-            Success = $success
+            Success  = $success
             ExitCode = $exitCode
             TimedOut = $false
-            Process = $process
+            Process  = $process
         }
     }
     catch {
@@ -276,32 +278,32 @@ function Uninstall-OneDriveComplete {
 function PlanSoftwareInstall {
     param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [switch]$ShowPendingList)
     $pending = @(); $skipped = @()
-    $appsMeta = @(
-        @{ Id = 'onedrive'; Display = 'OneDrive'; Device = 'All' },
-        @{ Id = '7zip'; Display = '7-Zip'; Device = 'All' },
-        @{ Id = 'chrome'; Display = 'Google Chrome'; Device = 'All' },
-        @{ Id = 'laps'; Display = 'LAPS'; Device = 'All' },
-        @{ Id = 'foxit'; Display = 'Foxit Reader'; Device = 'All' },
-        @{ Id = 'office2019'; Display = 'Office 2019'; Device = 'All' },
-        @{ Id = 'zoom'; Display = 'Zoom'; Device = 'Laptop' },
-        @{ Id = 'checkpointvpn'; Display = 'CheckPoint VPN'; Device = 'Laptop' }
-    )
+    
+    $appsMeta = $Global:config.software
+    
     foreach ($app in $appsMeta) {
-        if ($app.Device -ne 'All' -and $app.Device -ne $DeviceType) { continue }
-        switch ($app.Id) {
-            'onedrive' { if (Test-OneDriveInstalled -statusTextBox $statusTextBox) { $pending += $app } else { $skipped += $app } }
-            '7zip' { if (Test-7ZipInstalled) { $skipped += $app } else { $pending += $app } }
-            'chrome' { if (Test-ChromeInstalled) { $skipped += $app } else { $pending += $app } }
-            'laps' { $laps = Test-LAPSInstalledOrBuiltin; if ($laps.Installed) { $skipped += $app } else { $pending += $app } }
-            'foxit' { if (Test-FoxitInstalled) { $skipped += $app } else { $pending += $app } }
-            'office2019' { if (Test-Office2019Installed) { $skipped += $app } else { $pending += $app } }
-            'zoom' { if (Test-ZoomInstalled) { $skipped += $app } else { $pending += $app } }
-            'checkpointvpn' { if (Test-CheckPointVPNInstalled) { $skipped += $app } else { $pending += $app } }
+        if (-not $app.enabled) { continue }
+        if ($app.device -ne 'All' -and $app.device -ne $DeviceType) { continue }
+        
+        $isInstalled = Test-AppInstalled -appConfig $app -statusTextBox $statusTextBox
+        
+        # Special handling for uninstall tasks (like OneDrive)
+        if ($app.task -eq 'uninstall') {
+            if ($isInstalled) { $pending += $app } # Pending uninstall
+            else { $skipped += $app }
+        }
+        else {
+            if ($isInstalled) { $skipped += $app }
+            else { $pending += $app }
         }
     }
+
     if ($ShowPendingList -and $statusTextBox) {
         if ($pending.Count -gt 0) {
-            $pendingDisplays = $pending | ForEach-Object { $_.Display }
+            $pendingDisplays = $pending | ForEach-Object { 
+                if ($_.task -eq 'uninstall') { "$($_.displayName) (Uninstall)" }
+                else { $_.displayName }
+            }
             Add-Status ("Pending: " + ($pendingDisplays -join ", ")) $statusTextBox ([System.Drawing.Color]::Yellow)
         }
     }
@@ -316,82 +318,72 @@ function Copy-SoftwareFilesSelective {
         [string]$SourceSetupPath = ''
     )
     $setupDir = Join-Path $env:USERPROFILE 'Downloads\SETUP'
-    $office2019Dir = Join-Path $setupDir 'Office 2019'
     if (-not (Test-Path $setupDir)) { New-Item -Path $setupDir -ItemType Directory -Force | Out-Null }
+    
     if (-not (Test-Path $SourceSetupPath)) {
         Add-Status "Error: Source directory not found at $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Red)
         return $false
     }
-    $srcOffice = Join-Path $SourceSetupPath 'Office 2019'
+
     $allCopied = $true
+    
     foreach ($app in $Apps) {
-        switch ($app.Id) {
-            '7zip' {
-                $file = Get-ChildItem -Path $SourceSetupPath -Filter '7z*.exe' | Select-Object -First 1
-                if ($file) {
-                    $dest = Join-Path $setupDir $file.Name
-                    if (Test-Path $dest) { Add-Status "Existed : 7-Zip installer" $statusTextBox }
-                    else { try { Copy-Item -Path $file.FullName -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : 7-Zip ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+        # Skip if it's an uninstall task
+        if ($app.task -eq 'uninstall') { continue }
+
+        $appName = $app.displayName
+        
+        # Special handling for Office type
+        if ($app.installerType -eq 'office') {
+            $srcOffice = Join-Path $SourceSetupPath $app.sourceSubDir
+            $destOffice = Join-Path $setupDir $app.sourceSubDir
+             
+            if (Test-Path $srcOffice) {
+                if (Test-Path $destOffice -and (Test-Path (Join-Path $destOffice $app.installerName))) {
+                    Add-Status "Existed : $appName source" $statusTextBox
                 }
-                else { $allCopied = $false; Add-Status "Missing 7-Zip installer in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
-            }
-            'chrome' {
-                $src = Join-Path $SourceSetupPath 'ChromeSetup.exe'
-                if (Test-Path $src) {
-                    $dest = Join-Path $setupDir 'ChromeSetup.exe'
-                    if (Test-Path $dest) { Add-Status "Existed : Chrome installer" $statusTextBox }
-                    else { try { Copy-Item -Path $src -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : Chrome ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
-                }
-                else { $allCopied = $false; Add-Status "Missing ChromeSetup.exe in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
-            }
-            'laps' {
-                $src = Join-Path $SourceSetupPath 'LAPS_x64.msi'
-                if (Test-Path $src) {
-                    $dest = Join-Path $setupDir 'LAPS_x64.msi'
-                    if (Test-Path $dest) { Add-Status "Existed : LAPS installer" $statusTextBox }
-                    else { try { Copy-Item -Path $src -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : LAPS ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
-                }
-                else { $allCopied = $false; Add-Status "Missing LAPS_x64.msi in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
-            }
-            'foxit' {
-                $file = Get-ChildItem -Path $SourceSetupPath -Filter 'FoxitPDFReader*.exe' | Select-Object -First 1
-                if ($file) {
-                    $dest = Join-Path $setupDir $file.Name
-                    if (Test-Path $dest) { Add-Status "Existed : Foxit installer" $statusTextBox }
-                    else { try { Copy-Item -Path $file.FullName -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : Foxit ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
-                }
-                else { $allCopied = $false; Add-Status "Missing Foxit installer in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
-            }
-            'office2019' {
-                if (Test-Path $srcOffice) {
-                    if (Test-Path $office2019Dir -and (Test-Path (Join-Path $office2019Dir 'setup.exe'))) {
-                        Add-Status "Existed : Office 2019 source" $statusTextBox
+                else {
+                    if (-not (Test-Path $destOffice)) { New-Item -Path $destOffice -ItemType Directory -Force | Out-Null }
+                    try { 
+                        Copy-Item -Path (Join-Path $srcOffice '*') -Destination $destOffice -Recurse -Force 
+                        Add-Status "Copying : $appName" $statusTextBox
+                    } 
+                    catch { 
+                        $allCopied = $false; 
+                        Add-Status "Failed : $appName ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) 
                     }
-                    else {
-                        if (-not (Test-Path $office2019Dir)) { New-Item -Path $office2019Dir -ItemType Directory -Force | Out-Null }
-                        try { Copy-Item -Path (Join-Path $srcOffice '*') -Destination $office2019Dir -Recurse -Force } catch { $allCopied = $false; Add-Status "Failed : Office 2019 ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) }
-                    }
-                } else { $allCopied = $false; Add-Status "Missing Office 2019 source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow) }
-            }
-            'zoom' {
-                $src = Join-Path $SourceSetupPath 'ZoomInstallerFull.exe'
-                if (Test-Path $src) {
-                    $dest = Join-Path $setupDir 'ZoomInstallerFull.exe'
-                    if (Test-Path $dest) { Add-Status "Existed : Zoom installer" $statusTextBox }
-                    else { try { Copy-Item -Path $src -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : Zoom ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
                 }
-                else { $allCopied = $false; Add-Status "Missing ZoomInstallerFull.exe in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
-            'checkpointvpn' {
-                $src = Join-Path $SourceSetupPath 'E89.00_CheckPointVPN.msi'
-                if (Test-Path $src) {
-                    $dest = Join-Path $setupDir 'E89.00_CheckPointVPN.msi'
-                    if (Test-Path $dest) { Add-Status "Existed : CheckPointVPN installer" $statusTextBox }
-                    else { try { Copy-Item -Path $src -Destination $dest -Force } catch { $allCopied = $false; Add-Status "Failed : CheckPointVPN ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) } }
+            else { 
+                $allCopied = $false; 
+                Add-Status "Missing $appName source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow) 
+            }
+            continue
+        }
+
+        # Generic file copy
+        if ($app.installerName) {
+            $file = Get-ChildItem -Path $SourceSetupPath -Filter $app.installerName | Select-Object -First 1
+            if ($file) {
+                $dest = Join-Path $setupDir $file.Name
+                if (Test-Path $dest) { 
+                    Add-Status "Existed : $appName installer" $statusTextBox 
                 }
-                else { $allCopied = $false; Add-Status "Missing E89.00_CheckPointVPN.msi in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                else { 
+                    try { 
+                        Copy-Item -Path $file.FullName -Destination $dest -Force 
+                        Add-Status "Copying : $appName" $statusTextBox
+                    } 
+                    catch { 
+                        $allCopied = $false; 
+                        Add-Status "Failed : $appName ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) 
+                    } 
+                }
             }
-            default { Add-Status "Error: '$($app.Id)'" $statusTextBox ([System.Drawing.Color]::Yellow) }
+            else { 
+                $allCopied = $false; 
+                Add-Status "Missing $appName installer ($($app.installerName)) in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) 
+            }
         }
     }
     return $allCopied
@@ -401,106 +393,77 @@ function Install-Software {
     param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [array]$appsToInstall, [switch]$CleanupTemp)
     try {
         $setupDir = "$env:USERPROFILE\Downloads\SETUP"
-        $office2019Dir = "$setupDir\Office 2019"
-        $appIds = $appsToInstall | ForEach-Object { $_.Id }
-
-        # Only process OneDrive if it's in the install list
-        if ($appIds -contains 'onedrive') {
-            if (Test-OneDriveInstalled -statusTextBox $statusTextBox) {
-                $result = Uninstall-OneDriveComplete -statusTextBox $statusTextBox
-                if ($result) { Add-Status "OneDrive: Has been uninstalled!" $statusTextBox }
-                else { Add-Status "OneDrive: Removal incomplete. Check Control Panel." $statusTextBox ([System.Drawing.Color]::Yellow) }
-            }
-            else { Add-Status "Uninstalled : OneDrive" $statusTextBox }
-        }
-
-        if ($appIds -contains '7zip') {
-            $sevenZipInstaller = Get-ChildItem -Path $setupDir -Include "7z*.exe", "7-Zip*.exe", "7zip*.exe" -Recurse | Select-Object -First 1
-            if ($sevenZipInstaller) {
-                Add-Status "Installing : 7-Zip" $statusTextBox
-                $result = Invoke-InstallerWithTimeout -FilePath $sevenZipInstaller.FullName -ArgumentList "/S" -TimeoutSeconds 300 -StatusTextBox $statusTextBox -AppName "7-Zip"
-                if ($result.Success) { Add-Status "Installed : 7-Zip" $statusTextBox }
-                elseif ($result.TimedOut) { Add-Status "7-Zip : Installation timed out after 5 minutes" $statusTextBox ([System.Drawing.Color]::Red) }
-                else { Add-Status "7-Zip : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
-        }
-
-        if ($appIds -contains 'chrome') {
-            $chromeInstaller = Join-Path $setupDir "ChromeSetup.exe"
-            if (Test-Path $chromeInstaller) {
-                Add-Status "Installing : Chrome" $statusTextBox
-                $result = Invoke-InstallerWithTimeout -FilePath $chromeInstaller -ArgumentList "/silent /install" -TimeoutSeconds 600 -StatusTextBox $statusTextBox -AppName "Chrome"
-                if ($result.Success) { Add-Status "Installed : Chrome" $statusTextBox }
-                elseif ($result.TimedOut) { Add-Status "Chrome : Installation timed out after 10 minutes" $statusTextBox ([System.Drawing.Color]::Red) }
-                else { Add-Status "Chrome : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
-        }
-
-        if ($appIds -contains 'laps') {
-            $osInfo = Get-ComputerInfo
-            if ($osInfo.WindowsProductName -match "Windows 10") {
-                $lapsInstaller = Join-Path $setupDir "LAPS_x64.msi"
-                if (Test-Path $lapsInstaller) {
-                    Add-Status "Installing : LAPS" $statusTextBox
-                    $result = Invoke-InstallerWithTimeout -FilePath "msiexec.exe" -ArgumentList "/i `"$lapsInstaller`" /qn /norestart" -TimeoutSeconds 300 -StatusTextBox $statusTextBox -AppName "LAPS"
-                    if ($result.Success) { Add-Status "Installed : LAPS" $statusTextBox }
-                    elseif ($result.TimedOut) { Add-Status "LAPS : Installation timed out after 5 minutes" $statusTextBox ([System.Drawing.Color]::Red) }
-                    else { Add-Status "LAPS : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
-            } else { Add-Status "Built-in on Windows 11, skipping installation" $statusTextBox }
-        }
-
-        if ($appIds -contains 'foxit') {
-            $foxitInstaller = Get-ChildItem -Path $setupDir -Include "Foxit*.exe" -Recurse | Select-Object -First 1
-            if ($foxitInstaller) {
-                Add-Status "Installing : Foxit Reader" $statusTextBox
-                $result = Invoke-InstallerWithTimeout -FilePath $foxitInstaller.FullName -ArgumentList "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES" -TimeoutSeconds 600 -StatusTextBox $statusTextBox -AppName "Foxit Reader"
-                if ($result.Success) { Add-Status "Installed : Foxit Reader" $statusTextBox }
-                elseif ($result.TimedOut) { Add-Status "Foxit Reader : Installation timed out after 10 minutes" $statusTextBox ([System.Drawing.Color]::Red) }
-                else { Add-Status "Foxit Reader : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                } else { Add-Status "Warning: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
-        }
-
-        if ($appIds -contains 'office2019') {
-            if (-not (Test-Path $office2019Dir)) { Add-Status "Office 2019: Source directory not found at $office2019Dir" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-            $officeSetup = Join-Path $office2019Dir "setup.exe"
-            $configFile = Join-Path $office2019Dir "config.xml"
-            if (-not (Test-Path $officeSetup)) { Add-Status "Office 2019: Setup file not found at $officeSetup" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-            Add-Status "Office 2019: Starting silent installation (this may take up to 45 minutes)..." $statusTextBox
-            try {
-                if (-not (Test-Path $configFile)) {
-                    $configContent = '<Configuration><Add OfficeClientEdition="64" Channel="PerpetualVL2019"><Product ID="ProPlus2019Volume" PIDKEY="Q2NKY-J42YJ-X2KVK-9Q9PT-MKP63"><Language ID="en-us" /><ExcludeApp ID="Access" /><ExcludeApp ID="Groove" /><ExcludeApp ID="Lync" /><ExcludeApp ID="OneNote" /><ExcludeApp ID="Publisher" /></Product></Add><Display Level="None" AcceptEULA="TRUE" /><Property Name="AUTOACTIVATE" Value="1" /><Property Name="FORCEAPPSHUTDOWN" Value="TRUE" /><Property Name="SharedComputerLicensing" Value="0" /><Property Name="PinIconsToTaskbar" Value="TRUE" /><Logging Level="Standard" Path="%TEMP%" /><RemoveMSI /></Configuration>'
-                    Set-Content -Path $configFile -Value $configContent -Force
-                    Add-Status "Office 2019: Created configuration file" $statusTextBox
+        
+        foreach ($app in $appsToInstall) {
+            $appName = $app.displayName
+            
+            # Uninstall Task
+            if ($app.task -eq 'uninstall') {
+                if ($app.uninstallFunction) {
+                    $cmd = $app.uninstallFunction
+                    if (Get-Command $cmd -ErrorAction SilentlyContinue) {
+                        & $cmd -statusTextBox $statusTextBox
+                    }
                 }
-                $result = Invoke-InstallerWithTimeout -FilePath $officeSetup -ArgumentList "/configure `"$configFile`"" -TimeoutSeconds 2700 -StatusTextBox $statusTextBox -AppName "Office 2019" -WindowStyle Hidden
-                if ($result.Success) { Add-Status "Installed : Office2019ProPlus" $statusTextBox }
-                elseif ($result.TimedOut) { Add-Status "Office 2019 : Installation timed out after 45 minutes" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-                else { Add-Status "Office 2019 : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red); return $false }
+                continue
             }
-            catch { Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-        }
 
-        if ($deviceType -eq "Laptop" -and $appIds -contains 'zoom') {
-            $zoomInstaller = Get-ChildItem -Path $setupDir -Include "ZoomInstaller*.exe","ZoomInstallerFull*.exe" -File -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
-            if ($zoomInstaller) {
-                Add-Status "Installing : Zoom" $statusTextBox
-                $result = Invoke-InstallerWithTimeout -FilePath $zoomInstaller -ArgumentList "/silent /norestart" -TimeoutSeconds 600 -StatusTextBox $statusTextBox -AppName "Zoom"
-                if ($result.Success) { Add-Status "Installed : Zoom" $statusTextBox }
-                elseif ($result.TimedOut) { Add-Status "Zoom : Installation timed out after 10 minutes" $statusTextBox ([System.Drawing.Color]::Red) }
-                else { Add-Status "Zoom : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-            } else { Add-Status "Zoom: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
-        }
+            # Install Task
+            if ($app.installerType -eq 'office') {
+                # Office specific logic (config generation etc)
+                $officeDir = Join-Path $setupDir $app.sourceSubDir
+                if (-not (Test-Path $officeDir)) { Add-Status "${appName}: Source directory not found" $statusTextBox ([System.Drawing.Color]::Red); continue }
+                
+                $setupFile = Join-Path $officeDir $app.installerName
+                $configFile = Join-Path $officeDir "config.xml"
+                
+                if (-not (Test-Path $setupFile)) { Add-Status "${appName}: Setup file not found" $statusTextBox ([System.Drawing.Color]::Red); continue }
+                
+                Add-Status "${appName}: Starting silent installation..." $statusTextBox
+                
+                # Generate config.xml if missing
+                if (-not (Test-Path $configFile)) {
+                    $key = $Global:config.officeActivation.productKey
+                    $configContent = "<Configuration><Add OfficeClientEdition=""64"" Channel=""PerpetualVL2019""><Product ID=""ProPlus2019Volume"" PIDKEY=""$key""><Language ID=""en-us"" /><ExcludeApp ID=""Access"" /><ExcludeApp ID=""Groove"" /><ExcludeApp ID=""Lync"" /><ExcludeApp ID=""OneNote"" /><ExcludeApp ID=""Publisher"" /></Product></Add><Display Level=""None"" AcceptEULA=""TRUE"" /><Property Name=""AUTOACTIVATE"" Value=""1"" /><Property Name=""FORCEAPPSHUTDOWN"" Value=""TRUE"" /><Property Name=""SharedComputerLicensing"" Value=""0"" /><Property Name=""PinIconsToTaskbar"" Value=""TRUE"" /><Logging Level=""Standard"" Path=""%TEMP%"" /><RemoveMSI /></Configuration>"
+                    Set-Content -Path $configFile -Value $configContent -Force
+                    Add-Status "${appName}: Created configuration file" $statusTextBox
+                }
+                
+                $result = Invoke-InstallerWithTimeout -FilePath $setupFile -ArgumentList "/configure `"$configFile`"" -TimeoutSeconds 2700 -StatusTextBox $statusTextBox -AppName $appName -WindowStyle Hidden
+                if ($result.Success) { Add-Status "Installed : $appName" $statusTextBox }
+                else { Add-Status "$appName : Failed/Timeout" $statusTextBox ([System.Drawing.Color]::Red) }
+                continue
+            }
 
-        if ($deviceType -eq "Laptop" -and $appIds -contains 'checkpointvpn') {
-            $vpnInstaller = Join-Path $setupDir "E89.00_CheckPointVPN.msi"
-            if (Test-Path $vpnInstaller) {
-                Add-Status "Installing : CheckPoint VPN" $statusTextBox
-                $result = Invoke-InstallerWithTimeout -FilePath "msiexec.exe" -ArgumentList "/i `"$vpnInstaller`" /qn /norestart" -TimeoutSeconds 600 -StatusTextBox $statusTextBox -AppName "CheckPoint VPN"
-                if ($result.Success) { Add-Status "Installed : CheckPoint VPN" $statusTextBox }
-                elseif ($result.TimedOut) { Add-Status "CheckPoint VPN : Installation timed out after 10 minutes" $statusTextBox ([System.Drawing.Color]::Red) }
-                else { Add-Status "CheckPoint VPN : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
-            } else { Add-Status "CheckPoint VPN: Installer not found" $statusTextBox ([System.Drawing.Color]::Red) }
+            # Generic Exe/Msi
+            $installerPath = $null
+            if ($app.installerName) {
+                $installerPath = Get-ChildItem -Path $setupDir -Filter $app.installerName -Recurse | Select-Object -First 1 | Select-Object -ExpandProperty FullName
+            }
+            
+            if ($installerPath) {
+                Add-Status "Installing : $appName" $statusTextBox
+                
+                $installArgs = if ($app.installArgs) { $app.installArgs } else { "" }
+                
+                if ($app.installerType -eq 'msi') {
+                    if ($installArgs) {
+                        $installArgs = $installArgs.Replace("{installerPath}", $installerPath)
+                    }
+                    $exe = "msiexec.exe"
+                    $result = Invoke-InstallerWithTimeout -FilePath $exe -ArgumentList $installArgs -TimeoutSeconds 600 -StatusTextBox $statusTextBox -AppName $appName
+                }
+                else {
+                    $result = Invoke-InstallerWithTimeout -FilePath $installerPath -ArgumentList $installArgs -TimeoutSeconds 600 -StatusTextBox $statusTextBox -AppName $appName
+                }
+
+                if ($result.Success) { Add-Status "Installed : $appName" $statusTextBox }
+                elseif ($result.TimedOut) { Add-Status "$appName : Installation timed out" $statusTextBox ([System.Drawing.Color]::Red) }
+                else { Add-Status "$appName : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+            }
+            else {
+                Add-Status "Warning: Installer for $appName not found" $statusTextBox ([System.Drawing.Color]::Red)
+            }
         }
         return $true
     }
@@ -517,7 +480,7 @@ function Install-Software {
                 }
             }
         }
-        catch {Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)}
+        catch { Add-Status "Error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red) }
     }
 }
 
@@ -543,8 +506,10 @@ function Invoke-InstallSoftware {
                 if (-not (Test-Path $scDest)) {
                     if (Test-Path $scFiles.FullName) { Copy-Item -Path $scFiles.FullName -Destination $scDest -Force; Add-Status "Copying: ForceScout" $statusTextBox }
                     else { Add-Status "Warning: Not found ForceScout source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
-                } else { Add-Status "Existed: ForceScout" $statusTextBox }
-            } else { Add-Status "Warning: Not found ForceScout source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                }
+                else { Add-Status "Existed: ForceScout" $statusTextBox }
+            }
+            else { Add-Status "Warning: Not found ForceScout source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
             $unikeyFolder = Get-ChildItem -Path (Join-Path $srcSETUP 'unikey*') -Directory -ErrorAction SilentlyContinue
             if ($unikeyFolder) {
@@ -554,9 +519,12 @@ function Invoke-InstallSoftware {
                         New-Item -ItemType Directory -Path $unikeyDest -Force | Out-Null
                         Copy-Item -Path "$($unikeyFolder.FullName)\*" -Destination $unikeyDest -Recurse -Force
                         Add-Status "Copying: Unikey" $statusTextBox
-                    } else { Add-Status "Error: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Red) }
-                } else { Add-Status "Existed: Unikey" $statusTextBox }
-            } else { Add-Status "Warning: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                    }
+                    else { Add-Status "Error: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Red) }
+                }
+                else { Add-Status "Existed: Unikey" $statusTextBox }
+            }
+            else { Add-Status "Warning: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
             $csFolder = Get-ChildItem -Path (Join-Path $srcSETUP 'CrowdStrike*') -Directory -ErrorAction SilentlyContinue
             if ($csFolder) {
@@ -566,9 +534,12 @@ function Invoke-InstallSoftware {
                         New-Item -ItemType Directory -Path $csDest -Force | Out-Null
                         Copy-Item -Path "$($csFolder.FullName)\*" -Destination $csDest -Recurse -Force
                         Add-Status "Copying: CrowdStrike" $statusTextBox
-                    } else { Add-Status "Error: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Red) }
-                } else { Add-Status "Existed: CrowdStrike" $statusTextBox }
-            } else { Add-Status "Warning: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                    }
+                    else { Add-Status "Error: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Red) }
+                }
+                else { Add-Status "Existed: CrowdStrike" $statusTextBox }
+            }
+            else { Add-Status "Warning: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
             if ($DeviceType -eq "Desktop") {
                 $desktopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Desktop Agent*.exe') -File -ErrorAction SilentlyContinue
@@ -577,8 +548,10 @@ function Invoke-InstallSoftware {
                     if (-not (Test-Path $agentDest)) {
                         if (Test-Path $desktopAgent.FullName) { Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force; Add-Status "Copying: DesktopAgent" $statusTextBox }
                         else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
-                    } else { Add-Status "Existed: DesktopAgent" $statusTextBox }
-                } else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
+                    }
+                    else { Add-Status "Existed: DesktopAgent" $statusTextBox }
+                }
+                else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
             }
             else {
                 $laptopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Laptop Agent*.exe') -File -ErrorAction SilentlyContinue
@@ -587,8 +560,10 @@ function Invoke-InstallSoftware {
                     if (-not (Test-Path $agentDest)) {
                         if (Test-Path $laptopAgent.FullName) { Copy-Item -Path $laptopAgent.FullName -Destination $agentDest -Force; Add-Status "Copying: Laptop Agent" $statusTextBox }
                         else { Add-Status "Error: Not found LaptopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
-                    } else { Add-Status "Existed: Laptop Agent" $statusTextBox }
-                } else { Add-Status "Error: Not found LaptopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
+                    }
+                    else { Add-Status "Existed: Laptop Agent" $statusTextBox }
+                }
+                else { Add-Status "Error: Not found LaptopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
 
                 $mdmSource = Join-Path $srcSETUP "ManageEngine_MDMLaptopEnrollment"
                 $mdmDest = Join-Path $destCopy "ManageEngine_MDMLaptopEnrollment"
@@ -598,31 +573,39 @@ function Invoke-InstallSoftware {
                             $null = New-Item -Path $mdmDest -ItemType Directory -Force -ErrorAction Stop
                             Copy-Item -Path "$mdmSource\*" -Destination $mdmDest -Recurse -Force
                             Add-Status "Copying: ManageEngine" $statusTextBox
-                        } catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
-                    } else { Add-Status "Error: Not found ManageEngine source directory" $statusTextBox ([System.Drawing.Color]::Red) }
-                } else { Add-Status "Existed: ManageEngine" $statusTextBox }
+                        }
+                        catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
+                    }
+                    else { Add-Status "Error: Not found ManageEngine source directory" $statusTextBox ([System.Drawing.Color]::Red) }
+                }
+                else { Add-Status "Existed: ManageEngine" $statusTextBox }
             }
-        } else {
+        }
+        else {
             Add-Status "Warning: Source path not found at $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
         # Display pending list after copying ancillary files/folders
         if ($plan.Pending.Count -gt 0) {
-            $pendingDisplays = $plan.Pending | ForEach-Object { $_.Display }
+            $pendingDisplays = $plan.Pending | ForEach-Object { 
+                if ($_.task -eq 'uninstall') { "$($_.displayName) (Uninstall)" }
+                else { $_.displayName }
+            }
             Add-Status ("Pending: " + ($pendingDisplays -join ", ")) $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
         if ($plan.Pending.Count -gt 0) {
             if (-not (Test-Path $srcSETUP)) { Add-Status "Error: Not found $srcSETUP" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-            Add-Status "Found $($plan.Pending.Count) software(s) to install" $statusTextBox
+            Add-Status "Found $($plan.Pending.Count) software(s) to process" $statusTextBox
             if (-not (Test-Path $destSETUP)) { New-Item -Path $destSETUP -ItemType Directory -Force | Out-Null }
             $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox -SourceSetupPath $srcSETUP
             if (-not $okCopy) { Add-Status "Error: Failed to copy installers" $statusTextBox ([System.Drawing.Color]::Red); return $false }
             $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $plan.Pending -CleanupTemp:$CleanupTemp
-            if (-not $okInstall) { Add-Status "Error: Some installations failed" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-            Add-Status "All software installation completed successfully" $statusTextBox
+            if (-not $okInstall) { Add-Status "Error: Some operations failed" $statusTextBox ([System.Drawing.Color]::Red); return $false }
+            Add-Status "All software operations completed successfully" $statusTextBox
             return $true
-        } else {
+        }
+        else {
             Add-Status "All required software is already installed." $statusTextBox
             return $true
         }
@@ -687,4 +670,4 @@ function Show-InstallSoftwareDialog {
     $deviceTypeForm.ShowDialog()
 }
 
-Export-ModuleMember -Function Install-DriverExe, Show-InstallSoftwareDialog, Invoke-InstallSoftware, Test-OneDriveInstalled, Uninstall-OneDriveComplete
+Export-ModuleMember -Function Install-DriverExe, Show-InstallSoftwareDialog, Invoke-InstallSoftware, Test-OneDriveInstalled, Uninstall-OneDriveComplete, Install-Software, PlanSoftwareInstall, Test-AppInstalled, Copy-SoftwareFilesSelective

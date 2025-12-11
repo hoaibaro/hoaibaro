@@ -21,6 +21,20 @@
   "officeActivation": {
     "productKey": "V7YQT-3NBF9-CB4VM-24G6Q-6M8JK"
   },
+  "windowsActivation": {
+    "productKey": "R84N4-RPC7Q-W8TKM-VM7Y4-7H66Y",
+    "upgradeKey": "VK7JG-NPHTM-C97JM-9MPGT-3V66T"
+  },
+  "domain": {
+    "name": "vietunion.local",
+    "defaultUser": "-hdk-hieudang"
+  },
+  "userManagement": {
+    "presetPasswords": [
+      "Pr0t3ct10c@1@VU",
+      "Aa1234567890"
+    ]
+  },
   "software": [
     {
       "id": "7zip",
@@ -86,7 +100,9 @@
       "installerType": "office",
       "sourceSubDir": "Office 2019",
       "checkType": "path",
-      "checkPaths": [ "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE" ]
+      "checkPaths": [
+        "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE"
+      ]
     },
     {
       "id": "zoom",

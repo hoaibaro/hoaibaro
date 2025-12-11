@@ -236,4 +236,4 @@ function Set-WindowsFeatureState {
     }
 }
 
-Export-ModuleMember -Function Invoke-EnableWindowsFeatures, Invoke-DisableWindowsFeatures, Set-WindowsFeatureState, Invoke-FeaturesDialog
+Export-ModuleMember -Function Invoke-EnableWindowsFeatures, Invoke-DisableWindowsFeatures, Set-WindowsFeatureState, Invoke-FeaturesDialog, Invoke-WindowsFeaturesConfiguration

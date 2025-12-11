@@ -191,12 +191,5 @@ function Invoke-SystemCleanup {
 }
 
 
-function Invoke-WindowsFeaturesConfiguration {
-    param($deviceType, $statusTextBox)
-    Add-Status "Configuring Windows Features..." $statusTextBox
-    Add-Status "Windows Features configuration not implemented yet." $statusTextBox ([System.Drawing.Color]::Yellow)
-    return $true
-}
-
-Export-ModuleMember -Function Invoke-SetTimezonePower, Invoke-FirewallOn, Invoke-FirewallOff, Invoke-PowerOptionsDialog, Invoke-SystemCleanup, Invoke-WindowsFeaturesConfiguration
+Export-ModuleMember -Function Invoke-SetTimezonePower, Invoke-FirewallOn, Invoke-FirewallOff, Invoke-PowerOptionsDialog, Invoke-SystemCleanup
 
