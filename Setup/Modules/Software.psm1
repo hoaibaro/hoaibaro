@@ -488,6 +488,20 @@ function Invoke-InstallSoftware {
     param([ValidateSet('Desktop', 'Laptop')][string]$DeviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [switch]$CleanupTemp)
     
     $destCopy = "$env:USERPROFILE\Downloads"
+    
+    # Auto-detect if current config path is invalid
+    if (-not (Test-Path $Global:config.sourcePaths.software)) {
+        $usbRoot = Find-UsbSourcePath -statusTextBox $statusTextBox
+        if ($usbRoot) {
+            # Helper to replace drive letter (duplicated logic, but safe)
+            $newDrive = $usbRoot
+            $currentPath = $Global:config.sourcePaths.software
+            if ($currentPath.Length -gt 1 -and $currentPath[1] -eq ':') {
+                $Global:config.sourcePaths.software = $newDrive.Substring(0, 1) + $currentPath.Substring(1)
+            }
+        }
+    }
+    
     $srcSETUP = $Global:config.sourcePaths.software
     $destSETUP = "$env:USERPROFILE\Downloads\SETUP"
     $tempDir = $destSETUP
@@ -670,4 +684,24 @@ function Show-InstallSoftwareDialog {
     $deviceTypeForm.ShowDialog()
 }
 
-Export-ModuleMember -Function Install-DriverExe, Show-InstallSoftwareDialog, Invoke-InstallSoftware, Test-OneDriveInstalled, Uninstall-OneDriveComplete, Install-Software, PlanSoftwareInstall, Test-AppInstalled, Copy-SoftwareFilesSelective
+
+function Find-UsbSourcePath {
+    param([System.Windows.Forms.RichTextBox]$statusTextBox)
+    
+    # Get all file system drives
+    $drives = Get-PSDrive -PSProvider FileSystem
+    
+    foreach ($drive in $drives) {
+        # Check for SETUP folder at root
+        $checkPath = Join-Path $drive.Root "SETUP"
+        if (Test-Path $checkPath) {
+            if ($statusTextBox) { Add-Status "Found installation source at: $checkPath" $statusTextBox ([System.Drawing.Color]::Green) }
+            return $drive.Root
+        }
+    }
+    
+    if ($statusTextBox) { Add-Status "Could not auto-detect USB source. Using default configuration." $statusTextBox ([System.Drawing.Color]::Yellow) }
+    return $null
+}
+
+Export-ModuleMember -Function Install-DriverExe, Show-InstallSoftwareDialog, Invoke-InstallSoftware, Test-OneDriveInstalled, Uninstall-OneDriveComplete, Install-Software, PlanSoftwareInstall, Test-AppInstalled, Copy-SoftwareFilesSelective, Find-UsbSourcePath

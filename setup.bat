@@ -5,117 +5,53 @@ setlocal enabledelayedexpansion
 for /f %%A in ('echo prompt $E ^| cmd') do set "ESC=%%A"
 set "GREEN=%ESC%[32m"
 set "RED=%ESC%[31m"
-set "YELLOW=%ESC%[33m"
 set "BLUE=%ESC%[34m"
 set "RESET=%ESC%[0m"
 
-title BAOPROVIP - Install Launcher
+title BaroTool Installer Launcher
 
-:: Step 1: Find and copy install.ps1
-echo %BLUE%Step 1: Searching for install.ps1...%RESET%
+echo %BLUE%[1/3] Locating BaroTool.exe...%RESET%
 
-set "SOURCE_PATH="
+:: Define paths
+set "SCRIPT_DIR=%~dp0"
+set "SOURCE_FILE=%SCRIPT_DIR%Setup\BaroTool.exe"
+set "DEST_DIR=%USERPROFILE%\Downloads"
+set "DEST_FILE=%DEST_DIR%\BaroTool.exe"
 
-:: Search all drives for install.ps1
-for %%d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
-    if exist %%d:\ (
-        if exist "%%d:\install.ps1" (
-            set "SOURCE_PATH=%%d:\install.ps1"
-            echo Found install.ps1 at: !SOURCE_PATH!
-            goto :FOUND_FILE
-        )
-        dir /s /b "%%d:\install.ps1" >nul 2>&1 && (
-            for /f "delims=" %%f in ('dir /s /b "%%d:\install.ps1" 2^>nul') do (
-                set "SOURCE_PATH=%%f"
-                echo Found install.ps1 at: !SOURCE_PATH!
-                goto :FOUND_FILE
-            )
-        )
-    )
+:: Check if source file exists
+if not exist "%SOURCE_FILE%" (
+    echo %RED%Error: BaroTool.exe not found at: %SOURCE_FILE%%RESET%
+    echo %RED%Please ensure the 'Setup' folder is in the same directory as this script.%RESET%
+    pause
+    exit /b 1
 )
 
-:NOT_FOUND
-echo %RED%Error: Could not find install.ps1 on any drive.%RESET%
-pause
-exit /b 1
+echo %GREEN%Found source: %SOURCE_FILE%%RESET%
 
-:FOUND_FILE
-if "%SOURCE_PATH%"=="" goto NOT_FOUND
-
-echo %GREEN%Found install.ps1 at: %SOURCE_PATH%%RESET%
-set "DEST_PATH=%USERPROFILE%\Downloads\"
-set "DEST_FILE=%USERPROFILE%\Downloads\install.ps1"
-
-echo Source: %SOURCE_PATH%
-echo Destination: %DEST_PATH%
 echo.
+echo %BLUE%[2/3] Copying to Downloads...%RESET%
 
-:: Check if source exists
-if not exist "%SOURCE_PATH%" (
-    echo %RED%ERROR: Source file not found at %SOURCE_PATH%%RESET%
-    echo %RED%Please check if the file exists and try again.%RESET%
-    echo.
-    goto :error_exit
-)
+:: Create destination directory if needed
+if not exist "%DEST_DIR%" mkdir "%DEST_DIR%"
 
-:: Create destination directory if not exists
-if not exist "%DEST_PATH%" (
-    echo Creating Downloads directory...
-    mkdir "%DEST_PATH%" 2>nul
-)
-
-:: Copy file with verification
-echo Copying file...
-copy "%SOURCE_PATH%" "%DEST_PATH%" >nul 2>&1
-
-if %errorlevel% equ 0 (
-    echo %GREEN%SUCCESS: install.ps1 copied successfully!%RESET%
-) else (
-    echo %RED%ERROR: Failed to copy install.ps1%RESET%
-    goto :error_exit
-)
-
-:: Verify file exists at destination
-if not exist "%DEST_FILE%" (
-    echo %RED%ERROR: File verification failed - install.ps1 not found at destination%RESET%
-    goto :error_exit
-)
-
-:: Step 2: Change to destination directory
-echo %BLUE%Step 2: Changing to Downloads directory...%RESET%
-cd /d "%USERPROFILE%\Downloads"
-
+:: Copy the file
+copy /Y "%SOURCE_FILE%" "%DEST_FILE%" >nul
 if %errorlevel% neq 0 (
-    echo %RED%ERROR: Failed to change to Downloads directory%RESET%
-    goto :error_exit
+    echo %RED%Error: Failed to copy file to %DEST_FILE%%RESET%
+    pause
+    exit /b 1
 )
 
-echo Current directory: %CD%
-echo.
-
-:: Step 3: Execute PowerShell script
-echo %BLUE%Step 3: Launching PowerShell script...%RESET%
-
-@REM powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force"
-powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force"
-powershell -ExecutionPolicy Bypass -WindowStyle Normal -File .\install.ps1 >nul 2>&1
-
-set "PS_EXIT_CODE=%errorlevel%"
+echo %GREEN%Copied to: %DEST_FILE%%RESET%
 
 echo.
+echo %BLUE%[3/3] Launching BaroTool...%RESET%
 
-if %PS_EXIT_CODE% equ 0 (
-    echo %GREEN%SUCCESS: Script execution completed successfully!%RESET%
-) else (
-    echo %YELLOW%WARNING: Script exited with code %PS_EXIT_CODE%%RESET%
-)
+:: Execute the copied file
+start "" "%DEST_FILE%"
 
+echo %GREEN%Application launched successfully!%RESET%
 echo.
-echo %BLUE%Press any key to exit...%RESET%
-exit /b %PS_EXIT_CODE%
-
-:error_exit
-echo.
-echo %RED%Operation failed. Press any key to exit...%RESET%
-pause >nul
-exit /b 1
+echo Closing launcher in 3 seconds...
+timeout /t 3 >nul
+exit /b 0
