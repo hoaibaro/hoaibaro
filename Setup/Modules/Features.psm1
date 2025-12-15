@@ -203,24 +203,19 @@ function Set-WindowsFeatureState {
             if ($currentFeature.State -eq $TargetState) {
                 Add-Status "$($feature.DisplayName): Already $actionVerbPast. Skipping..." $statusTextBox ([System.Drawing.Color]::Gray)
             }
-            elseif ($currentFeature.State -eq $oppositeState) {
-                Add-Status "$($feature.DisplayName): Currently $oppositeState. $($actionVerb)..." $statusTextBox ([System.Drawing.Color]::Gray)
+            elseif ($currentFeature.State -eq $oppositeState -or $currentFeature.State -eq "DisabledWithPayloadRemoved") {
+                Add-Status "$($feature.DisplayName): Currently $($currentFeature.State). $($actionVerb)..." $statusTextBox ([System.Drawing.Color]::Gray)
 
                 try {
-                    $result = $null
                     if ($TargetState -eq "Enabled") {
                         # Added -LimitAccess to prevent Windows Update hangs
-                        $result = Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -LimitAccess -NoRestart -PassThru
+                        Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -LimitAccess -NoRestart
                     }
                     else {
-                        $result = Disable-WindowsOptionalFeature -Online -FeatureName $feature.Name -NoRestart -PassThru
+                        Disable-WindowsOptionalFeature -Online -FeatureName $feature.Name -NoRestart
                     }
 
-                    $statusMsg = "$($feature.DisplayName): $actionVerbPast completed."
-                    if ($result.RestartNeeded) {
-                        $statusMsg += " (Restart required)"
-                    }
-                    Add-Status $statusMsg $statusTextBox ([System.Drawing.Color]::Gray)
+                    Add-Status "$($feature.DisplayName): $actionVerbPast completed." $statusTextBox ([System.Drawing.Color]::Gray)
                 }
                 catch {
                     Add-Status "ERROR: Failed to change state for $($feature.DisplayName): $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)

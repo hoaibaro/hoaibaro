@@ -1,7 +1,7 @@
 function Invoke-SetTimezonePower {
     param([System.Windows.Forms.RichTextBox]$statusTextBox)
     try {
-        Add-Status "Setting time zone to SE Asia Standard Time..." $statusTextBox
+        Add-Status "Setting time zone to SE Asia Standard Time..." $statusTextBox ([System.Drawing.Color]::Gray)
 
         # Set timezone to SE Asia Standard Time
         Start-Process -FilePath "tzutil.exe" -ArgumentList "/s `"SE Asia Standard Time`"" -Wait -NoNewWindow
@@ -185,7 +185,7 @@ function Invoke-PowerOptionsDialog {
 
 function Invoke-SystemCleanup {
     param([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
-    Add-Status "Starting System Cleanup (Power & Timezone)..." $statusTextBox
+    Add-Status "Starting System Cleanup (Power & Timezone)..." $statusTextBox ([System.Drawing.Color]::Gray)
     Invoke-SetTimezonePower -statusTextBox $statusTextBox
     return $true
 }

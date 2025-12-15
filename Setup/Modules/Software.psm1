@@ -339,8 +339,8 @@ function Copy-SoftwareFilesSelective {
             $destOffice = Join-Path $setupDir $app.sourceSubDir
              
             if (Test-Path $srcOffice) {
-                if (Test-Path $destOffice -and (Test-Path (Join-Path $destOffice $app.installerName))) {
-                    Add-Status "Existed : $appName source" $statusTextBox
+                if ((Test-Path $destOffice) -and (Test-Path (Join-Path $destOffice $app.installerName))) {
+                    # Add-Status "Existed : $appName source" $statusTextBox
                 }
                 else {
                     if (-not (Test-Path $destOffice)) { New-Item -Path $destOffice -ItemType Directory -Force | Out-Null }
@@ -367,12 +367,12 @@ function Copy-SoftwareFilesSelective {
             if ($file) {
                 $dest = Join-Path $setupDir $file.Name
                 if (Test-Path $dest) { 
-                    Add-Status "Existed : $appName installer" $statusTextBox 
+                    # Add-Status "Existed : $appName installer" $statusTextBox 
                 }
                 else { 
                     try { 
                         Copy-Item -Path $file.FullName -Destination $dest -Force 
-                        Add-Status "Copying : $appName" $statusTextBox
+                        # Add-Status "Copying : $appName" $statusTextBox 
                     } 
                     catch { 
                         $allCopied = $false; 
