@@ -366,10 +366,16 @@ function Copy-SoftwareFilesSelective {
             $file = Get-ChildItem -Path $SourceSetupPath -Filter $app.installerName | Select-Object -First 1
             if ($file) {
                 $dest = Join-Path $setupDir $file.Name
+                $shouldCopy = $true
                 if (Test-Path $dest) { 
-                    # Add-Status "Existed : $appName installer" $statusTextBox 
+                    $srcFile = Get-Item $file.FullName
+                    $destFile = Get-Item $dest
+                    if ($srcFile.LastWriteTime -le $destFile.LastWriteTime) {
+                        $shouldCopy = $false
+                    }
                 }
-                else { 
+
+                if ($shouldCopy) { 
                     try { 
                         Copy-Item -Path $file.FullName -Destination $dest -Force 
                         # Add-Status "Copying : $appName" $statusTextBox 
