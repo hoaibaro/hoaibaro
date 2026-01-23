@@ -25,33 +25,47 @@ function Invoke-WiFiAutoConnection {
             $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71 }
 
             if (-not $wifiAdapters) {
-                # Thử Internet qua Ethernet trước
-                try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet } catch { $hasInternet = $false }
-                if ($hasInternet) {
-                    Add-Status "No WiFi adapters, but Internet is available via Ethernet. Skipping WiFi." $statusTextBox ([System.Drawing.Color]::Cyan)
-                    return $true
+                # 1. Try installing WiFi driver FIRST (User Request)
+                Add-Status "No WiFi adapters found. Attempting to install WiFi driver..." $statusTextBox ([System.Drawing.Color]::Yellow)
+                $ownerForm = $null; try { $ownerForm = $statusTextBox.FindForm() } catch {}
+                
+                # Use config path directly as Global variable might be missing
+                $wifiDriverPath = $Global:config.sourcePaths.wifiDriver
+                
+                if ($wifiDriverPath -and (Test-Path $wifiDriverPath)) {
+                    $exeOk = Install-DriverExe -Path $wifiDriverPath -statusTextBox $statusTextBox -Type 'WiFi'
+                }
+                else {
+                    Add-Status "WiFi driver not found in config or path invalid." $statusTextBox ([System.Drawing.Color]::Red)
+                    $exeOk = $false
                 }
 
-                Add-Status "No WiFi adapters found. Trying WiFi driver EXE..." $statusTextBox ([System.Drawing.Color]::Yellow)
-                $ownerForm = $null; try { $ownerForm = $statusTextBox.FindForm() } catch {}
-                $exeOk = Install-DriverExe -Path $Global:WifiDriverExe -statusTextBox $statusTextBox -Type 'WiFi'
                 if (-not $exeOk) {
-                    # Fallback: nếu bạn đã có Install-WiFiDriversOffline dạng .inf, có thể gọi thêm:
+                    # Fallback to INF if available (optional)
                     if (Get-Command Install-WiFiDriversOffline -ErrorAction SilentlyContinue) {
                         $infOk = Install-WiFiDriversOffline -OwnerForm $ownerForm -statusTextBox $statusTextBox
                     }
-                    else { $infOk = $false }
-                    if (-not $infOk) {
-                        Add-Status "WiFi driver install failed or no adapters present. Continuing without WiFi." $statusTextBox ([System.Drawing.Color]::Yellow)
-                        return $false
-                    }
                 }
 
-                # Re-scan sau khi cài
+                # 2. Re-scan after install
                 $wifiAdapters = Get-NetAdapter | Where-Object { $_.InterfaceDescription -match "(?i)(wireless|wifi|802\.11|wi-fi|wlan|wi\\s?fi|ax200|ax201|ax210|ac\\d{4})" -or $_.InterfaceType -eq 71 }
-                if (-not $wifiAdapters) {
-                    Add-Status "WiFi adapters still not detected. Continuing without WiFi." $statusTextBox ([System.Drawing.Color]::Yellow)
-                    return $false
+                
+                if ($wifiAdapters) {
+                    Add-Status "WiFi adapter detected after driver install!" $statusTextBox ([System.Drawing.Color]::Green)
+                }
+                else {
+                    Add-Status "WiFi adapters still not detected. Falling back to Ethernet..." $statusTextBox ([System.Drawing.Color]::Yellow)
+                    
+                    # 3. Fallback to Ethernet
+                    try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet } catch { $hasInternet = $false }
+                    if ($hasInternet) {
+                        Add-Status "No WiFi, but Internet is available via Ethernet. Skipping WiFi." $statusTextBox ([System.Drawing.Color]::Cyan)
+                        return $true
+                    }
+                    else {
+                        Add-Status "WiFi failed and no Ethernet Internet. Continuing without WiFi." $statusTextBox ([System.Drawing.Color]::Red)
+                        return $false
+                    }
                 }
             }
             Add-Status "Found $($wifiAdapters.Count) WiFi adapter(s)" $statusTextBox ([System.Drawing.Color]::Green)

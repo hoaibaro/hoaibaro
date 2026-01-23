@@ -63,19 +63,34 @@ function Invoke-ActivateWindows10Pro {
         }
 
         Add-Status "Windows not activated. Activating Windows 10 Pro..." $statusTextBox
+        
+        # Ensure Software Protection service is running
+        if ((Get-Service "sppsvc" -ErrorAction SilentlyContinue).Status -ne "Running") {
+            Start-Service "sppsvc" -ErrorAction SilentlyContinue
+        }
+
         $key = $Global:config.windowsActivation.productKey
-        $command = "slmgr /ipk $key && slmgr /ato"
+        
+        # Install Key
+        Add-Status "Installing Product Key..." $statusTextBox
+        $ipkResult = & cscript //nologo "$env:windir\system32\slmgr.vbs" /ipk $key 2>&1
+        if ($ipkResult -match "successfully") {
+            Add-Status "Product Key installed successfully." $statusTextBox
+        }
+        else {
+            Add-Status "Key installation output: $ipkResult" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
 
-        # Create a process to run the command with elevated privileges
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-Command Start-Process cmd.exe -ArgumentList '/c $command' -Verb RunAs -WindowStyle Hidden"
-        $psi.UseShellExecute = $true
-        $psi.Verb = "runas"
-        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-        # Start the process
-        [System.Diagnostics.Process]::Start($psi)
+        # Activate
+        Add-Status "Triggering Activation..." $statusTextBox
+        $atoResult = & cscript //nologo "$env:windir\system32\slmgr.vbs" /ato 2>&1
+        
+        if ($atoResult -match "successfully") {
+            Add-Status "Windows activated successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+        }
+        else {
+            Add-Status "Activation failed: $atoResult" $statusTextBox ([System.Drawing.Color]::Red)
+        }
     }
     catch {
         Add-Status "Error activating Windows: $_" $statusTextBox ([System.Drawing.Color]::Red)
@@ -190,20 +205,33 @@ function Invoke-UpgradeWindowsHomeToPro {
 
         Add-Status "Upgrading $currentWindowsVersion to Pro..." $statusTextBox
         $key = $Global:config.windowsActivation.upgradeKey
-        $command = "sc config LicenseManager start= auto & net start LicenseManager & sc config wuauserv start= auto & net start wuauserv & changepk.exe /productkey $key"
+        
+        # Prepare commands
+        $commands = @(
+            "sc config LicenseManager start= auto",
+            "net start LicenseManager",
+            "sc config wuauserv start= auto",
+            "net start wuauserv",
+            "changepk.exe /productkey $key"
+        )
+        
+        foreach ($cmd in $commands) {
+            try {
+                Add-Status "Executing: $cmd" $statusTextBox
+                $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmd" -WindowStyle Hidden -PassThru -Wait
+                if ($process.ExitCode -eq 0) {
+                     Add-Status "Command success." $statusTextBox
+                }
+                else {
+                     Add-Status "Command exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            }
+            catch {
+                Add-Status "Command failed: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            }
+        }
 
-        # Create a process to run the command with elevated privileges
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-Command Start-Process cmd.exe -ArgumentList '/c $command' -Verb RunAs -WindowStyle Hidden"
-        $psi.UseShellExecute = $true
-        $psi.Verb = "runas"
-        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-        # Start the process
-        [System.Diagnostics.Process]::Start($psi)
-
-        Add-Status "Starting upgrade process for $currentWindowsVersion to Pro." $statusTextBox
+        Add-Status "Upgrade process initiated. System may restart." $statusTextBox
     }
     catch {
         Add-Status "Error upgrading Windows: $_" $statusTextBox ([System.Drawing.Color]::Red)

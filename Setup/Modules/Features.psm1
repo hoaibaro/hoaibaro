@@ -137,17 +137,14 @@ function Invoke-EnableWindowsFeatures {
         @{
             Name        = "NetFx3"
             DisplayName = ".NET 3.5    "
-            Command     = "dism /online /enable-feature /featurename:NetFx3 /all /norestart"
         },
         @{
             Name        = "WCF-HTTP-Activation"
             DisplayName = "WCF HTTP    "
-            Command     = "DISM /Online /Enable-Feature /FeatureName:WCF-HTTP-Activation /All /Quiet /NoRestart"
         },
         @{
             Name        = "WCF-NonHTTP-Activation"
             DisplayName = "WCF Non-HTTP"
-            Command     = "DISM /Online /Enable-Feature /FeatureName:WCF-NonHTTP-Activation /All /Quiet /NoRestart"
         }
     )
 
@@ -161,7 +158,6 @@ function Invoke-DisableWindowsFeatures {
         @{
             Name        = "Internet-Explorer-Optional-amd64"
             DisplayName = "IExplorer 11"
-            Command     = "dism /online /disable-feature /featurename:Internet-Explorer-Optional-amd64 /norestart"
             SupportedOS = "Windows 10"
         }
     )
@@ -208,8 +204,43 @@ function Set-WindowsFeatureState {
 
                 try {
                     if ($TargetState -eq "Enabled") {
-                        # Added -LimitAccess to prevent Windows Update hangs
-                        Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -LimitAccess -NoRestart
+                        # Logic for .NET 3.5 (NetFx3) to prioritize offline source
+                        if ($feature.Name -eq "NetFx3") {
+                            $sxsPath = $null
+                            # Check common sxs locations (USB root, SETUP folder, etc.)
+                            $potentialPaths = @()
+                            
+                            # 1. Check USB/Drive roots (e.g. D:\sources\sxs, F:\SETUP\sxs)
+                            $drives = Get-PSDrive -PSProvider FileSystem
+                            foreach ($drive in $drives) {
+                                $potentialPaths += (Join-Path $drive.Root "sources\sxs")
+                                $potentialPaths += (Join-Path $drive.Root "sxs")
+                                $potentialPaths += (Join-Path $drive.Root "SETUP\sxs")
+                            }
+
+                            # 2. Check SETUP folder in UserProfile
+                            $potentialPaths += "$env:USERPROFILE\Downloads\SETUP\sxs"
+                            if ($Global:config.sourcePaths.software) {
+                                $potentialPaths += (Join-Path $Global:config.sourcePaths.software "sxs")
+                            }
+
+                            foreach ($path in $potentialPaths) {
+                                if (Test-Path $path) { $sxsPath = $path; break }
+                            }
+
+                            if ($sxsPath) {
+                                Add-Status "Found offline source at $sxsPath. Installing offline..." $statusTextBox
+                                Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -LimitAccess -Source $sxsPath -NoRestart
+                            }
+                            else {
+                                Add-Status "Offline source (sxs) not found. Downloading from Windows Update..." $statusTextBox
+                                Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -NoRestart
+                            }
+                        }
+                        else {
+                            # Standard enable for other features
+                            Enable-WindowsOptionalFeature -Online -FeatureName $feature.Name -All -NoRestart
+                        }
                     }
                     else {
                         Disable-WindowsOptionalFeature -Online -FeatureName $feature.Name -NoRestart

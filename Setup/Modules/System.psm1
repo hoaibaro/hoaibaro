@@ -105,7 +105,7 @@
         Add-Status "STEP 1: Software provisioning (Detect ? Copy ? Install)..." $statusTextBox
         $progressBar.Value = 14
 
-        $provisionOk = Invoke-InstallSoftware -DeviceType $deviceType -statusTextBox $statusTextBox
+        $provisionOk = Invoke-InstallSoftware -DeviceType $deviceType -statusTextBox $statusTextBox -CleanupTemp
         if (-not $provisionOk) { Add-Status "STEP 1 finished with warnings/errors." $statusTextBox ([System.Drawing.Color]::Yellow) }
         Add-Status "STEP 1 completed successfully !!!" $statusTextBox ([System.Drawing.Color]::Cyan)
 

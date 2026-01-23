@@ -676,12 +676,12 @@ function Show-InstallSoftwareDialog {
     $deviceTypeForm.Controls.Add($statusTextBox)
     $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Desktop setup workflow..." $statusTextBox
-        Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox
+        Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox -CleanupTemp
     }
     $deviceTypeForm.Controls.Add($btnDesktop)
     $btnLaptop = New-DynamicButton -text "LAPTOP" -x 260 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Laptop setup workflow..." $statusTextBox
-        Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox
+        Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox -CleanupTemp
     }
     $deviceTypeForm.Controls.Add($btnLaptop)
     $deviceTypeForm.KeyPreview = $true

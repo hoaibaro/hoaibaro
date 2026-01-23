@@ -71,7 +71,7 @@ function New-BaroConfigTemplate {
         }
         wifi              = @{
             ssid     = "VietUnion_5.0GHz"
-            password = "Pay00@17Years$"
+            password = "PY!Welc0m3@2026"
         }
         windowsActivation = @{
             productKey = "R84N4-RPC7Q-W8TKM-VM7Y4-7H66Y"
