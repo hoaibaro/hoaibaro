@@ -82,8 +82,8 @@ function Invoke-WiFiAutoConnection {
         catch { Add-Status "Could not check current WiFi status - proceeding with setup" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
         # Create WiFi profile
-        $SSID = "VietUnion_5.0GHz"
-        $Password = "Pay00@17Years$"
+        $SSID = if ($Global:config.wifi.ssid) { $Global:config.wifi.ssid } else { "VietUnion_5.0GHz" }
+        $Password = if ($Global:config.wifi.password) { $Global:config.wifi.password } else { "PY!Welc0m3@2026" }
         $profileFile = "$env:TEMP\VietUnion_5.0GHz_profile.xml"
 
         Add-Status "Creating WiFi profile for $SSID..." $statusTextBox
@@ -152,6 +152,31 @@ function Invoke-WiFiAutoConnection {
                 else { Add-Status "WiFi verification attempt #$i not connected yet." $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
             Add-Status "WiFi connection verification failed after retries" $statusTextBox ([System.Drawing.Color]::Yellow)
+            
+            # Fallback to Ethernet check
+            Add-Status "Checking for Internet via Ethernet..." $statusTextBox
+            try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet } catch { $hasInternet = $false }
+            if ($hasInternet) {
+                Add-Status "Internet is available via Ethernet. Proceeding." $statusTextBox ([System.Drawing.Color]::Green)
+                return $true
+            }
+
+            # Ethernet also failed - try installing driver
+            Add-Status "No Internet via Ethernet. Attempting to install Ethernet driver..." $statusTextBox ([System.Drawing.Color]::Yellow)
+            $ethDriver = $Global:config.sourcePaths.ethernetDriver
+            if ($ethDriver -and (Test-Path $ethDriver)) {
+                $ok = Install-DriverExe -Path $ethDriver -statusTextBox $statusTextBox -Type 'Ethernet'
+                if ($ok) {
+                    # Retry check
+                    try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet } catch { $hasInternet = $false }
+                    if ($hasInternet) {
+                        Add-Status "Internet restored after Ethernet driver install!" $statusTextBox ([System.Drawing.Color]::Green)
+                        return $true
+                    }
+                }
+            }
+            
+            Add-Status "Network setup failed (WiFi & Ethernet). Continuing offline." $statusTextBox ([System.Drawing.Color]::Red)
             return $false
         }
         catch { Add-Status "WiFi connection error: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
@@ -171,17 +196,27 @@ function Invoke-WindowsUpdateCheck {
         if (-not $testConnection) { Add-Status "No internet connection - skipping Windows Update" $statusTextBox ([System.Drawing.Color]::Yellow); return $false }
 
         # Trigger updates in background
+        # Trigger updates using COM Object (More reliable)
         try {
-            # Use USOClient for immediate trigger
-            Start-Process -FilePath "USOClient.exe" -ArgumentList "ScanInstallWait" -WindowStyle Hidden -ErrorAction Stop
-            Start-Process -FilePath "USOClient.exe" -ArgumentList "StartDownload" -WindowStyle Hidden -ErrorAction SilentlyContinue
-            Start-Process -FilePath "USOClient.exe" -ArgumentList "StartInstall" -WindowStyle Hidden -ErrorAction SilentlyContinue
+            Add-Status "Initializing Windows Update Session..." $statusTextBox
+            $updateSession = New-Object -ComObject Microsoft.Update.Session
+            $updateSearcher = $updateSession.CreateUpdateSearcher()
+            
+            Add-Status "Searching for updates (Background)..." $statusTextBox
+            # Search asynchronously to avoid blocking UI
+            $searchResult = $updateSearcher.BeginSearch("IsInstalled=0 and Type='Software' and IsHidden=0", $null, $null)
+            
+            # We won't wait for completion to keep the tool responsive
+            # But we can trigger the USOClient as a secondary "kick" just in case
+            Start-Process -FilePath "USOClient.exe" -ArgumentList "StartScan" -WindowStyle Hidden -ErrorAction SilentlyContinue
+            
             return $true
         }
-        catch { # Fallback to wuauclt
+        catch {
+            Add-Status "COM Update Error: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
+            # Fallback to USOClient
             try {
-                Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -WindowStyle Hidden -ErrorAction Stop
-                Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow" -WindowStyle Hidden -ErrorAction SilentlyContinue
+                Start-Process -FilePath "USOClient.exe" -ArgumentList "StartScan" -WindowStyle Hidden -ErrorAction Stop
                 return $true
             }
             catch { Add-Status "Warning: Windows Update trigger failed" $statusTextBox ([System.Drawing.Color]::Yellow); return $false }

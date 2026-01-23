@@ -20,32 +20,34 @@ function Invoke-SetTimezonePower {
         # Enable automatic time zone updates
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\tzautoupdate" -Name "Start" -Value 2 -Type DWord -ErrorAction SilentlyContinue
 
+        Add-Status "Configuring Power Options..." $statusTextBox
+        
         # Create power commands
         $powerCommands = @(
-            "powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS LIDACTION 0",
-            "powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS LIDACTION 0",
-            "powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0",
-            "powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0",
-            "powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0",
-            "powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0",
-            "powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 0",
-            "powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 0",
-            "powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 0",
-            "powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 0",
-            "powercfg /SETACTIVE SCHEME_CURRENT"
+            "/SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS LIDACTION 0",
+            "/SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS LIDACTION 0",
+            "/SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0",
+            "/SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0",
+            "/SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0",
+            "/SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0",
+            "/SETACVALUEINDEX SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 0",
+            "/SETDCVALUEINDEX SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 0",
+            "/SETACVALUEINDEX SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 0",
+            "/SETDCVALUEINDEX SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 0",
+            "/SETACTIVE SCHEME_CURRENT"
         )
 
-        $powerScript = $powerCommands -join "; "
-
-        # Execute power commands with elevated privileges
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-Command Start-Process cmd.exe -ArgumentList '/c $powerScript' -Verb RunAs -WindowStyle Hidden"
-        $psi.UseShellExecute = $true
-        $psi.Verb = "runas"
-        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-        [System.Diagnostics.Process]::Start($psi)
+        foreach ($cmdArgs in $powerCommands) {
+            try {
+                $p = Start-Process -FilePath "powercfg.exe" -ArgumentList $cmdArgs -Wait -NoNewWindow -PassThru
+                if ($p.ExitCode -ne 0) {
+                    Add-Status "PowerCfg Error ($cmdArgs): Exit Code $($p.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
+            }
+            catch {
+                Add-Status "Failed to run powercfg $cmdArgs : $_" $statusTextBox ([System.Drawing.Color]::Red)
+            }
+        }
 
         Add-Status "Time zone, power options completed successfully!!!" $statusTextBox
     }
@@ -59,18 +61,14 @@ function Invoke-FirewallOn {
     try {
         Add-Status "Turning on the firewall..." $statusTextBox
 
-        $command = "netsh advfirewall set allprofiles state on"
-
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-Command Start-Process cmd.exe -ArgumentList '/c $command' -Verb RunAs -WindowStyle Hidden"
-        $psi.UseShellExecute = $true
-        $psi.Verb = "runas"
-        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-        [System.Diagnostics.Process]::Start($psi)
-
-        Add-Status "Firewall has been turned on successfully!!!" $statusTextBox
+        $p = Start-Process -FilePath "netsh.exe" -ArgumentList "advfirewall set allprofiles state on" -Wait -NoNewWindow -PassThru
+        
+        if ($p.ExitCode -eq 0) {
+            Add-Status "Firewall has been turned on successfully!!!" $statusTextBox
+        }
+        else {
+            Add-Status "Failed to turn on firewall. Exit Code: $($p.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red)
+        }
     }
     catch {
         Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)
@@ -82,18 +80,14 @@ function Invoke-FirewallOff {
     try {
         Add-Status "Turning off the firewall..." $statusTextBox
 
-        $command = "netsh advfirewall set allprofiles state off"
+        $p = Start-Process -FilePath "netsh.exe" -ArgumentList "advfirewall set allprofiles state off" -Wait -NoNewWindow -PassThru
 
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-Command Start-Process cmd.exe -ArgumentList '/c $command' -Verb RunAs -WindowStyle Hidden"
-        $psi.UseShellExecute = $true
-        $psi.Verb = "runas"
-        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-        [System.Diagnostics.Process]::Start($psi)
-
-        Add-Status "Firewall has been turned off successfully!" $statusTextBox
+        if ($p.ExitCode -eq 0) {
+            Add-Status "Firewall has been turned off successfully!" $statusTextBox
+        }
+        else {
+            Add-Status "Failed to turn off firewall. Exit Code: $($p.ExitCode)" $statusTextBox ([System.Drawing.Color]::Red)
+        }
     }
     catch {
         Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red)

@@ -90,6 +90,8 @@ function Invoke-ActivateOffice2019 {
         $officePaths = @(
             "C:\Program Files\Microsoft Office\Office16\ospp.vbs",
             "C:\Program Files (x86)\Microsoft Office\Office16\ospp.vbs",
+            "C:\Program Files\Microsoft Office\root\Office16\ospp.vbs",
+            "C:\Program Files (x86)\Microsoft Office\root\Office16\ospp.vbs",
             "C:\Program Files\Microsoft Office\Office15\ospp.vbs",
             "C:\Program Files (x86)\Microsoft Office\Office15\ospp.vbs"
         )
@@ -132,7 +134,7 @@ function Invoke-ActivateOffice2019 {
             & cscript //nologo "$officePath" /inpkey:$key 2>&1
         }
         catch {
-            Add-Status "Error installing product key: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "Error installing product key." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         # Wait a moment for key installation to complete
@@ -145,11 +147,11 @@ function Invoke-ActivateOffice2019 {
                 Add-Status "Office 2019 Pro Plus activated successfully!" $statusTextBox
             }
             else {
-                Add-Status "Office activation completed. Result: $($activateResult -join ' ')" $statusTextBox
+                Add-Status "Office activation completed." $statusTextBox
             }
         }
         catch {
-            Add-Status "Error during activation: $_" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "Error during activation." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         # Check final status
@@ -157,7 +159,7 @@ function Invoke-ActivateOffice2019 {
             Start-Sleep -Seconds 3
         }
         catch {
-            Add-Status "Could not verify final activation status: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "Could not verify final activation status." $statusTextBox ([System.Drawing.Color]::Red)
         }
     }
     catch {
