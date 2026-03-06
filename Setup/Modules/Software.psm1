@@ -147,9 +147,18 @@ function Invoke-InstallerWithTimeout {
             return @{ Success = $false; ExitCode = $null; TimedOut = $false; Process = $null }
         }
         
-        $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+        # Non-blocking wait loop - keeps GUI responsive
+        $timeoutMs = $TimeoutSeconds * 1000
+        $elapsed = 0
+        $pollInterval = 200 # Check every 200ms
         
-        if (-not $completed) {
+        while (-not $process.HasExited -and $elapsed -lt $timeoutMs) {
+            [System.Windows.Forms.Application]::DoEvents()
+            Start-Sleep -Milliseconds $pollInterval
+            $elapsed += $pollInterval
+        }
+        
+        if (-not $process.HasExited) {
             # Timeout occurred
             try {
                 $process.Kill()
@@ -322,10 +331,10 @@ function Copy-SoftwareFilesSelective {
     
     if (-not (Test-Path $SourceSetupPath)) {
         Add-Status "Error: Source directory not found at $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Red)
-        return $false
+        return @{ Success = $false; MissingFiles = @() }
     }
 
-    $allCopied = $true
+    $missingFiles = @()
     
     foreach ($app in $Apps) {
         # Skip if it's an uninstall task
@@ -349,14 +358,14 @@ function Copy-SoftwareFilesSelective {
                         Add-Status "Copying : $appName" $statusTextBox
                     } 
                     catch { 
-                        $allCopied = $false; 
-                        Add-Status "Failed : $appName ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) 
+                        Add-Status "Failed : $appName ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red)
+                        $missingFiles += $appName
                     }
                 }
             }
             else { 
-                $allCopied = $false; 
-                Add-Status "Missing $appName source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow) 
+                Add-Status "Missing $appName source in $srcOffice" $statusTextBox ([System.Drawing.Color]::Yellow)
+                $missingFiles += $appName
             }
             continue
         }
@@ -372,27 +381,30 @@ function Copy-SoftwareFilesSelective {
                     $destFile = Get-Item $dest
                     if ($srcFile.LastWriteTime -le $destFile.LastWriteTime) {
                         $shouldCopy = $false
+                        Add-Status "Existed : $appName" $statusTextBox ([System.Drawing.Color]::Gray)
                     }
                 }
 
                 if ($shouldCopy) { 
                     try { 
                         Copy-Item -Path $file.FullName -Destination $dest -Force 
-                        # Add-Status "Copying : $appName" $statusTextBox 
+                        Add-Status "Copying : $appName" $statusTextBox
                     } 
                     catch { 
-                        $allCopied = $false; 
-                        Add-Status "Failed : $appName ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red) 
+                        Add-Status "Failed : $appName ($($_.Exception.Message))" $statusTextBox ([System.Drawing.Color]::Red)
+                        $missingFiles += $appName
                     } 
                 }
             }
             else { 
-                $allCopied = $false; 
-                Add-Status "Missing $appName installer ($($app.installerName)) in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow) 
+                Add-Status "Missing $appName installer ($($app.installerName)) in $SourceSetupPath" $statusTextBox ([System.Drawing.Color]::Yellow)
+                $missingFiles += $appName
             }
         }
     }
-    return $allCopied
+    
+    # Return success = true but include list of missing files
+    return @{ Success = $true; MissingFiles = $missingFiles }
 }
 
 function Install-Software {
@@ -463,7 +475,57 @@ function Install-Software {
                     $result = Invoke-InstallerWithTimeout -FilePath $installerPath -ArgumentList $installArgs -TimeoutSeconds 600 -StatusTextBox $statusTextBox -AppName $appName
                 }
 
-                if ($result.Success) { Add-Status "Installed : $appName" $statusTextBox }
+                if ($result.Success) {
+                    Add-Status "Installed : $appName" $statusTextBox
+                    
+                    # Post-install: Create VPN site if configured
+                    if ($app.postInstall -and $app.postInstall.createSite) {
+                        $tracExe = 'C:\Program Files (x86)\CheckPoint\Endpoint Connect\trac.exe'
+                        if (Test-Path $tracExe) {
+                            $siteAddr = $app.postInstall.siteAddress
+                            $siteName = if ($app.postInstall.siteDisplayName) { $app.postInstall.siteDisplayName } else { $siteAddr }
+                            
+                            # Wait for CheckPoint service to be ready after install
+                            Add-Status "Waiting for CheckPoint service to start..." $statusTextBox ([System.Drawing.Color]::Gray)
+                            $svcReady = $false
+                            for ($i = 0; $i -lt 10; $i++) {
+                                $svc = Get-Service -Name 'TracSrvWrapper' -ErrorAction SilentlyContinue
+                                if ($svc -and $svc.Status -eq 'Running') { $svcReady = $true; break }
+                                Start-Sleep -Seconds 2
+                            }
+                            
+                            if ($svcReady) {
+                                Add-Status "Configuring VPN site: $siteName..." $statusTextBox
+                                try {
+                                    $proc = Start-Process -FilePath $tracExe -ArgumentList "create -s `"$siteAddr`"" -NoNewWindow -PassThru
+                                    $completed = $proc.WaitForExit(15000) # 15 second timeout
+                                    if ($completed) {
+                                        if ($proc.ExitCode -eq 0) {
+                                            Add-Status "VPN site '$siteName' created" $statusTextBox
+                                        }
+                                        else {
+                                            Add-Status "VPN site creation returned code: $($proc.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                                        }
+                                    }
+                                    else {
+                                        # Timed out - kill the process
+                                        $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+                                        Add-Status "VPN site creation timed out (may need manual setup)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                                    }
+                                }
+                                catch {
+                                    Add-Status "VPN site creation failed: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                                }
+                            }
+                            else {
+                                Add-Status "Warning: CheckPoint service not ready, VPN site not configured" $statusTextBox ([System.Drawing.Color]::Yellow)
+                            }
+                        }
+                        else {
+                            Add-Status "Warning: trac.exe not found, cannot configure VPN site" $statusTextBox ([System.Drawing.Color]::Yellow)
+                        }
+                    }
+                }
                 elseif ($result.TimedOut) { Add-Status "$appName : Installation timed out" $statusTextBox ([System.Drawing.Color]::Red) }
                 else { Add-Status "$appName : Error - Exit code $($result.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow) }
             }
@@ -524,7 +586,7 @@ function Invoke-InstallSoftware {
             if ($scFiles) {
                 $scDest = Join-Path $destCopy $scFiles.Name
                 if (-not (Test-Path $scDest)) {
-                    if (Test-Path $scFiles.FullName) { Copy-Item -Path $scFiles.FullName -Destination $scDest -Force; Add-Status "Copying: ForceScout" $statusTextBox }
+                    if (Test-Path $scFiles.FullName) { Copy-Item -Path $scFiles.FullName -Destination $scDest -Force; Add-Status "Copied : ForceScout" $statusTextBox }
                     else { Add-Status "Warning: Not found ForceScout source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
                 }
                 else { Add-Status "Existed: ForceScout" $statusTextBox }
@@ -538,7 +600,7 @@ function Invoke-InstallSoftware {
                     if (Test-Path $unikeyFolder.FullName) {
                         New-Item -ItemType Directory -Path $unikeyDest -Force | Out-Null
                         Copy-Item -Path "$($unikeyFolder.FullName)\*" -Destination $unikeyDest -Recurse -Force
-                        Add-Status "Copying: Unikey" $statusTextBox
+                        Add-Status "Copied : Unikey" $statusTextBox
                     }
                     else { Add-Status "Error: Not found Unikey source file" $statusTextBox ([System.Drawing.Color]::Red) }
                 }
@@ -553,7 +615,7 @@ function Invoke-InstallSoftware {
                     if (Test-Path $csFolder.FullName) {
                         New-Item -ItemType Directory -Path $csDest -Force | Out-Null
                         Copy-Item -Path "$($csFolder.FullName)\*" -Destination $csDest -Recurse -Force
-                        Add-Status "Copying: CrowdStrike" $statusTextBox
+                        Add-Status "Copied : CrowdStrike" $statusTextBox
                     }
                     else { Add-Status "Error: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Red) }
                 }
@@ -566,7 +628,7 @@ function Invoke-InstallSoftware {
                 if ($desktopAgent) {
                     $agentDest = Join-Path $destCopy $desktopAgent.Name
                     if (-not (Test-Path $agentDest)) {
-                        if (Test-Path $desktopAgent.FullName) { Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force; Add-Status "Copying: DesktopAgent" $statusTextBox }
+                        if (Test-Path $desktopAgent.FullName) { Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force; Add-Status "Copied : DesktopAgent" $statusTextBox }
                         else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
                     }
                     else { Add-Status "Existed: DesktopAgent" $statusTextBox }
@@ -578,7 +640,7 @@ function Invoke-InstallSoftware {
                 if ($laptopAgent) {
                     $agentDest = Join-Path $destCopy $laptopAgent.Name
                     if (-not (Test-Path $agentDest)) {
-                        if (Test-Path $laptopAgent.FullName) { Copy-Item -Path $laptopAgent.FullName -Destination $agentDest -Force; Add-Status "Copying: Laptop Agent" $statusTextBox }
+                        if (Test-Path $laptopAgent.FullName) { Copy-Item -Path $laptopAgent.FullName -Destination $agentDest -Force; Add-Status "Copied : Laptop Agent" $statusTextBox }
                         else { Add-Status "Error: Not found LaptopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
                     }
                     else { Add-Status "Existed: Laptop Agent" $statusTextBox }
@@ -592,7 +654,7 @@ function Invoke-InstallSoftware {
                         try {
                             $null = New-Item -Path $mdmDest -ItemType Directory -Force -ErrorAction Stop
                             Copy-Item -Path "$mdmSource\*" -Destination $mdmDest -Recurse -Force
-                            Add-Status "Copying: ManageEngine" $statusTextBox
+                            Add-Status "Copied : ManageEngine" $statusTextBox
                         }
                         catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red) }
                     }
@@ -600,6 +662,18 @@ function Invoke-InstallSoftware {
                 }
                 else { Add-Status "Existed: ManageEngine" $statusTextBox }
             }
+
+            # Copy MsTeamsSetup to Downloads (for all device types)
+            $teamsFile = Get-ChildItem -Path (Join-Path $srcSETUP '*MsTeams*.exe') -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($teamsFile) {
+                $teamsDest = Join-Path $destCopy $teamsFile.Name
+                if (-not (Test-Path $teamsDest)) {
+                    if (Test-Path $teamsFile.FullName) { Copy-Item -Path $teamsFile.FullName -Destination $teamsDest -Force; Add-Status "Copied : MsTeams" $statusTextBox }
+                    else { Add-Status "Warning: Not found MsTeams source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
+                }
+                else { Add-Status "Existed: MsTeams" $statusTextBox }
+            }
+            else { Add-Status "Warning: Not found MsTeams source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
         }
         else {
             Add-Status "Warning: Source path not found at $srcSETUP" $statusTextBox ([System.Drawing.Color]::Yellow)
@@ -618,11 +692,38 @@ function Invoke-InstallSoftware {
             if (-not (Test-Path $srcSETUP)) { Add-Status "Error: Not found $srcSETUP" $statusTextBox ([System.Drawing.Color]::Red); return $false }
             Add-Status "Found $($plan.Pending.Count) software(s) to process" $statusTextBox
             if (-not (Test-Path $destSETUP)) { New-Item -Path $destSETUP -ItemType Directory -Force | Out-Null }
-            $okCopy = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox -SourceSetupPath $srcSETUP
-            if (-not $okCopy) { Add-Status "Error: Failed to copy installers" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-            $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $plan.Pending -CleanupTemp:$CleanupTemp
-            if (-not $okInstall) { Add-Status "Error: Some operations failed" $statusTextBox ([System.Drawing.Color]::Red); return $false }
-            Add-Status "All software operations completed successfully" $statusTextBox
+            
+            $copyResult = Copy-SoftwareFilesSelective -DeviceType $DeviceType -Apps $plan.Pending -statusTextBox $statusTextBox -SourceSetupPath $srcSETUP
+            
+            # Show summary of missing files if any
+            if ($copyResult.MissingFiles.Count -gt 0) {
+                Add-Status "Warning: $($copyResult.MissingFiles.Count) installer(s) could not be copied:" $statusTextBox ([System.Drawing.Color]::Yellow)
+                foreach ($missing in $copyResult.MissingFiles) {
+                    Add-Status "  - $missing" $statusTextBox ([System.Drawing.Color]::Gray)
+                }
+            }
+            
+            # Filter out apps with missing files from installation
+            # If file was successfully copied (not in MissingFiles), it should be installed
+            if ($copyResult.MissingFiles.Count -gt 0) {
+                # Some files missing - filter them out
+                $appsToInstall = @($plan.Pending | Where-Object { $copyResult.MissingFiles -notcontains $_.displayName })
+            }
+            else {
+                # No files missing - install all pending apps
+                $appsToInstall = @($plan.Pending)
+            }
+            
+            if ($appsToInstall.Count -gt 0) {
+                Add-Status "Installing $($appsToInstall.Count) software(s)..." $statusTextBox
+                $okInstall = Install-Software -deviceType $DeviceType -statusTextBox $statusTextBox -appsToInstall $appsToInstall -CleanupTemp:$CleanupTemp
+                if (-not $okInstall) { Add-Status "Error: Some operations failed" $statusTextBox ([System.Drawing.Color]::Red); return $false }
+            }
+            else {
+                Add-Status "No software to install (all files missing)" $statusTextBox ([System.Drawing.Color]::Gray)
+            }
+            
+            Add-Status "All software installation completed $(if ($copyResult.MissingFiles.Count -gt 0) { "(with warnings)" } else { "successfully" })" $statusTextBox
             return $true
         }
         else {

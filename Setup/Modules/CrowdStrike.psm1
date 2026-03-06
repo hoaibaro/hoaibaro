@@ -297,7 +297,21 @@ function Invoke-InstallCrowdStrike {
 
         # Check for installer script
         Add-Status "2. Locating CrowdStrike installer..." $statusTextBox ([System.Drawing.Color]::Yellow)
-        $scriptPath = Join-Path $global:destCopy "CrowdStrike\core\auto_installer_integrated.ps1"
+
+        # Dynamically find CrowdStrike folder
+        $csFolder = Get-ChildItem -Path $global:destCopy -Directory -Filter "CrowdStrike*" -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        if (-not $csFolder) {
+            Add-Status "   ? CrowdStrike folder not found in Downloads!" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "   Please run 'Install Software' first to copy CrowdStrike files." $statusTextBox ([System.Drawing.Color]::Yellow)
+            return
+        }
+
+        $csPath = $csFolder.FullName
+        Add-Status "   Found: $($csFolder.Name)" $statusTextBox ([System.Drawing.Color]::Gray)
+
+        # Check for installer script
+        $scriptPath = Join-Path $csPath "core\auto_installer_integrated.ps1"
 
         if (-not (Test-Path $scriptPath)) {
             Add-Status "   ? CrowdStrike installer script not found!" $statusTextBox ([System.Drawing.Color]::Red)
@@ -309,7 +323,7 @@ function Invoke-InstallCrowdStrike {
         Add-Status "   ? Installer script found" $statusTextBox ([System.Drawing.Color]::Green)
 
         # Check for installer executable
-        $installerPath = Join-Path $global:destCopy "CrowdStrike\core\FalconSensor_Windows.exe"
+        $installerPath = Join-Path $csPath "core\FalconSensor_Windows.exe"
 
         if (-not (Test-Path $installerPath)) {
             Add-Status "   ? CrowdStrike installer executable not found!" $statusTextBox ([System.Drawing.Color]::Red)
@@ -327,7 +341,7 @@ function Invoke-InstallCrowdStrike {
             "-NoProfile",
             "-File", "`"$scriptPath`"",
             "-Department", "`"$Department`"",
-            "-InstallType", "`"$InstallType`"",
+            "-ForceInstallType", "`"$InstallType`"",
             "-Silent"
         )
 
@@ -368,7 +382,8 @@ function Invoke-InstallCrowdStrike {
                 Add-Status "   ? CrowdStrike service is running!" $statusTextBox ([System.Drawing.Color]::Green)
                 Add-Status "   Service Name: $($newService.DisplayName)" $statusTextBox ([System.Drawing.Color]::Gray)
             }
-            else { Add-Status "   ? Service verification failed" $statusTextBox ([System.Drawing.Color]::Yellow)
+            else {
+                Add-Status "   ? Service verification failed" $statusTextBox ([System.Drawing.Color]::Yellow)
                 Add-Status "   The installation may need time to complete" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
 
@@ -386,11 +401,13 @@ function Invoke-InstallCrowdStrike {
 
             Add-Status "=== INSTALLATION SUCCESSFUL ===" $statusTextBox ([System.Drawing.Color]::Green)
         }
-        else { Add-Status "   ? Installation failed!" $statusTextBox ([System.Drawing.Color]::Red)
+        else {
+            Add-Status "   ? Installation failed!" $statusTextBox ([System.Drawing.Color]::Red)
             Add-Status "   Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
     }
-    catch { Add-Status "Error during CrowdStrike installation: $_" $statusTextBox ([System.Drawing.Color]::Red)
+    catch {
+        Add-Status "Error during CrowdStrike installation: $_" $statusTextBox ([System.Drawing.Color]::Red)
         Add-Status "Please check the log file: C:\Temp\FalconInstall.log" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 }
@@ -445,13 +462,14 @@ function Get-CrowdStrikeAssignment {
             $type = $p.InstallType
             if ($dept -or $type) {
                 return @{
-                    Department = $dept
+                    Department  = $dept
                     InstallType = $type
-                    Source     = "Registry"
+                    Source      = "Registry"
                 }
             }
         }
-    } catch {
+    }
+    catch {
         Add-Status "Error reading assignment registry: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow)
     }
 
@@ -501,13 +519,13 @@ function Get-CrowdStrikeAssignment {
                 # Fallback cu?i: t?m d?ng c� v? ch? ch?a danh s�ch tag (ch?a d?u ph?y ho?c kho?ng tr?ng ph�n t�ch, nh�ng KH�NG ch?a �Tool�, �Version�, �CrowdStrike�)
                 if (-not $line) {
                     $line = $lines |
-                        Where-Object {
-                            ($_ -match ',') -or ($_ -match '\s+') # c� ph�n t�ch
-                        } |
-                        Where-Object {
-                            $_ -notmatch '(?i)crowdstrike|sensor|settings|tool|version|copyright'
-                        } |
-                        Select-Object -First 1
+                    Where-Object {
+                        ($_ -match ',') -or ($_ -match '\s+') # c� ph�n t�ch
+                    } |
+                    Where-Object {
+                        $_ -notmatch '(?i)crowdstrike|sensor|settings|tool|version|copyright'
+                    } |
+                    Select-Object -First 1
                 }
 
                 # L?y ph?n sau d?u �:�, n?u c�; n?u kh�ng c� ":" th? l?y nguy�n d?ng
@@ -536,21 +554,23 @@ function Get-CrowdStrikeAssignment {
                 try {
                     $regPath = "HKLM:\SOFTWARE\BAOPROVIP\CrowdStrike"
                     if (-not (Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
-                    if ($department)  { New-ItemProperty -Path $regPath -Name "Department"  -Value $department  -PropertyType String -Force | Out-Null }
+                    if ($department) { New-ItemProperty -Path $regPath -Name "Department"  -Value $department  -PropertyType String -Force | Out-Null }
                     if ($installType) { New-ItemProperty -Path $regPath -Name "InstallType" -Value $installType -PropertyType String -Force | Out-Null }
-                } catch {}
+                }
+                catch {}
             }
         }
-    } catch {
+    }
+    catch {
         # B? qua: nhi?u b?n c� th? kh�ng h? tr? get/show m� kh�ng c?n token
     }
 
     # Fallback: th�ng tin l�u trong phi�n hi?n t?i (n?u c�)
     if ($global:CrowdStrikeInstallInfo -and ($global:CrowdStrikeInstallInfo.Department -or $global:CrowdStrikeInstallInfo.InstallType)) {
         return @{
-            Department = $global:CrowdStrikeInstallInfo.Department
+            Department  = $global:CrowdStrikeInstallInfo.Department
             InstallType = $global:CrowdStrikeInstallInfo.InstallType
-            Source     = "Session"
+            Source      = "Session"
         }
     }
     return $null
@@ -668,16 +688,17 @@ function Invoke-CheckCrowdStrikeStatus {
         Add-Status "2. Sensor Info:" $statusTextBox ([System.Drawing.Color]::White)
         $sensor = Get-CrowdStrikeSensorInfo
         if ($sensor) {
-            if ($sensor.Version)     { Add-Status "   ? Version: $($sensor.Version)" $statusTextBox ([System.Drawing.Color]::Green) }
-            if ($sensor.AgentId)     { Add-Status "   ? Agent ID: $($sensor.AgentId)" $statusTextBox ([System.Drawing.Color]::Gray) }
-            if ($sensor.CustomerId)  { Add-Status "   ? Customer ID: $($sensor.CustomerId)" $statusTextBox ([System.Drawing.Color]::Gray) }
-            if ($sensor.Grouping)    { Add-Status "   ? Grouping Tags: $($sensor.Grouping -join ', ')" $statusTextBox ([System.Drawing.Color]::Gray) }
+            if ($sensor.Version) { Add-Status "   ? Version: $($sensor.Version)" $statusTextBox ([System.Drawing.Color]::Green) }
+            if ($sensor.AgentId) { Add-Status "   ? Agent ID: $($sensor.AgentId)" $statusTextBox ([System.Drawing.Color]::Gray) }
+            if ($sensor.CustomerId) { Add-Status "   ? Customer ID: $($sensor.CustomerId)" $statusTextBox ([System.Drawing.Color]::Gray) }
+            if ($sensor.Grouping) { Add-Status "   ? Grouping Tags: $($sensor.Grouping -join ', ')" $statusTextBox ([System.Drawing.Color]::Gray) }
             if ($sensor.CloudStatus) {
                 $cloudColor = [System.Drawing.Color]::Yellow
                 if ($sensor.CloudStatus -eq 'Connected') { $cloudColor = [System.Drawing.Color]::Green }
                 Add-Status "   ? Cloud: $($sensor.CloudStatus)" $statusTextBox $cloudColor
             }
-        } else {
+        }
+        else {
             Add-Status "   ? Could not query CSSensorSettings.exe" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
@@ -686,9 +707,10 @@ function Invoke-CheckCrowdStrikeStatus {
 
         $assign = Get-CrowdStrikeAssignment
         if ($assign) {
-            if ($assign.Department)  { Add-Status "   ? Department: $($assign.Department) ($($assign.Source))" $statusTextBox ([System.Drawing.Color]::Green) }
+            if ($assign.Department) { Add-Status "   ? Department: $($assign.Department) ($($assign.Source))" $statusTextBox ([System.Drawing.Color]::Green) }
             if ($assign.InstallType) { Add-Status "   ? Installation Type: $($assign.InstallType) ($($assign.Source))" $statusTextBox ([System.Drawing.Color]::Green) }
-        } else {
+        }
+        else {
             Add-Status "   ? Assignment: Unknown (not configured or not yet synced)" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
@@ -714,7 +736,8 @@ function Invoke-CheckCrowdStrikeStatus {
 
         # 5. Cloud Connectivity (IMPORTANT)
         Add-Status "5. Cloud Connectivity:" $statusTextBox ([System.Drawing.Color]::White)
-        try { $testResult = Test-NetConnection -ComputerName "ts01-b.cloudsink.net" -Port 443 -InformationLevel Quiet -ErrorAction SilentlyContinue
+        try {
+            $testResult = Test-NetConnection -ComputerName "ts01-b.cloudsink.net" -Port 443 -InformationLevel Quiet -ErrorAction SilentlyContinue
             if ($testResult) { Add-Status "   ? CrowdStrike cloud: Connected" $statusTextBox ([System.Drawing.Color]::Green) }
             else { Add-Status "   ? CrowdStrike cloud: Disconnected" $statusTextBox ([System.Drawing.Color]::Yellow) }
         }
@@ -727,13 +750,15 @@ function Invoke-CheckCrowdStrikeStatus {
             if (Test-Path $csReg) {
                 $regObj = Get-ItemProperty -Path $csReg -ErrorAction SilentlyContinue
                 $props = @()
-                foreach ($n in @('CustomerID','AgentId','SensorId','DeviceID')) { if ($regObj.$n) { $props += "$n=$($regObj.$n)" } }
+                foreach ($n in @('CustomerID', 'AgentId', 'SensorId', 'DeviceID')) { if ($regObj.$n) { $props += "$n=$($regObj.$n)" } }
                 if ($props.Count -gt 0) { Add-Status "   ? $($props -join '; ')" $statusTextBox ([System.Drawing.Color]::Gray) }
                 else { Add-Status "   ? Registry present (no public IDs exposed)" $statusTextBox ([System.Drawing.Color]::Gray) }
-            } else {
+            }
+            else {
                 Add-Status "   ? CrowdStrike registry key not found" $statusTextBox ([System.Drawing.Color]::Yellow)
             }
-        } catch { Add-Status "   ? Registry read error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow) }
+        }
+        catch { Add-Status "   ? Registry read error: $($_.Exception.Message)" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
         # 7. Overall Status (SUMMARY)
         $issues = @()
@@ -747,14 +772,18 @@ function Invoke-CheckCrowdStrikeStatus {
             $statusColor = [System.Drawing.Color]::Red
         }
 
-        if (-not $runningProcesses) { $issues += "Protection processes missing"
-            if ($overallStatus -ne "CRITICAL") { $overallStatus = "WARNING"
+        if (-not $runningProcesses) {
+            $issues += "Protection processes missing"
+            if ($overallStatus -ne "CRITICAL") {
+                $overallStatus = "WARNING"
                 $statusColor = [System.Drawing.Color]::Yellow
             }
         }
 
-        if (-not $global:CrowdStrikeInstallInfo.Department -and -not $assign.Department) { $issues += "No department assignment"
-            if ($overallStatus -eq "HEALTHY") { $overallStatus = "WARNING"
+        if (-not $global:CrowdStrikeInstallInfo.Department -and -not $assign.Department) {
+            $issues += "No department assignment"
+            if ($overallStatus -eq "HEALTHY") {
+                $overallStatus = "WARNING"
                 $statusColor = [System.Drawing.Color]::Yellow
             }
         }
@@ -783,7 +812,7 @@ function Get-CrowdStrikeSensorInfo {
         $psi.Arguments = "show --status"
         $psi.UseShellExecute = $false
         $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError  = $true
+        $psi.RedirectStandardError = $true
         $psi.CreateNoWindow = $true
 
         $p = New-Object System.Diagnostics.Process
@@ -803,7 +832,7 @@ function Get-CrowdStrikeSensorInfo {
             if ($line -match '^(?i)agent\s*id\s*:\s*(.+)$') { $result.AgentId = $Matches[1].Trim() ; continue }
             if ($line -match '^(?i)customer\s*id\s*:\s*(.+)$') { $result.CustomerId = $Matches[1].Trim() ; continue }
             if ($line -match '^(?i)grouping\s*tags\s*:\s*(.+)$') { $result.Grouping = ($Matches[1] -split '\s*,\s*') ; continue }
-            if ($line -match '^(?i)cloud\s*:\s*(connected|disconnected)') { $result.CloudStatus = ($Matches[1].Substring(0,1).ToUpper() + $Matches[1].Substring(1).ToLower()) ; continue }
+            if ($line -match '^(?i)cloud\s*:\s*(connected|disconnected)') { $result.CloudStatus = ($Matches[1].Substring(0, 1).ToUpper() + $Matches[1].Substring(1).ToLower()) ; continue }
         }
 
         # Fallback for older output where tags appear under 'Tags:'
@@ -1029,14 +1058,16 @@ function Start-CrowdStrikeMaintenanceUI {
         if ($cmd -match '^\s*"(.*?)"\s*(.*)$') {
             $exe = $Matches[1]
             $argumentList = $Matches[2]
-        } elseif ($cmd -match '^\s*(\S+)\s+(.*)$') {
+        }
+        elseif ($cmd -match '^\s*(\S+)\s+(.*)$') {
             $exe = $Matches[1]
             $argumentList = $Matches[2]
         }
 
         if ([string]::IsNullOrWhiteSpace($argumentList)) {
             Start-Process -FilePath $exe | Out-Null
-        } else {
+        }
+        else {
             Start-Process -FilePath $exe -ArgumentList $argumentList | Out-Null
         }
         Add-Status "Please enter Token in the CrowdStrike window to uninstall." $statusTextBox ([System.Drawing.Color]::Cyan)

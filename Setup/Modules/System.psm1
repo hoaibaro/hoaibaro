@@ -1,6 +1,6 @@
 ﻿function Invoke-RunAllOperations {
     param([System.Windows.Forms.Form]$mainForm)
-    Hide-MainMenu
+    Hide-MainMenu -mainForm $mainForm
     # Create status form
     $statusForm = New-Object System.Windows.Forms.Form
     $statusForm.Text = "Running All Operations"
@@ -56,7 +56,7 @@
         # Pre-step: Device type selection to decide WiFi behavior
         $deviceType = Select-DeviceType -Owner $statusForm
         if (-not $deviceType) {
-            Show-MainMenu
+            Show-MainMenu -mainForm $mainForm
             $statusForm.Close()
             return
         }
@@ -195,7 +195,14 @@
     finally {
         $statusForm.KeyPreview = $true
         $statusForm.Add_KeyDown({ if ($_.KeyCode -eq [System.Windows.Forms.Keys]::Escape) { $statusForm.Close() } })
-        $statusForm.Add_FormClosed({ Show-MainMenu })
+        $statusForm.Add_FormClosed({ Show-MainMenu -mainForm $mainForm })
+    }
+
+    # Keep status form open for user to review results
+    # Loop exits when user closes the form (ESC or X button)
+    while ($statusForm.Visible -and -not $statusForm.IsDisposed) {
+        [System.Windows.Forms.Application]::DoEvents()
+        Start-Sleep -Milliseconds 100
     }
 }
 
