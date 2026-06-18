@@ -19,7 +19,8 @@
     "Microsoft Co-Pilot"
   ],
   "officeActivation": {
-    "productKey": "Q2NKY-J42YJ-X2KVK-9Q9PT-MKP63"
+    "ProPlus2019": "Q2NKY-J42YJ-X2KVK-9Q9PT-MKP63",
+    "Standard2019": "6NTM8-43PXQ-W82RP-YFBTF-846VB"
   },
   "windowsActivation": {
     "productKey": "R84N4-RPC7Q-W8TKM-VM7Y4-7H66Y",
@@ -39,6 +40,7 @@
     {
       "id": "7zip",
       "displayName": "7-Zip",
+      "wingetId": "7zip.7zip",
       "enabled": true,
       "device": "All",
       "installerName": "7z*.exe",
@@ -53,6 +55,7 @@
     {
       "id": "chrome",
       "displayName": "Google Chrome",
+      "wingetId": "Google.Chrome",
       "enabled": true,
       "device": "All",
       "installerName": "*Chrome*.exe",
@@ -78,6 +81,7 @@
     {
       "id": "foxit",
       "displayName": "Foxit Reader",
+      "wingetId": "Foxit.FoxitReader",
       "enabled": true,
       "device": "All",
       "installerName": "Foxit*.exe",
@@ -92,13 +96,28 @@
       ]
     },
     {
-      "id": "office2019",
-      "displayName": "Office 2019",
+      "id": "officeProPlus2019",
+      "displayName": "Office ProPlus 2019",
       "enabled": true,
       "device": "All",
       "installerName": "setup.exe",
       "installerType": "office",
-      "sourceSubDir": "Office 2019",
+      "sourceSubDir": "Office ProPlus 2019",
+      "activationKey": "ProPlus2019",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE"
+      ]
+    },
+    {
+      "id": "officeStandard2019",
+      "displayName": "Office Standard 2019",
+      "enabled": true,
+      "device": "All",
+      "installerName": "setup.exe",
+      "installerType": "office",
+      "sourceSubDir": "Office Standard 2019",
+      "activationKey": "Standard2019",
       "checkType": "path",
       "checkPaths": [
         "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE"
@@ -107,6 +126,7 @@
     {
       "id": "zoom",
       "displayName": "Zoom",
+      "wingetId": "Zoom.Zoom",
       "enabled": true,
       "device": "Laptop",
       "installerName": "*Zoom*.exe",
