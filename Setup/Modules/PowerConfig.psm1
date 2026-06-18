@@ -181,6 +181,7 @@ function Invoke-SystemCleanup {
     param([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
     Add-Status "Starting System Cleanup (Power & Timezone)..." $statusTextBox ([System.Drawing.Color]::Gray)
     Invoke-SetTimezonePower -statusTextBox $statusTextBox
+    Invoke-FirewallOff -statusTextBox $statusTextBox
     return $true
 }
 

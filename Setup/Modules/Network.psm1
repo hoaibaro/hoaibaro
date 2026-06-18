@@ -209,32 +209,37 @@ function Invoke-WindowsUpdateCheck {
         $testConnection = Test-NetConnection -ComputerName "8.8.8.8" -Port 53 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
         if (-not $testConnection) { Add-Status "No internet connection - skipping Windows Update" $statusTextBox ([System.Drawing.Color]::Yellow); return $false }
 
-        # Trigger updates in background
-        # Trigger updates using COM Object (More reliable)
+        # Try COM API first (works best on Win 10)
+        $comSuccess = $false
         try {
             Add-Status "Initializing Windows Update Session..." $statusTextBox
             $updateSession = New-Object -ComObject Microsoft.Update.Session
             $updateSearcher = $updateSession.CreateUpdateSearcher()
-            
             Add-Status "Searching for updates (Background)..." $statusTextBox
-            # Search asynchronously to avoid blocking UI
             $searchResult = $updateSearcher.BeginSearch("IsInstalled=0 and Type='Software' and IsHidden=0", $null, $null)
-            
-            # We won't wait for completion to keep the tool responsive
-            # But we can trigger the USOClient as a secondary "kick" just in case
-            Start-Process -FilePath "USOClient.exe" -ArgumentList "StartScan" -WindowStyle Hidden -ErrorAction SilentlyContinue
-            
-            return $true
+            if ($searchResult) { $comSuccess = $true }
         }
         catch {
-            Add-Status "COM Update Error: $_" $statusTextBox ([System.Drawing.Color]::Yellow)
-            # Fallback to USOClient
+            $comSuccess = $false
+        }
+
+        if ($comSuccess) {
+            Add-Status "Windows Update scan started via COM API." $statusTextBox
+        }
+        else {
+            # Fallback to USOClient (works on Win 10/11)
+            Add-Status "Using USOClient for Windows Update..." $statusTextBox
             try {
                 Start-Process -FilePath "USOClient.exe" -ArgumentList "StartScan" -WindowStyle Hidden -ErrorAction Stop
-                return $true
+                Start-Process -FilePath "USOClient.exe" -ArgumentList "StartInstall" -WindowStyle Hidden -ErrorAction SilentlyContinue
+                Add-Status "Windows Update scan started via USOClient." $statusTextBox
             }
-            catch { Add-Status "Warning: Windows Update trigger failed" $statusTextBox ([System.Drawing.Color]::Yellow); return $false }
+            catch {
+                Add-Status "Warning: Windows Update trigger failed" $statusTextBox ([System.Drawing.Color]::Yellow)
+                return $false
+            }
         }
+        return $true
     }
     catch { Add-Status "Error: $_" $statusTextBox ([System.Drawing.Color]::Red); return $false }
 }

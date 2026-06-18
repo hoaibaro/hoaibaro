@@ -43,7 +43,7 @@ function Test-BaroConfig {
         if (-not $config.windowsActivation.productKey) { $result.Errors += "Missing windowsActivation.productKey"; $result.IsValid = $false }
     }
     if ($config.officeActivation) {
-        if (-not $config.officeActivation.productKey) { $result.Errors += "Missing officeActivation.productKey"; $result.IsValid = $false }
+        if (-not $config.officeActivation.ProPlus2019 -and -not $config.officeActivation.Standard2019) { $result.Errors += "Missing officeActivation keys (ProPlus2019/Standard2019)"; $result.IsValid = $false }
     }
     if ($config.domain) {
         if (-not $config.domain.name) { $result.Errors += "Missing domain.name"; $result.IsValid = $false }
@@ -78,7 +78,8 @@ function New-BaroConfigTemplate {
             upgradeKey = "VK7JG-NPHTM-C97JM-9MPGT-3V66T"
         }
         officeActivation  = @{
-            productKey = "Q2NKY-J42YJ-X2KVK-9Q9PT-MKP63"
+            ProPlus2019  = "Q2NKY-J42YJ-X2KVK-9Q9PT-MKP63"
+            Standard2019 = "6XDN8-MMH8C-VB873-G6Q6M-B4JKY"
         }
         domain            = @{
             name        = "vietunion.local"

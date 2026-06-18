@@ -47,14 +47,14 @@ function Get-WindowsVersionShort {
 }
 
 function Invoke-ActivateWindows10Pro {
-    param([System.Windows.Forms.RichTextBox]$statusTextBox)
+    param([System.Windows.Forms.RichTextBox]$statusTextBox, [bool]$HasInternet = $true)
     try {
         # Display current Windows version
         $currentWindowsVersion = Get-WindowsVersionShort
         Add-Status "Checking Activation Status of Windows..." $statusTextBox
         Add-Status "OS: $currentWindowsVersion" $statusTextBox
 
-        $windowsStatus = & cscript //nologo "$env:windir\system32\slmgr.vbs" /dli
+        $windowsStatus = & cscript //nologo "$env:windir\system32\slmgr.vbs" /dli 2>&1 | Out-String
         $isWindowsActivated = $windowsStatus -match "License Status: Licensed"
 
         if ($isWindowsActivated) {
@@ -71,9 +71,9 @@ function Invoke-ActivateWindows10Pro {
 
         $key = $Global:config.windowsActivation.productKey
         
-        # Install Key
+        # Install Key (works offline)
         Add-Status "Installing Product Key..." $statusTextBox
-        $ipkResult = & cscript //nologo "$env:windir\system32\slmgr.vbs" /ipk $key 2>&1
+        $ipkResult = & cscript //nologo "$env:windir\system32\slmgr.vbs" /ipk $key 2>&1 | Out-String
         if ($ipkResult -match "successfully") {
             Add-Status "Product Key installed successfully." $statusTextBox
         }
@@ -81,15 +81,20 @@ function Invoke-ActivateWindows10Pro {
             Add-Status "Key installation output: $ipkResult" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
-        # Activate
-        Add-Status "Triggering Activation..." $statusTextBox
-        $atoResult = & cscript //nologo "$env:windir\system32\slmgr.vbs" /ato 2>&1
-        
-        if ($atoResult -match "successfully") {
-            Add-Status "Windows activated successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+        # Activate (requires Internet)
+        if ($HasInternet) {
+            Add-Status "Triggering Activation..." $statusTextBox
+            $atoResult = & cscript //nologo "$env:windir\system32\slmgr.vbs" /ato 2>&1 | Out-String
+            
+            if ($atoResult -match "successfully") {
+                Add-Status "Windows activated successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+            }
+            else {
+                Add-Status "Activation failed: $atoResult" $statusTextBox ([System.Drawing.Color]::Red)
+            }
         }
         else {
-            Add-Status "Activation failed: $atoResult" $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "No Internet: Key installed. Windows will auto-activate when online." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
     }
     catch {
@@ -97,8 +102,11 @@ function Invoke-ActivateWindows10Pro {
     }
 }
 
+
+
+
 function Invoke-ActivateOffice2019 {
-    param([System.Windows.Forms.RichTextBox]$statusTextBox)
+    param([System.Windows.Forms.RichTextBox]$statusTextBox, [bool]$HasInternet = $true)
     try {
         Add-Status "Checking Activation Status of Office..." $statusTextBox
         # Check multiple possible Office paths
@@ -126,12 +134,12 @@ function Invoke-ActivateOffice2019 {
 
         # Check current activation status
         try {
-            $officeStatus = & cscript //nologo "$officePath" /dstatus 2>&1
+            $officeStatus = & cscript //nologo "$officePath" /dstatus 2>&1 | Out-String
 
-            # Check if already activated (multiple possible patterns)
-            $isActivated = ($officeStatus -match "LICENSE STATUS:.*LICENSED") -or
-            ($officeStatus -match "---LICENSED---") -or
-            ($officeStatus -match "LICENSED")
+            # Check if already activated (exclude UNLICENSED)
+            $isActivated = ($officeStatus -match "---LICENSED---") -or
+            ($officeStatus -match "LICENSE STATUS:\s*---LICENSED---") -or
+            ($officeStatus -match "LICENSE STATUS:\s*LICENSED" -and $officeStatus -notmatch "UNLICENSED")
 
             if ($isActivated) {
                 Add-Status "Office activated." $statusTextBox
@@ -143,38 +151,68 @@ function Invoke-ActivateOffice2019 {
         }
 
         Add-Status "Office not activated. Starting activate..." $statusTextBox
+        # Detect Office version and get matching key
+        $officeKeyName = $null
+        try {
+            $dstatusOutput = & cscript //nologo "$officePath" /dstatus 2>&1 | Out-String
+            if ($dstatusOutput -match "ProPlus") { $officeKeyName = "ProPlus2019" }
+            elseif ($dstatusOutput -match "Standard") { $officeKeyName = "Standard2019" }
+        }
+        catch {}
+
+        # Fallback: use version selected during install
+        if (-not $officeKeyName -and $Global:SelectedOfficeVersion) {
+            $selectedApp = $Global:config.software | Where-Object { $_.id -eq $Global:SelectedOfficeVersion }
+            if ($selectedApp -and $selectedApp.activationKey) { $officeKeyName = $selectedApp.activationKey }
+        }
+
+        if (-not $officeKeyName) {
+            Add-Status "Could not detect Office version. Using Standard2019 key as default." $statusTextBox ([System.Drawing.Color]::Yellow)
+            $officeKeyName = "Standard2019"
+        }
+
+        $key = $Global:config.officeActivation.$officeKeyName
+        if (-not $key) {
+            Add-Status "No activation key found for $officeKeyName in config." $statusTextBox ([System.Drawing.Color]::Red)
+            return
+        }
+
+        Add-Status "Office version: $officeKeyName" $statusTextBox
         # Install the product key
         try {
-            $key = $Global:config.officeActivation.productKey
-            & cscript //nologo "$officePath" /inpkey:$key 2>&1
+            $inpkeyResult = & cscript //nologo "$officePath" /inpkey:$key 2>&1 | Out-String
+            if ($inpkeyResult -match "successful") {
+                Add-Status "Office product key installed successfully." $statusTextBox
+            }
+            else {
+                Add-Status "Key install output: $inpkeyResult" $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
         }
         catch {
-            Add-Status "Error installing product key." $statusTextBox ([System.Drawing.Color]::Red)
+            Add-Status "Error installing product key: $_" $statusTextBox ([System.Drawing.Color]::Red)
         }
 
         # Wait a moment for key installation to complete
         Start-Sleep -Seconds 2
 
-        try {
-            $activateResult = & cscript //nologo "$officePath" /act 2>&1
+        # Activate (requires Internet)
+        if ($HasInternet) {
+            try {
+                $activateResult = & cscript //nologo "$officePath" /act 2>&1 | Out-String
 
-            if ($activateResult -match "successful" -or $activateResult -match "activated") {
-                Add-Status "Office 2019 Pro Plus activated successfully!" $statusTextBox
+                if ($activateResult -match "successful" -or $activateResult -match "activated") {
+                    Add-Status "Office activated successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+                }
+                else {
+                    Add-Status "Office activation result: $activateResult" $statusTextBox ([System.Drawing.Color]::Yellow)
+                }
             }
-            else {
-                Add-Status "Office activation completed." $statusTextBox
+            catch {
+                Add-Status "Error during activation: $_" $statusTextBox ([System.Drawing.Color]::Red)
             }
         }
-        catch {
-            Add-Status "Error during activation." $statusTextBox ([System.Drawing.Color]::Red)
-        }
-
-        # Check final status
-        try {
-            Start-Sleep -Seconds 3
-        }
-        catch {
-            Add-Status "Could not verify final activation status." $statusTextBox ([System.Drawing.Color]::Red)
+        else {
+            Add-Status "No Internet: Key installed. Office will auto-activate when online." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
     }
     catch {
@@ -220,10 +258,10 @@ function Invoke-UpgradeWindowsHomeToPro {
                 Add-Status "Executing: $cmd" $statusTextBox
                 $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmd" -WindowStyle Hidden -PassThru -Wait
                 if ($process.ExitCode -eq 0) {
-                     Add-Status "Command success." $statusTextBox
+                    Add-Status "Command success." $statusTextBox
                 }
                 else {
-                     Add-Status "Command exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
+                    Add-Status "Command exit code: $($process.ExitCode)" $statusTextBox ([System.Drawing.Color]::Yellow)
                 }
             }
             catch {
@@ -288,7 +326,7 @@ function Invoke-ActivationDialog {
     $activateForm.Controls.Add($btnWin10Pro)
 
     # Add button to activate Office 2019
-    $btnOffice = New-DynamicButton -text "Office2019ProPlus" -x 250 -y 50 -width 225 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
+    $btnOffice = New-DynamicButton -text "Office 2019" -x 250 -y 50 -width 225 -height 40 -normalColor ([System.Drawing.Color]::FromArgb(0, 150, 0)) -hoverColor ([System.Drawing.Color]::FromArgb(0, 200, 0)) -pressColor ([System.Drawing.Color]::FromArgb(0, 100, 0)) -clickAction {
         Invoke-ActivateOffice2019 -statusTextBox $statusTextBox
     }
     $activateForm.Controls.Add($btnOffice)
@@ -312,11 +350,11 @@ function Invoke-ActivationDialog {
 }
 
 function Invoke-ActivateConfiguration {
-    param([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox)
+    param([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [bool]$HasInternet = $true)
     
     Add-Status "Starting Activation Configuration..." $statusTextBox
-    Invoke-ActivateWindows10Pro -statusTextBox $statusTextBox
-    Invoke-ActivateOffice2019 -statusTextBox $statusTextBox
+    Invoke-ActivateWindows10Pro -statusTextBox $statusTextBox -HasInternet $HasInternet
+    Invoke-ActivateOffice2019 -statusTextBox $statusTextBox -HasInternet $HasInternet
     return $true
 }
 

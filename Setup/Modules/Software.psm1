@@ -407,10 +407,61 @@ function Copy-SoftwareFilesSelective {
     return @{ Success = $true; MissingFiles = $missingFiles }
 }
 
+function Test-WingetAvailable {
+    if ($null -ne $Global:WingetAvailable) { return $Global:WingetAvailable }
+    try {
+        $ver = & winget --version 2>&1 | Out-String
+        if ($ver -match 'v\d') { $Global:WingetAvailable = $true }
+        else { $Global:WingetAvailable = $false }
+    }
+    catch { $Global:WingetAvailable = $false }
+    return $Global:WingetAvailable
+}
+
+function Install-ViaWinget {
+    param(
+        [string]$WingetId,
+        [string]$AppName,
+        [System.Windows.Forms.RichTextBox]$statusTextBox
+    )
+    try {
+        Add-Status "${AppName}: Installing via Winget ($WingetId)..." $statusTextBox ([System.Drawing.Color]::Cyan)
+        
+        $proc = Start-Process -FilePath "winget" -ArgumentList "install --id $WingetId --silent --accept-package-agreements --accept-source-agreements --disable-interactivity" -WindowStyle Hidden -PassThru -Wait
+        
+        # Exit code 0 = success, -1978335189 = already installed
+        if ($proc.ExitCode -eq 0) {
+            Add-Status "Installed : $AppName (Winget)" $statusTextBox ([System.Drawing.Color]::Green)
+            return $true
+        }
+        elseif ($proc.ExitCode -eq -1978335189) {
+            Add-Status "Existed: $AppName (already installed)" $statusTextBox
+            return $true
+        }
+        else {
+            Add-Status "${AppName}: Winget exit code $($proc.ExitCode), fallback to USB..." $statusTextBox ([System.Drawing.Color]::Yellow)
+            return $false
+        }
+    }
+    catch {
+        Add-Status "${AppName}: Winget error: $_, fallback to USB..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        return $false
+    }
+}
+
 function Install-Software {
     param ([string]$deviceType, [System.Windows.Forms.RichTextBox]$statusTextBox, [array]$appsToInstall, [switch]$CleanupTemp)
     try {
         $setupDir = "$env:USERPROFILE\Downloads\SETUP"
+
+        # Pre-check: Internet and Winget availability for online installs
+        $canUseWinget = $false
+        $hasInternet = $false
+        try { $hasInternet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet -ErrorAction SilentlyContinue -WarningAction SilentlyContinue } catch {}
+        if ($hasInternet -and (Test-WingetAvailable)) {
+            $canUseWinget = $true
+            Add-Status "Winget: Available (online install enabled)" $statusTextBox ([System.Drawing.Color]::Cyan)
+        }
         
         foreach ($app in $appsToInstall) {
             $appName = $app.displayName
@@ -428,24 +479,109 @@ function Install-Software {
 
             # Install Task
             if ($app.installerType -eq 'office') {
-                # Office specific logic (config generation etc)
+                # Check if Office is already installed (shared checkPaths between versions)
+                $officeAlreadyInstalled = $false
+                if ($app.checkPaths) {
+                    foreach ($chkPath in $app.checkPaths) {
+                        $expandedPath = $ExecutionContext.InvokeCommand.ExpandString($chkPath)
+                        if (Test-Path $expandedPath) { $officeAlreadyInstalled = $true; break }
+                    }
+                }
+                if ($officeAlreadyInstalled) {
+                    Add-Status "Existed: $appName" $statusTextBox
+                    continue
+                }
+
+                # If user already selected a different Office version, skip this one
+                if ($Global:SelectedOfficeVersion -and $Global:SelectedOfficeVersion -ne $app.id) {
+                    continue
+                }
+
+                # Prompt user to select Office version if not yet selected
+                if (-not $Global:SelectedOfficeVersion) {
+                    $officeApps = @($appsToInstall | Where-Object { $_.installerType -eq 'office' })
+                    if ($officeApps.Count -gt 1) {
+                        # Show selection dialog
+                        $selectForm = New-Object System.Windows.Forms.Form
+                        $selectForm.Text = "Select Office Version"
+                        $selectForm.Size = New-Object System.Drawing.Size(360, 160)
+                        $selectForm.StartPosition = "CenterScreen"
+                        $selectForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+                        $selectForm.MaximizeBox = $false
+                        $selectForm.MinimizeBox = $false
+                        $selectForm.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
+
+                        $lbl = New-Object System.Windows.Forms.Label
+                        $lbl.Text = "Choose Office version to install:"
+                        $lbl.Location = New-Object System.Drawing.Point(20, 15)
+                        $lbl.Size = New-Object System.Drawing.Size(310, 25)
+                        $lbl.ForeColor = [System.Drawing.Color]::White
+                        $lbl.Font = New-Object System.Drawing.Font("Segoe UI", 10)
+                        $selectForm.Controls.Add($lbl)
+
+
+                        $btnX = 20
+                        foreach ($oa in $officeApps) {
+                            $btn = New-Object System.Windows.Forms.Button
+                            $btn.Text = $oa.displayName
+                            $btn.Location = New-Object System.Drawing.Point($btnX, 55)
+                            $btn.Size = New-Object System.Drawing.Size(150, 45)
+                            $btn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                            $btn.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 60)
+                            $btn.ForeColor = [System.Drawing.Color]::White
+                            $btn.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+                            $btn.Tag = $oa.id
+                            $btn.Add_Click({
+                                    $selectForm.Tag = $this.Tag
+                                    $selectForm.DialogResult = [System.Windows.Forms.DialogResult]::OK
+                                    $selectForm.Close()
+                                })
+                            $selectForm.Controls.Add($btn)
+                            $btnX += 160
+                        }
+
+                        $dialogResult = $selectForm.ShowDialog()
+                        if ($dialogResult -eq [System.Windows.Forms.DialogResult]::OK) {
+                            $Global:SelectedOfficeVersion = $selectForm.Tag
+                        }
+                        else {
+                            Add-Status "Office: No version selected, skipping" $statusTextBox ([System.Drawing.Color]::Yellow)
+                            continue
+                        }
+                    }
+                    else {
+                        $Global:SelectedOfficeVersion = $app.id
+                    }
+                }
+
+                # Skip if this is not the selected version
+                if ($Global:SelectedOfficeVersion -ne $app.id) { continue }
+
+                Add-Status "Selected: $appName" $statusTextBox ([System.Drawing.Color]::Cyan)
+
+                # Office specific install logic
                 $officeDir = Join-Path $setupDir $app.sourceSubDir
                 if (-not (Test-Path $officeDir)) { Add-Status "${appName}: Source directory not found" $statusTextBox ([System.Drawing.Color]::Red); continue }
                 
                 $setupFile = Join-Path $officeDir $app.installerName
-                $configFile = Join-Path $officeDir "config.xml"
+                
+                # Look for config XML: configuration.xml first, then config.xml
+                $configFile = $null
+                $configNames = @("configuration.xml", "config.xml")
+                foreach ($cfgName in $configNames) {
+                    $cfgPath = Join-Path $officeDir $cfgName
+                    if (Test-Path $cfgPath) { $configFile = $cfgPath; break }
+                }
+                
+                if (-not $configFile) {
+                    Add-Status "${appName}: No configuration XML found (configuration.xml or config.xml)" $statusTextBox ([System.Drawing.Color]::Red)
+                    continue
+                }
                 
                 if (-not (Test-Path $setupFile)) { Add-Status "${appName}: Setup file not found" $statusTextBox ([System.Drawing.Color]::Red); continue }
                 
+                Add-Status "${appName}: Using $(Split-Path $configFile -Leaf)" $statusTextBox
                 Add-Status "${appName}: Starting silent installation..." $statusTextBox
-                
-                # Generate config.xml if missing
-                if (-not (Test-Path $configFile)) {
-                    $key = $Global:config.officeActivation.productKey
-                    $configContent = "<Configuration><Add OfficeClientEdition=""64"" Channel=""PerpetualVL2019""><Product ID=""ProPlus2019Volume"" PIDKEY=""$key""><Language ID=""en-us"" /><ExcludeApp ID=""Access"" /><ExcludeApp ID=""Groove"" /><ExcludeApp ID=""Lync"" /><ExcludeApp ID=""OneNote"" /><ExcludeApp ID=""Publisher"" /></Product></Add><Display Level=""None"" AcceptEULA=""TRUE"" /><Property Name=""AUTOACTIVATE"" Value=""1"" /><Property Name=""FORCEAPPSHUTDOWN"" Value=""TRUE"" /><Property Name=""SharedComputerLicensing"" Value=""0"" /><Property Name=""PinIconsToTaskbar"" Value=""TRUE"" /><Logging Level=""Standard"" Path=""%TEMP%"" /><RemoveMSI /></Configuration>"
-                    Set-Content -Path $configFile -Value $configContent -Force
-                    Add-Status "${appName}: Created configuration file" $statusTextBox
-                }
                 
                 $result = Invoke-InstallerWithTimeout -FilePath $setupFile -ArgumentList "/configure `"$configFile`"" -TimeoutSeconds 2700 -StatusTextBox $statusTextBox -AppName $appName -WindowStyle Hidden
                 if ($result.Success) { Add-Status "Installed : $appName" $statusTextBox }
@@ -453,14 +589,21 @@ function Install-Software {
                 continue
             }
 
-            # Generic Exe/Msi
+            # Winget install attempt (if available and app supports it)
+            if ($canUseWinget -and $app.wingetId) {
+                $wingetOk = Install-ViaWinget -WingetId $app.wingetId -AppName $appName -statusTextBox $statusTextBox
+                if ($wingetOk) { continue }
+                # Winget failed → fall through to USB installer below
+            }
+
+            # Generic Exe/Msi (USB fallback)
             $installerPath = $null
             if ($app.installerName) {
-                $installerPath = Get-ChildItem -Path $setupDir -Filter $app.installerName -Recurse | Select-Object -First 1 | Select-Object -ExpandProperty FullName
+                $installerPath = Get-ChildItem -Path $setupDir -Filter $app.installerName -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 | Select-Object -ExpandProperty FullName
             }
             
             if ($installerPath) {
-                Add-Status "Installing : $appName" $statusTextBox
+                Add-Status "Installing : $appName (USB)" $statusTextBox
                 
                 $installArgs = if ($app.installArgs) { $app.installArgs } else { "" }
                 
@@ -778,11 +921,15 @@ function Show-InstallSoftwareDialog {
     $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Desktop setup workflow..." $statusTextBox
         Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox -CleanupTemp
+        Add-Status "Starting Activation..." $statusTextBox
+        Invoke-ActivateConfiguration -deviceType "Desktop" -statusTextBox $statusTextBox
     }
     $deviceTypeForm.Controls.Add($btnDesktop)
     $btnLaptop = New-DynamicButton -text "LAPTOP" -x 260 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Laptop setup workflow..." $statusTextBox
         Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox -CleanupTemp
+        Add-Status "Starting Activation..." $statusTextBox
+        Invoke-ActivateConfiguration -deviceType "Laptop" -statusTextBox $statusTextBox
     }
     $deviceTypeForm.Controls.Add($btnLaptop)
     $deviceTypeForm.KeyPreview = $true
@@ -811,4 +958,4 @@ function Find-UsbSourcePath {
     return $null
 }
 
-Export-ModuleMember -Function Install-DriverExe, Show-InstallSoftwareDialog, Invoke-InstallSoftware, Test-OneDriveInstalled, Uninstall-OneDriveComplete, Install-Software, PlanSoftwareInstall, Test-AppInstalled, Copy-SoftwareFilesSelective, Find-UsbSourcePath
+Export-ModuleMember -Function Install-DriverExe, Show-InstallSoftwareDialog, Invoke-InstallSoftware, Test-OneDriveInstalled, Uninstall-OneDriveComplete, Install-Software, PlanSoftwareInstall, Test-AppInstalled, Copy-SoftwareFilesSelective, Find-UsbSourcePath, Test-WingetAvailable, Install-ViaWinget
