@@ -372,6 +372,20 @@ function Copy-SoftwareFilesSelective {
 
         # Generic file copy
         if ($app.installerName) {
+            # Check if Winget can handle this online without needing USB installer copy
+            if ($app.wingetId) {
+                $canWinget = $false
+                try {
+                    $hasNet = Test-NetConnection 8.8.8.8 -Port 53 -InformationLevel Quiet -ErrorAction SilentlyContinue
+                    if ($hasNet -and (Test-WingetAvailable)) { $canWinget = $true }
+                } catch {}
+                
+                if ($canWinget) {
+                    Add-Status "Online : $appName (Winget ready, skip USB copy)" $statusTextBox ([System.Drawing.Color]::Cyan)
+                    continue
+                }
+            }
+
             $file = Get-ChildItem -Path $SourceSetupPath -Filter $app.installerName | Select-Object -First 1
             if ($file) {
                 $dest = Join-Path $setupDir $file.Name
@@ -410,7 +424,7 @@ function Copy-SoftwareFilesSelective {
 function Test-WingetAvailable {
     if ($null -ne $Global:WingetAvailable) { return $Global:WingetAvailable }
     try {
-        $ver = & winget --version 2>&1 | Out-String
+        $ver = & winget.exe --version 2>&1 | Out-String
         if ($ver -match 'v\d') { $Global:WingetAvailable = $true }
         else { $Global:WingetAvailable = $false }
     }
@@ -425,26 +439,44 @@ function Install-ViaWinget {
         [System.Windows.Forms.RichTextBox]$statusTextBox
     )
     try {
+        # Fetch online version before installing
+        try {
+            $showInfo = & winget.exe show --id $WingetId --exact --disable-interactivity --accept-source-agreements 2>&1 | Out-String
+            if ($showInfo -match "Version:\s+([^\r\n]+)") {
+                $ver = $matches[1].Trim()
+                Add-Status "${AppName}: Online version detected -> v$ver" $statusTextBox ([System.Drawing.Color]::Cyan)
+            }
+        } catch {}
+
         Add-Status "${AppName}: Installing via Winget ($WingetId)..." $statusTextBox ([System.Drawing.Color]::Cyan)
         
-        $proc = Start-Process -FilePath "winget" -ArgumentList "install --id $WingetId --silent --accept-package-agreements --accept-source-agreements --disable-interactivity" -WindowStyle Hidden -PassThru -Wait
+        $args = "install --id $WingetId --silent --accept-package-agreements --accept-source-agreements --disable-interactivity"
         
+        # Use Invoke-InstallerWithTimeout to keep GUI responsive and allow fallback if it hangs
+        $result = Invoke-InstallerWithTimeout -FilePath "winget.exe" -ArgumentList $args -TimeoutSeconds 300 -StatusTextBox $statusTextBox -AppName "$AppName (Winget)" -WindowStyle Hidden
+        
+        if ($result.TimedOut) {
+            Add-Status "${AppName}: Winget timed out. Fallback to USB..." $statusTextBox ([System.Drawing.Color]::Yellow)
+            return $false
+        }
+        
+        $exitCode = $result.ExitCode
         # Exit code 0 = success, -1978335189 = already installed
-        if ($proc.ExitCode -eq 0) {
+        if ($exitCode -eq 0 -or $result.Success) {
             Add-Status "Installed : $AppName (Winget)" $statusTextBox ([System.Drawing.Color]::Green)
             return $true
         }
-        elseif ($proc.ExitCode -eq -1978335189) {
-            Add-Status "Existed: $AppName (already installed)" $statusTextBox
+        elseif ($exitCode -eq -1978335189) {
+            Add-Status "Existed: $AppName (Winget - already installed)" $statusTextBox
             return $true
         }
         else {
-            Add-Status "${AppName}: Winget exit code $($proc.ExitCode), fallback to USB..." $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "${AppName}: Winget exit code $exitCode. Fallback to USB..." $statusTextBox ([System.Drawing.Color]::Yellow)
             return $false
         }
     }
     catch {
-        Add-Status "${AppName}: Winget error: $_, fallback to USB..." $statusTextBox ([System.Drawing.Color]::Yellow)
+        Add-Status "${AppName}: Winget error: $_. Fallback to USB..." $statusTextBox ([System.Drawing.Color]::Yellow)
         return $false
     }
 }
@@ -600,6 +632,14 @@ function Install-Software {
             $installerPath = $null
             if ($app.installerName) {
                 $installerPath = Get-ChildItem -Path $setupDir -Filter $app.installerName -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 | Select-Object -ExpandProperty FullName
+                if (-not $installerPath -and $Global:config.sourcePaths.software) {
+                    $usbFile = Get-ChildItem -Path $Global:config.sourcePaths.software -Filter $app.installerName -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($usbFile) {
+                        Add-Status "${appName}: Copying fallback installer from USB..." $statusTextBox ([System.Drawing.Color]::Yellow)
+                        Copy-Item -Path $usbFile.FullName -Destination $setupDir -Force
+                        $installerPath = Join-Path $setupDir $usbFile.Name
+                    }
+                }
             }
             
             if ($installerPath) {
@@ -766,19 +806,7 @@ function Invoke-InstallSoftware {
             }
             else { Add-Status "Warning: Not found CrowdStrike source file" $statusTextBox ([System.Drawing.Color]::Yellow) }
 
-            if ($DeviceType -eq "Desktop") {
-                $desktopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Desktop Agent*.exe') -File -ErrorAction SilentlyContinue
-                if ($desktopAgent) {
-                    $agentDest = Join-Path $destCopy $desktopAgent.Name
-                    if (-not (Test-Path $agentDest)) {
-                        if (Test-Path $desktopAgent.FullName) { Copy-Item -Path $desktopAgent.FullName -Destination $agentDest -Force; Add-Status "Copied : DesktopAgent" $statusTextBox }
-                        else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
-                    }
-                    else { Add-Status "Existed: DesktopAgent" $statusTextBox }
-                }
-                else { Add-Status "Error: Not found DesktopAgent source file" $statusTextBox ([System.Drawing.Color]::Red) }
-            }
-            else {
+            if ($DeviceType -eq "Laptop") {
                 $laptopAgent = Get-ChildItem -Path (Join-Path $srcSETUP 'Laptop Agent*.exe') -File -ErrorAction SilentlyContinue
                 if ($laptopAgent) {
                     $agentDest = Join-Path $destCopy $laptopAgent.Name
@@ -921,15 +949,11 @@ function Show-InstallSoftwareDialog {
     $btnDesktop = New-DynamicButton -text "DESKTOP" -x 10 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Desktop setup workflow..." $statusTextBox
         Invoke-InstallSoftware -DeviceType "Desktop" -statusTextBox $statusTextBox -CleanupTemp
-        Add-Status "Starting Activation..." $statusTextBox
-        Invoke-ActivateConfiguration -deviceType "Desktop" -statusTextBox $statusTextBox
     }
     $deviceTypeForm.Controls.Add($btnDesktop)
     $btnLaptop = New-DynamicButton -text "LAPTOP" -x 260 -y 50 -width 200 -height 50 -clickAction {
         Add-Status "Starting Laptop setup workflow..." $statusTextBox
         Invoke-InstallSoftware -DeviceType "Laptop" -statusTextBox $statusTextBox -CleanupTemp
-        Add-Status "Starting Activation..." $statusTextBox
-        Invoke-ActivateConfiguration -deviceType "Laptop" -statusTextBox $statusTextBox
     }
     $deviceTypeForm.Controls.Add($btnLaptop)
     $deviceTypeForm.KeyPreview = $true

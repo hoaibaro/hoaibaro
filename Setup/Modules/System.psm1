@@ -1,4 +1,4 @@
-﻿function Invoke-RunAllOperations {
+function Invoke-RunAllOperations {
     param([System.Windows.Forms.Form]$mainForm)
     Hide-MainMenu -mainForm $mainForm
     # Create status form
@@ -187,22 +187,6 @@
             Add-Status "Internet: Not available (some steps will be skipped)" $statusTextBox ([System.Drawing.Color]::Yellow)
         }
 
-        # Optional: Windows Update background (requires Internet)
-        if ($hasInternet) {
-            Add-Status "STEP 0.5: Starting Windows Updates (Background)..." $statusTextBox
-            $progressBar.Value = 8
-            $updateResult = Invoke-WindowsUpdateCheck $statusTextBox
-            if ($updateResult) {
-                Add-Status "Windows Update process started successfully!" $statusTextBox ([System.Drawing.Color]::Green)
-            }
-            else {
-                Add-Status "Windows Update start failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow)
-            }
-        }
-        else {
-            Add-Status "STEP 0.5: Skipping Windows Updates (no Internet)" $statusTextBox ([System.Drawing.Color]::Yellow)
-            $progressBar.Value = 8
-        }
         Add-Status "STEP 0 completed" $statusTextBox ([System.Drawing.Color]::Cyan)
 
         # STEP 1: Device Selection and Software Installation
@@ -279,16 +263,28 @@
             Add-Status "STEP 6 encountered errors. Check logs." $statusTextBox ([System.Drawing.Color]::Red)
         }
 
-        # STEP 7: Domain Join (temporarily disabled)
-        # TODO: Re-enable when Domain Join feature is stable
-        Add-Status "STEP 7: Domain Join (temporarily disabled)" $statusTextBox ([System.Drawing.Color]::Gray)
+        # STEP 7: Windows Update
+        if ($hasInternet) {
+            Add-Status "STEP 7: Starting Windows Updates (Background)..." $statusTextBox
+            $updateResult = Invoke-WindowsUpdateCheck $statusTextBox
+            if ($updateResult) {
+                Add-Status "STEP 7 completed: Windows Update process started successfully!" $statusTextBox ([System.Drawing.Color]::Green)
+            }
+            else {
+                Add-Status "STEP 7 encountered issues: Windows Update start failed, but continuing..." $statusTextBox ([System.Drawing.Color]::Yellow)
+            }
+        }
+        else {
+            Add-Status "STEP 7: Skipping Windows Updates (no Internet)" $statusTextBox ([System.Drawing.Color]::Yellow)
+        }
+        
         $progressBar.Value = 100
 
         # Offline summary
         if (-not $hasInternet) {
             Add-Status "" $statusTextBox
             Add-Status "=== OFFLINE SUMMARY ===" $statusTextBox ([System.Drawing.Color]::Yellow)
-            Add-Status "Skipped: Windows Update, Activation (/ato), Features, Domain Join" $statusTextBox ([System.Drawing.Color]::Yellow)
+            Add-Status "Skipped: Windows Update, Activation (/ato), Features" $statusTextBox ([System.Drawing.Color]::Yellow)
             Add-Status "Keys installed: Windows + Office will auto-activate when online" $statusTextBox ([System.Drawing.Color]::Yellow)
             Add-Status "Please run skipped steps manually when Internet is available." $statusTextBox ([System.Drawing.Color]::Yellow)
         }
