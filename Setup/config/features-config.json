@@ -1,0 +1,10 @@
+{
+    "FeaturesToEnable": [
+        { "Name": "NetFx3", "DisplayName": ".NET 3.5    " },
+        { "Name": "WCF-HTTP-Activation", "DisplayName": "WCF HTTP    " },
+        { "Name": "WCF-NonHTTP-Activation", "DisplayName": "WCF Non-HTTP" }
+    ],
+    "FeaturesToDisable": [
+        { "Name": "Internet-Explorer-Optional-amd64", "DisplayName": "IExplorer 11", "SupportedOS": "Windows 10" }
+    ]
+}

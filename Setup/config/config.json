@@ -1,0 +1,170 @@
+{
+  "sourcePaths": {
+    "software": "D:\\SETUP",
+    "drivers": "D:\\DRIVER",
+    "ethernetDriver": "D:\\DRIVER\\Ethernet\\Intel-PCIe-Ethernet-Controller-Driver_99KJH_WIN64_12.19.2.50_A27_01.exe",
+    "wifiDriver": "D:\\DRIVER\\WIFI\\WiFi-23.120.0-Driver64-Win10-Win11.exe"
+  },
+  "wifi": {
+    "ssid": "VietUnion_5.0GHz",
+    "password": "PY!Welc0m3@2026"
+  },
+  "computerNamePrefixes": {
+    "desktop": "HOD100",
+    "laptop": "HOL100"
+  },
+  "timezone": "SE Asia Standard Time",
+  "startupProgramsToRemove": [
+    "Microsoft Teams",
+    "Microsoft Co-Pilot"
+  ],
+  "officeActivation": {
+    "ProPlus2019": "Q2NKY-J42YJ-X2KVK-9Q9PT-MKP63",
+    "Standard2019": "6NTM8-43PXQ-W82RP-YFBTF-846VB"
+  },
+  "windowsActivation": {
+    "productKey": "R84N4-RPC7Q-W8TKM-VM7Y4-7H66Y",
+    "upgradeKey": "VK7JG-NPHTM-C97JM-9MPGT-3V66T"
+  },
+  "domain": {
+    "name": "vietunion.local",
+    "defaultUser": "-hdk-hieudang"
+  },
+  "userManagement": {
+    "presetPasswords": [
+      "Pr0t3ct10c@1@VU",
+      "Aa1234567890"
+    ]
+  },
+  "software": [
+    {
+      "id": "7zip",
+      "displayName": "7-Zip",
+      "wingetId": "7zip.7zip",
+      "enabled": true,
+      "device": "All",
+      "installerName": "7z*.exe",
+      "installerType": "exe",
+      "installArgs": "/S",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files\\7-Zip\\7z.exe",
+        "C:\\Program Files (x86)\\7-Zip\\7z.exe"
+      ]
+    },
+    {
+      "id": "chrome",
+      "displayName": "Google Chrome",
+      "wingetId": "Google.Chrome",
+      "enabled": true,
+      "device": "All",
+      "installerName": "*Chrome*.exe",
+      "installerType": "exe",
+      "installArgs": "/silent /install",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+      ]
+    },
+    {
+      "id": "laps",
+      "displayName": "LAPS",
+      "enabled": true,
+      "device": "All",
+      "installerName": "*LAPS*.msi",
+      "installerType": "msi",
+      "installArgs": "/i \"{installerPath}\" /qn /norestart",
+      "checkType": "function",
+      "checkFunction": "Test-LAPSInstalledOrBuiltin"
+    },
+    {
+      "id": "foxit",
+      "displayName": "Foxit Reader",
+      "wingetId": "Foxit.FoxitReader",
+      "enabled": true,
+      "device": "All",
+      "installerName": "Foxit*.exe",
+      "installerType": "exe",
+      "installArgs": "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files (x86)\\Foxit Software\\Foxit PDF Reader\\FoxitPDFReader.exe",
+        "C:\\Program Files\\Foxit Software\\Foxit PDF Reader\\FoxitPDFReader.exe",
+        "C:\\Program Files (x86)\\Foxit Software\\Foxit Reader\\FoxitReader.exe",
+        "C:\\Program Files\\Foxit Software\\Foxit Reader\\FoxitReader.exe"
+      ]
+    },
+    {
+      "id": "officeProPlus2019",
+      "displayName": "Office ProPlus 2019",
+      "enabled": true,
+      "device": "All",
+      "installerName": "setup.exe",
+      "installerType": "office",
+      "sourceSubDir": "Office ProPlus 2019",
+      "activationKey": "ProPlus2019",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE"
+      ]
+    },
+    {
+      "id": "officeStandard2019",
+      "displayName": "Office Standard 2019",
+      "enabled": true,
+      "device": "All",
+      "installerName": "setup.exe",
+      "installerType": "office",
+      "sourceSubDir": "Office Standard 2019",
+      "activationKey": "Standard2019",
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE"
+      ]
+    },
+    {
+      "id": "zoom",
+      "displayName": "Zoom",
+      "wingetId": "Zoom.Zoom",
+      "enabled": true,
+      "device": "Laptop",
+      "installerName": "*Zoom*.exe",
+      "installerType": "exe",
+      "installArgs": "/silent /norestart",
+      "checkType": "path",
+      "checkPaths": [
+        "$env:APPDATA\\Zoom\\bin\\Zoom.exe",
+        "C:\\Program Files\\Zoom\\bin\\Zoom.exe",
+        "C:\\Program Files (x86)\\Zoom\\bin\\Zoom.exe"
+      ]
+    },
+    {
+      "id": "checkpointvpn",
+      "displayName": "CheckPoint VPN",
+      "enabled": true,
+      "device": "Laptop",
+      "installerName": "*CheckPointVPN.msi",
+      "installerType": "msi",
+      "installArgs": "/i \"{installerPath}\" /qn /norestart",
+      "postInstall": {
+        "createSite": true,
+        "siteAddress": "118.69.56.194"
+      },
+      "checkType": "path",
+      "checkPaths": [
+        "C:\\Program Files (x86)\\CheckPoint\\Endpoint Connect\\trac.exe"
+      ]
+    },
+    {
+      "id": "onedrive",
+      "displayName": "OneDrive",
+      "enabled": true,
+      "device": "All",
+      "task": "uninstall",
+      "checkType": "function",
+      "checkFunction": "Test-OneDriveInstalled",
+      "uninstallFunction": "Uninstall-OneDriveComplete"
+    }
+  ]
+}
